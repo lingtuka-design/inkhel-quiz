@@ -64,8 +64,8 @@ export function ResultPage() {
 
   const summary = useMemo(() => {
     if (!review) return null
-    const answered = review.questions.filter((q) => q.answered).length
-    const correct = review.questions.filter((q) => q.isCorrect).length
+    const answered = review.questions.filter((q: RoundReviewQuestion) => q.answered).length
+    const correct = review.questions.filter((q: RoundReviewQuestion) => q.isCorrect).length
     const wrong = answered - correct
     const unanswered = review.questions.length - answered
     return { answered, correct, wrong, unanswered }
@@ -217,8 +217,8 @@ export function ResultPage() {
           />
           <div className="space-y-5">
             {questions
-              .filter((q) => !q.isCorrect)
-              .map((q) => (
+              .filter((q: RoundReviewQuestion) => !q.isCorrect)
+              .map((q: RoundReviewQuestion) => (
                 <ReviewCard key={q.id} question={q} />
               ))}
           </div>

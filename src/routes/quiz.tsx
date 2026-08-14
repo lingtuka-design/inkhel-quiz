@@ -102,24 +102,43 @@ export function QuizPage() {
     }
   }, [round, roundId, phase, handleFinalize])
 
-  const start = () => {
+  const start = async () => {
     const participant = getParticipant()
     if (!participant) {
       setNamePromptOpen(true)
       return
     }
     setError(null)
-    const qs = getQuizQuestions(roundId)
-    if (qs.length === 0) {
-      setError('This round has no questions yet')
-      return
+    try {
+      let qs = getQuizQuestions(roundId)
+      if (qs.length === 0) {
+        const res = await fetch(`/api/questions?roundId=${roundId}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data)) {
+            qs = data.map((q: any) => ({
+              id: q.id,
+              text: q.text,
+              order: q.order,
+              imageUrl: q.imageUrl,
+              options: (q.options || []).map((o: any) => ({ key: o.optionKey, text: o.text })),
+            }))
+          }
+        }
+      }
+      if (qs.length === 0) {
+        setError('This round has no questions yet')
+        return
+      }
+      const att = await startAttempt(participant.id, roundId)
+      setAttempt(att)
+      setQuestions(qs)
+      setIndex(0)
+      setDeadline(new Date(att.startedAt).getTime() + (round?.timeLimitSeconds ?? 0) * 1000)
+      setPhase('playing')
+    } catch (err: any) {
+      setError(err.message || 'Failed to start quiz')
     }
-    const att = startAttempt(participant.id, roundId)
-    setAttempt(att)
-    setQuestions(qs)
-    setIndex(0)
-    setDeadline(new Date(att.startedAt).getTime() + (round?.timeLimitSeconds ?? 0) * 1000)
-    setPhase('playing')
   }
 
   const submit = (key: OptionKey) => {

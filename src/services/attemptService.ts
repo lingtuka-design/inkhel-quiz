@@ -30,13 +30,36 @@ export function getAnswers(attemptId: string): AttemptAnswer[] {
   return getDb().answers.filter((a) => a.attemptId === attemptId)
 }
 
-export function hasCompletedRound(participantId: string, roundId: string): boolean {
-  return getDb().attempts.some(
-    (a) =>
-      a.participantId === participantId &&
-      a.roundId === roundId &&
-      (a.status === 'completed' || a.status === 'expired'),
-  )
+export async function checkParticipantAttempt(participantId: string, roundId: string): Promise<Attempt | null> {
+  try {
+    const res = await fetch(
+      `/api/attempts?participantId=${encodeURIComponent(participantId)}&roundId=${encodeURIComponent(roundId)}`
+    )
+    if (res.ok) {
+      const data = await res.json()
+      const db = getDb()
+      if (data.attempt) {
+        db.attempts = db.attempts.filter((a) => a.id !== data.attempt.id)
+        db.attempts.push(data.attempt)
+        saveDb()
+        return data.attempt
+      } else {
+        // Clear any stale local attempt for this round
+        db.attempts = db.attempts.filter((a) => !(a.participantId === participantId && a.roundId === roundId))
+        saveDb()
+        return null
+      }
+    }
+  } catch {}
+  return null
+}
+
+export async function hasCompletedRound(participantId: string, roundId: string): Promise<boolean> {
+  const attempt = await checkParticipantAttempt(participantId, roundId)
+  if (attempt) {
+    return attempt.status === 'completed' || attempt.status === 'expired'
+  }
+  return false
 }
 
 export interface ResumeInfo {
@@ -65,7 +88,7 @@ export function resumeAttempt(participantId: string, roundId: string): ResumeInf
       deadline,
       answeredCount: getAnsweredCount(attempt.id),
       totalQuestions,
-      status: updated.status === 'expired' ? 'expired' : 'finished',
+      status: updated?.status === 'expired' ? 'expired' : 'finished',
     }
   }
   return {
@@ -77,7 +100,7 @@ export function resumeAttempt(participantId: string, roundId: string): ResumeInf
   }
 }
 
-export function startAttempt(participantId: string, roundId: string): Attempt {
+export async function startAttempt(participantId: string, roundId: string): Promise<Attempt> {
   const db = getDb()
   const round = db.rounds.find((r) => r.id === roundId)
   if (!round) throw new Error('Round not found')
@@ -93,41 +116,24 @@ export function startAttempt(participantId: string, roundId: string): Attempt {
     throw new Error('This round is not open for play')
   }
 
-  const existing = db.attempts.find(
-    (a) => a.participantId === participantId && a.roundId === roundId,
-  )
-  if (existing && existing.status !== 'in_progress') {
-    throw new Error('You have already completed this round. One attempt per round.')
-  }
-  if (existing && existing.status === 'in_progress') return existing
-
-  const totalQuestions = db.questions.filter((q) => q.roundId === roundId).length
-  const attempt: Attempt = {
-    id: newId('att'),
-    participantId,
-    roundId,
-    startedAt: nowIso(),
-    completedAt: null,
-    status: 'in_progress',
-    timeTakenSeconds: null,
-    correctAnswers: 0,
-    incorrectAnswers: 0,
-    unansweredQuestions: totalQuestions,
-    baseScore: 0,
-    speedBonus: 0,
-    finalScore: 0,
-    isTestAttempt: false,
-    createdAt: nowIso(),
-  }
-  db.attempts.push(attempt)
-  saveDb()
-
-  // Sync to Cloudflare D1
-  fetch('/api/attempts', {
+  // Call Cloudflare D1
+  const res = await fetch('/api/attempts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'start', participantId, roundId }),
-  }).catch(() => {})
+  })
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}))
+    throw new Error(errData.error || 'Failed to start quiz')
+  }
+
+  const data = await res.json()
+  const attempt: Attempt = data.attempt
+
+  db.attempts = db.attempts.filter((a) => a.id !== attempt.id)
+  db.attempts.push(attempt)
+  saveDb()
 
   return attempt
 }
@@ -158,14 +164,12 @@ export function submitAnswer(
 
   const round = db.rounds.find((r) => r.id === attempt.roundId)!
   const question = db.questions.find((q) => q.id === questionId && q.roundId === attempt.roundId)
-  if (!question) throw new Error('Question not found')
   const options = db.options.filter((o) => o.questionId === questionId)
   const option = options.find((o) => o.optionKey === optionKey)
-  if (!option) throw new Error('Invalid option')
 
-  const deadline = getAttemptDeadline(attempt, round)
+  const deadline = round ? getAttemptDeadline(attempt, round) : 0
   const now = Date.now()
-  if (now > deadline + ATTEMPT_EXPIRY_GRACE_MS) {
+  if (deadline && now > deadline + ATTEMPT_EXPIRY_GRACE_MS) {
     finalizeAttempt(attemptId)
     const updated = getAttempt(attemptId)!
     return {
@@ -192,7 +196,7 @@ export function submitAnswer(
     }
   }
 
-  const isCorrect = option.isCorrect
+  const isCorrect = option?.isCorrect ?? false
   const elapsed = Math.round((now - new Date(attempt.startedAt).getTime()) / 1000)
   const answer: AttemptAnswer = {
     id: newId('ans'),
@@ -223,103 +227,169 @@ export function submitAnswer(
     }),
   }).catch(() => {})
 
-  if (finished) finalizeAttempt(attemptId)
-
-  const updated = getAttempt(attemptId)!
-  return { attempt: updated, answeredCount, totalQuestions, finished, answer }
+  return {
+    attempt,
+    answeredCount,
+    totalQuestions,
+    finished,
+    answer,
+  }
 }
 
-export function finalizeAttempt(attemptId: string): Attempt {
+export async function finalizeAttempt(attemptId: string): Promise<Attempt> {
   const db = getDb()
   const attempt = db.attempts.find((a) => a.id === attemptId)
-  if (!attempt) throw new Error('Attempt not found')
-  if (attempt.status !== 'in_progress') return attempt
 
-  const round = db.rounds.find((r) => r.id === attempt.roundId)!
-  const allQuestions = db.questions.filter((q) => q.roundId === attempt.roundId)
-  const answers = getAnswers(attemptId)
-  const correct = answers.filter((a) => a.isCorrect).length
-  const answered = answers.length
-  const unanswered = allQuestions.length - answered
-
-  const deadline = getAttemptDeadline(attempt, round)
-  const now = Date.now()
-  const expired = now >= deadline
-  const timeTaken = expired
-    ? round.timeLimitSeconds
-    : Math.max(1, Math.round((now - new Date(attempt.startedAt).getTime()) / 1000))
-
-  const status: AttemptStatus =
-    expired
-      ? 'expired'
-      : answered >= allQuestions.length
-        ? 'completed'
-        : 'abandoned'
-  const score = calculateScore({
-    totalQuestions: allQuestions.length,
-    correctAnswers: correct,
-    unansweredQuestions: unanswered,
-    timeLimitSeconds: round.timeLimitSeconds,
-    timeTakenSeconds: timeTaken,
-    status: status === 'completed' ? 'completed' : status === 'expired' ? 'expired' : 'abandoned',
-  })
-
-  attempt.completedAt = new Date(Math.min(now, deadline + 2000)).toISOString()
-  attempt.status = status
-  attempt.timeTakenSeconds = timeTaken
-  attempt.correctAnswers = correct
-  attempt.incorrectAnswers = answered - correct
-  attempt.unansweredQuestions = unanswered
-  attempt.baseScore = score.baseScore
-  attempt.speedBonus = score.speedBonus
-  attempt.finalScore = score.finalScore
-  saveDb()
-
-  // Finalize attempt in Cloudflare D1
-  fetch('/api/attempts', {
+  const res = await fetch('/api/attempts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'finalize', attemptId, forceExpired: expired }),
+    body: JSON.stringify({ action: 'finalize', attemptId }),
   })
-    .then(() => {
-      // Invalidate queries so leaderboards and rankings reload live across all users
-      queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
-      queryClient.invalidateQueries({ queryKey: ['ranking'] })
-    })
-    .catch(() => {})
 
-  return attempt
+  if (res.ok) {
+    const data = await res.json()
+    if (data.attempt) {
+      db.attempts = db.attempts.filter((a) => a.id !== data.attempt.id)
+      db.attempts.push(data.attempt)
+      saveDb()
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
+      queryClient.invalidateQueries({ queryKey: ['played'] })
+      return data.attempt
+    }
+  }
+
+  if (attempt) {
+    const round = db.rounds.find((r) => r.id === attempt.roundId)
+    const answers = db.answers.filter((a) => a.attemptId === attemptId)
+    const correctAnswers = answers.filter((a) => a.isCorrect).length
+    const totalQ = db.questions.filter((q) => q.roundId === attempt.roundId).length || 10
+    const timeTaken = answers.length ? Math.max(...answers.map((a) => a.elapsedSeconds)) : 0
+    const score = calculateScore({
+      totalQuestions: totalQ,
+      correctAnswers,
+      unansweredQuestions: Math.max(0, totalQ - answers.length),
+      timeLimitSeconds: round?.timeLimitSeconds ?? 180,
+      timeTakenSeconds: timeTaken,
+      status: 'completed',
+    })
+
+    attempt.completedAt = nowIso()
+    attempt.status = 'completed'
+    attempt.timeTakenSeconds = timeTaken
+    attempt.correctAnswers = correctAnswers
+    attempt.incorrectAnswers = answers.length - correctAnswers
+    attempt.unansweredQuestions = Math.max(0, totalQ - answers.length)
+    attempt.baseScore = score.baseScore
+    attempt.speedBonus = score.speedBonus
+    attempt.finalScore = score.finalScore
+    saveDb()
+  }
+
+  queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
+  queryClient.invalidateQueries({ queryKey: ['played'] })
+  return attempt!
 }
 
-export function getAttemptReview(attemptId: string, participantId: string): {
+export interface AttemptReview {
   attempt: Attempt
+  round: Round
+  participant: any
   questions: RoundReviewQuestion[]
   rank: number
-} | null {
+  score: {
+    baseScore: number
+    speedBonus: number
+    finalScore: number
+    correctAnswers: number
+    incorrectAnswers: number
+    unansweredQuestions: number
+    timeTakenSeconds: number
+  }
+}
+
+export async function getAttemptReview(attemptId: string, _participantId?: string): Promise<AttemptReview | null> {
+  try {
+    const res = await fetch(`/api/attempts?id=${encodeURIComponent(attemptId)}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data.attempt) {
+        return {
+          attempt: data.attempt,
+          round: data.round,
+          participant: data.participant,
+          questions: data.reviewQuestions || [],
+          rank: data.rank || 1,
+          score: {
+            baseScore: data.attempt.baseScore || 0,
+            speedBonus: data.attempt.speedBonus || 0,
+            finalScore: data.attempt.finalScore || 0,
+            correctAnswers: data.attempt.correctAnswers || 0,
+            incorrectAnswers: data.attempt.incorrectAnswers || 0,
+            unansweredQuestions: data.attempt.unansweredQuestions || 0,
+            timeTakenSeconds: data.attempt.timeTakenSeconds || 0,
+          },
+        }
+      }
+    }
+  } catch {}
+
   const db = getDb()
   const attempt = db.attempts.find((a) => a.id === attemptId)
-  if (!attempt || attempt.participantId !== participantId) return null
-  if (attempt.status === 'in_progress') return null
-  const round = db.rounds.find((r) => r.id === attempt.roundId)!
-  const answers = new Map(getAnswers(attemptId).map((a) => [a.questionId, a]))
-  const questions: RoundReviewQuestion[] = db.questions
-    .filter((q) => q.roundId === round.id)
+  if (!attempt) return null
+  const round = db.rounds.find((r) => r.id === attempt.roundId)
+  const participant = db.participants.find((p) => p.id === attempt.participantId)
+  const questions = getRoundReviewQuestions(attemptId)
+
+  return {
+    attempt,
+    round: round!,
+    participant,
+    questions,
+    rank: 1,
+    score: {
+      baseScore: attempt.baseScore,
+      speedBonus: attempt.speedBonus,
+      finalScore: attempt.finalScore,
+      correctAnswers: attempt.correctAnswers,
+      incorrectAnswers: attempt.incorrectAnswers,
+      unansweredQuestions: attempt.unansweredQuestions,
+      timeTakenSeconds: attempt.timeTakenSeconds ?? 0,
+    },
+  }
+}
+
+export function listUserAttempts(participantId: string): Attempt[] {
+  return getDb()
+    .attempts.filter(
+      (a) => a.participantId === participantId && (a.status === 'completed' || a.status === 'expired'),
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+}
+
+export function getRoundReviewQuestions(attemptId: string): RoundReviewQuestion[] {
+  const db = getDb()
+  const attempt = db.attempts.find((a) => a.id === attemptId)
+  if (!attempt) return []
+  const questions = db.questions
+    .filter((q) => q.roundId === attempt.roundId)
     .sort((a, b) => a.order - b.order)
-    .map((q) => {
-      const answer = answers.get(q.id)
-      return {
-        id: q.id,
-        text: q.text,
-        order: q.order,
-        imageUrl: q.imageUrl || null,
-        options: db.options
-          .filter((o) => o.questionId === q.id)
-          .sort((a, b) => a.optionKey.localeCompare(b.optionKey))
-          .map((o) => ({ key: o.optionKey, text: o.text, isCorrect: o.isCorrect })),
-        selectedKey: answer?.selectedOptionKey ?? null,
-        isCorrect: answer?.isCorrect ?? false,
-        answered: !!answer,
-      }
-    })
-  return { attempt, questions, rank: 1 }
+  const answers = db.answers.filter((a) => a.attemptId === attemptId)
+  const answerMap = new Map(answers.map((a) => [a.questionId, a]))
+
+  return questions.map((q) => {
+    const ans = answerMap.get(q.id)
+    const options = db.options
+      .filter((o) => o.questionId === q.id)
+      .sort((a, b) => a.optionKey.localeCompare(b.optionKey))
+      .map((o) => ({ key: o.optionKey, text: o.text, isCorrect: o.isCorrect }))
+    return {
+      id: q.id,
+      text: q.text,
+      order: q.order,
+      options,
+      selectedKey: ans?.selectedOptionKey ?? null,
+      isCorrect: ans?.isCorrect ?? false,
+      answered: !!ans,
+    }
+  })
 }
