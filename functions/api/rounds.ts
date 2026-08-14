@@ -39,8 +39,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     // Default: return published rounds (or all if admin requested)
     const isAdmin = await verifyAdmin(request, env.DB)
     const sql = (all && isAdmin)
-      ? `SELECT r.*, (SELECT COUNT(*) FROM questions q WHERE q.round_id = r.id) as question_count FROM rounds r ORDER BY r.created_at DESC`
-      : `SELECT r.*, (SELECT COUNT(*) FROM questions q WHERE q.round_id = r.id) as question_count FROM rounds r WHERE r.status = 'published' ORDER BY r.created_at DESC`
+      ? 'SELECT * FROM rounds ORDER BY created_at DESC'
+      : "SELECT * FROM rounds WHERE status = 'published' ORDER BY created_at DESC"
 
     const { results: rounds } = await env.DB.prepare(sql).all()
     return json(toCamelCase(rounds))
@@ -59,10 +59,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const now = new Date().toISOString()
 
     if (action === 'create') {
-      const { id, monthId, title, description, bannerGradient, bannerIcon, bannerUrl, timeLimitSeconds = 300 } = body
+      const { monthId, title, description, bannerGradient, bannerIcon, bannerUrl, timeLimitSeconds = 300 } = body
       if (!monthId || !title) return err('monthId and title are required')
 
-      const roundId = id || `round_${Date.now()}`
+      const roundId = `round_${Date.now()}`
       const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
       let slug = baseSlug || roundId
 
@@ -125,32 +125,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           id,
         )
         .run()
-
-      return json({ success: true })
-    }
-
-    if (action === 'delete') {
-      const { id } = body
-      if (!id) return err('Round ID is required')
-
-      // Cascade: questions, options, attempts, answers
-      const { results: questions } = await env.DB.prepare('SELECT id FROM questions WHERE round_id = ?')
-        .bind(id)
-        .all<any>()
-      const qIds = questions.map((q) => `'${q.id}'`).join(',')
-      if (qIds) {
-        await env.DB.prepare(`DELETE FROM question_options WHERE question_id IN (${qIds})`).run()
-        await env.DB.prepare(`DELETE FROM questions WHERE id IN (${qIds})`).run()
-      }
-      const { results: attempts } = await env.DB.prepare('SELECT id FROM attempts WHERE round_id = ?')
-        .bind(id)
-        .all<any>()
-      const aIds = attempts.map((a) => `'${a.id}'`).join(',')
-      if (aIds) {
-        await env.DB.prepare(`DELETE FROM attempt_answers WHERE attempt_id IN (${aIds})`).run()
-        await env.DB.prepare(`DELETE FROM attempts WHERE id IN (${aIds})`).run()
-      }
-      await env.DB.prepare('DELETE FROM rounds WHERE id = ?').bind(id).run()
 
       return json({ success: true })
     }

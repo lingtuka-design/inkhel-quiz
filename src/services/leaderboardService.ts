@@ -3,7 +3,6 @@ import type { Attempt, LeaderboardRow, Participant, RankingRow } from '../types'
 import { compareAttempts } from './scoring'
 import { listMonths } from './monthService'
 import { listRoundsByMonth } from './roundService'
-import { apiGet } from './apiClient'
 
 const VALID_STATUSES = new Set(['completed', 'expired'])
 
@@ -26,24 +25,14 @@ function participantById(id: string): Participant {
   )
 }
 
-function normalizeRemoteParticipant(p: any): Participant {
-  if (!p || typeof p !== 'object') return participantById('unknown')
-  return {
-    id: p.id ?? 'unknown',
-    displayName: p.displayName ?? p.display_name ?? 'Unknown Player',
-    email: p.email ?? null,
-    avatarGradient: p.avatarGradient ?? p.avatar_gradient ?? 'from-violet-500 to-fuchsia-500',
-    provider: p.provider ?? 'guest',
-    createdAt: p.createdAt ?? new Date().toISOString(),
-    updatedAt: p.updatedAt ?? new Date().toISOString(),
-  }
-}
-
 export interface RankingOptions {
   currentParticipantId?: string | null
 }
 
-function aggregateRows(attempts: Attempt[], opts: RankingOptions): RankingRow[] {
+function aggregateRows(
+  attempts: Attempt[],
+  opts: RankingOptions,
+): RankingRow[] {
   const byParticipant = new Map<string, Attempt[]>()
   for (const a of attempts) {
     const list = byParticipant.get(a.participantId) ?? []
@@ -82,8 +71,8 @@ function aggregateRows(attempts: Attempt[], opts: RankingOptions): RankingRow[] 
   }))
 }
 
-/** Level 1 — per-round leaderboard (sync, local only). */
-export function computeRoundLeaderboardLocal(
+/** Level 1 — per-round leaderboard */
+export function getRoundLeaderboard(
   roundId: string,
   opts: RankingOptions = {},
 ): LeaderboardRow[] {
@@ -105,36 +94,8 @@ export function computeRoundLeaderboardLocal(
   }))
 }
 
-function normalizeRemoteRoundRow(row: any, currentParticipantId?: string | null): LeaderboardRow {
-  return {
-    rank: row.rank,
-    participant: normalizeRemoteParticipant(row.participant),
-    correctAnswers: row.correctAnswers ?? 0,
-    totalQuestions: row.totalQuestions ?? 0,
-    timeTakenSeconds: row.timeTakenSeconds ?? 0,
-    score: row.score ?? 0,
-    completedAt: row.completedAt ?? new Date().toISOString(),
-    attemptId: row.attemptId ?? '',
-    isCurrentUser: row.participant?.id === currentParticipantId,
-  }
-}
-
-/** Level 1 — per-round leaderboard (cloud-first, local fallback). */
-export async function getRoundLeaderboard(
-  roundId: string,
-  opts: RankingOptions = {},
-): Promise<LeaderboardRow[]> {
-  const remote = await apiGet<LeaderboardRow[]>(
-    `/api/leaderboard?type=round&roundId=${encodeURIComponent(roundId)}`,
-  )
-  if (remote && Array.isArray(remote) && remote.length > 0) {
-    return remote.map((r) => normalizeRemoteRoundRow(r, opts.currentParticipantId))
-  }
-  return computeRoundLeaderboardLocal(roundId, opts)
-}
-
-/** Level 2 — monthly ranking (sync, local only). */
-export function computeMonthRankingLocal(monthId: string, opts: RankingOptions = {}): RankingRow[] {
+/** Level 2 — monthly ranking (sum of round scores within the month) */
+export function getMonthRanking(monthId: string, opts: RankingOptions = {}): RankingRow[] {
   const rounds = listRoundsByMonth(monthId).map((r) => r.id)
   const attempts = getDb().attempts.filter(
     (a) => rounds.includes(a.roundId) && isValidAttempt(a),
@@ -142,26 +103,8 @@ export function computeMonthRankingLocal(monthId: string, opts: RankingOptions =
   return aggregateRows(attempts, opts)
 }
 
-/** Level 2 — monthly ranking (cloud-first, local fallback). */
-export async function getMonthRanking(
-  monthId: string,
-  opts: RankingOptions = {},
-): Promise<RankingRow[]> {
-  const remote = await apiGet<RankingRow[]>(
-    `/api/leaderboard?type=month&monthId=${encodeURIComponent(monthId)}`,
-  )
-  if (remote && Array.isArray(remote) && remote.length > 0) {
-    return remote.map((r) => ({
-      ...r,
-      participant: normalizeRemoteParticipant(r.participant),
-      isCurrentUser: r.participant?.id === opts.currentParticipantId,
-    }))
-  }
-  return computeMonthRankingLocal(monthId, opts)
-}
-
-/** Level 3 — season overall ranking (sync, local only). */
-export function computeSeasonRankingLocal(seasonId: string, opts: RankingOptions = {}): RankingRow[] {
+/** Level 3 — season overall ranking (sum across all months of the season) */
+export function getSeasonRanking(seasonId: string, opts: RankingOptions = {}): RankingRow[] {
   const monthIds = listMonths(seasonId).map((m) => m.id)
   const roundIds = monthIds.flatMap((mid) => listRoundsByMonth(mid).map((r) => r.id))
   const attempts = getDb().attempts.filter(
@@ -170,28 +113,10 @@ export function computeSeasonRankingLocal(seasonId: string, opts: RankingOptions
   return aggregateRows(attempts, opts)
 }
 
-/** Level 3 — season overall ranking (cloud-first, local fallback). */
-export async function getSeasonRanking(
-  seasonId: string,
-  opts: RankingOptions = {},
-): Promise<RankingRow[]> {
-  const remote = await apiGet<RankingRow[]>(
-    `/api/leaderboard?type=season&seasonId=${encodeURIComponent(seasonId)}`,
-  )
-  if (remote && Array.isArray(remote) && remote.length > 0) {
-    return remote.map((r) => ({
-      ...r,
-      participant: normalizeRemoteParticipant(r.participant),
-      isCurrentUser: r.participant?.id === opts.currentParticipantId,
-    }))
-  }
-  return computeSeasonRankingLocal(seasonId, opts)
-}
-
-export function computeOverallRankingLocal(opts: RankingOptions = {}): RankingRow[] {
+export function getOverallRanking(opts: RankingOptions = {}): RankingRow[] {
   const db = getDb()
   const seasonIds = db.seasons.map((s) => s.id)
-  const rows = seasonIds.flatMap((sid) => computeSeasonRankingLocal(sid, opts))
+  const rows = seasonIds.flatMap((sid) => getSeasonRanking(sid, opts))
   const byParticipant = new Map<string, RankingRow>()
   for (const r of rows) {
     const existing = byParticipant.get(r.participant.id)
@@ -199,7 +124,9 @@ export function computeOverallRankingLocal(opts: RankingOptions = {}): RankingRo
       existing.rounds += r.rounds
       existing.points += r.points
       existing.totalCorrect += r.totalCorrect
-      existing.avgTimeSeconds = Math.round((existing.avgTimeSeconds + r.avgTimeSeconds) / 2)
+      existing.avgTimeSeconds = Math.round(
+        (existing.avgTimeSeconds + r.avgTimeSeconds) / 2,
+      )
       existing.bestScore = Math.max(existing.bestScore, r.bestScore)
       existing.worstScore = Math.min(existing.worstScore, r.worstScore)
     } else {
@@ -211,22 +138,9 @@ export function computeOverallRankingLocal(opts: RankingOptions = {}): RankingRo
     .map((r, i) => ({ ...r, rank: i + 1 }))
 }
 
-export async function getOverallRanking(opts: RankingOptions = {}): Promise<RankingRow[]> {
-  const remote = await apiGet<RankingRow[]>('/api/leaderboard?type=overall')
-  if (remote && Array.isArray(remote) && remote.length > 0) {
-    return remote.map((r) => ({
-      ...r,
-      participant: normalizeRemoteParticipant(r.participant),
-      isCurrentUser: r.participant?.id === opts.currentParticipantId,
-    }))
-  }
-  return computeOverallRankingLocal(opts)
-}
-
 export function getAttemptRank(attemptId: string): number {
   const db = getDb()
   const attempt = db.attempts.find((a) => a.id === attemptId)
   if (!attempt) return 0
-  return computeRoundLeaderboardLocal(attempt.roundId).find((r) => r.attemptId === attemptId)
-    ?.rank ?? 0
+  return getRoundLeaderboard(attempt.roundId).find((r) => r.attemptId === attemptId)?.rank ?? 0
 }

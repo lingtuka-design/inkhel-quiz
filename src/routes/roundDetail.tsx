@@ -6,7 +6,6 @@ import { RoundBanner, ShareButtons, roundStatusBadge } from '../components/round
 import { Podium, LeaderboardTable } from '../components/leaderboard'
 import { Badge, Button, Card, SectionHeading } from '../components/ui'
 import { getRound, countParticipants, countQuestions, roundAvailability } from '../services/roundService'
-import { ensureCloudCatalog } from '../services/cloudCatalog'
 import { getMonth } from '../services/monthService'
 import { getSeason } from '../services/seasonService'
 import { getRoundLeaderboard } from '../services/leaderboardService'
@@ -21,10 +20,7 @@ export function RoundDetailPage() {
 
   const { data: round } = useQuery({
     queryKey: ['round', roundId],
-    queryFn: async () => {
-      await ensureCloudCatalog()
-      return getRound(roundId)
-    },
+    queryFn: () => getRound(roundId),
   })
 
   const { data: month } = useQuery({

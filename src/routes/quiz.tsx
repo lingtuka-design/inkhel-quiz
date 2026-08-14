@@ -14,9 +14,7 @@ import {
   resumeAttempt,
   startAttempt,
   submitAnswer,
-  finalizeAttemptCloud,
 } from '../services/attemptService'
-import { ensureCloudCatalog, ensureCloudQuestions } from '../services/cloudCatalog'
 import { queryClient } from '../lib/query'
 import type { Attempt, OptionKey, QuizQuestion } from '../types'
 
@@ -28,10 +26,7 @@ export function QuizPage() {
 
   const { data: round } = useQuery({
     queryKey: ['round', roundId],
-    queryFn: async () => {
-      await ensureCloudCatalog()
-      return getRound(roundId)
-    },
+    queryFn: () => getRound(roundId),
   })
 
   const [phase, setPhase] = useState<Phase>('boot')
@@ -60,17 +55,10 @@ export function QuizPage() {
   )
 
   const handleFinalize = useCallback(
-    async (attemptId: string, cloudFinalize = false) => {
+    (attemptId: string) => {
       if (!attemptId) return
-      try {
-        if (cloudFinalize) await finalizeAttemptCloud(attemptId)
-        else {
-          const final = getAttempt(attemptId)
-          if (!final) return
-        }
-      } catch {
-        // ignore — result still shows the mirrored attempt
-      }
+      const final = getAttempt(attemptId)
+      if (!final) return
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
       goToResult(attemptId)
     },
@@ -91,65 +79,57 @@ export function QuizPage() {
       setPhase('instructions')
       return
     }
-    void (async () => {
-      const resume = resumeAttempt(participant.id, roundId)
-      if (!resume) {
-        setPhase('instructions')
+    const resume = resumeAttempt(participant.id, roundId)
+    if (!resume) {
+      setPhase('instructions')
+      return
+    }
+    if (resume.status === 'active') {
+      const qs = getQuizQuestions(roundId)
+      if (qs.length === 0) {
+        setError('This round has no questions yet')
+        setPhase('done')
         return
       }
-      await ensureCloudQuestions(roundId)
-      if (resume.status === 'active') {
-        const qs = getQuizQuestions(roundId)
-        if (qs.length === 0) {
-          setError('This round has no questions yet')
-          setPhase('done')
-          return
-        }
-        setAttempt(resume.attempt)
-        setQuestions(qs)
-        setIndex(resume.answeredCount)
-        setDeadline(resume.deadline)
-        setPhase('playing')
-      } else {
-        toast('Your previous attempt was auto-submitted when time ran out', 'info')
-        void handleFinalize(resume.attempt.id, true)
-      }
-    })()
+      setAttempt(resume.attempt)
+      setQuestions(qs)
+      setIndex(resume.answeredCount)
+      setDeadline(resume.deadline)
+      setPhase('playing')
+    } else {
+      toast('Your previous attempt was auto-submitted when time ran out', 'info')
+      handleFinalize(resume.attempt.id)
+    }
   }, [round, roundId, phase, handleFinalize])
 
-  const start = async () => {
+  const start = () => {
     const participant = getParticipant()
     if (!participant) {
       setNamePromptOpen(true)
       return
     }
     setError(null)
-    try {
-      await ensureCloudQuestions(roundId)
-      const qs = getQuizQuestions(roundId)
-      if (qs.length === 0) {
-        setError('This round has no questions yet')
-        return
-      }
-      const att = await startAttempt(participant.id, roundId)
-      setAttempt(att)
-      setQuestions(qs)
-      setIndex(0)
-      setDeadline(new Date(att.startedAt).getTime() + (round?.timeLimitSeconds ?? 0) * 1000)
-      setPhase('playing')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start the round')
+    const qs = getQuizQuestions(roundId)
+    if (qs.length === 0) {
+      setError('This round has no questions yet')
+      return
     }
+    const att = startAttempt(participant.id, roundId)
+    setAttempt(att)
+    setQuestions(qs)
+    setIndex(0)
+    setDeadline(new Date(att.startedAt).getTime() + (round?.timeLimitSeconds ?? 0) * 1000)
+    setPhase('playing')
   }
 
-  const submit = async (key: OptionKey) => {
+  const submit = (key: OptionKey) => {
     if (!attempt || submitting) return
     setSubmitting(true)
     setError(null)
     try {
-      const result = await submitAnswer(attempt.id, questions[index]!.id, key)
+      const result = submitAnswer(attempt.id, questions[index]!.id, key)
       if (result.finished) {
-        void handleFinalize(result.attempt.id)
+        handleFinalize(result.attempt.id)
       } else {
         setIndex(result.answeredCount)
       }
@@ -157,7 +137,7 @@ export function QuizPage() {
       const msg = err instanceof Error ? err.message : 'Failed to submit answer'
       if (msg === 'ATTEMPT_FINISHED') {
         toast('Time expired — your attempt was auto-submitted', 'info')
-        void handleFinalize(attempt.id, true)
+        handleFinalize(attempt.id)
       } else {
         setError(msg)
       }
@@ -170,7 +150,7 @@ export function QuizPage() {
     const id = attemptIdRef.current
     if (id) {
       toast('Time is up — auto-submitting your attempt', 'info')
-      void handleFinalize(id, true)
+      handleFinalize(id)
     }
   })
 
@@ -328,20 +308,16 @@ export function PlayerNameModal({
 }) {
   const [name, setName] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [guestLoading, setGuestLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleGuest = async () => {
+  const handleGuest = () => {
     setError(null)
     try {
-      setGuestLoading(true)
-      const p = await saveParticipant(name)
+      const p = saveParticipant(name)
       onSubmit(p.displayName)
       setName('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Enter a name')
-    } finally {
-      setGuestLoading(false)
     }
   }
 
@@ -397,13 +373,10 @@ export function PlayerNameModal({
         <ErrorNote message={error} />
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button
-            variant="ghost"
-            onClick={onClose}
-          >
+          <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleGuest} loading={guestLoading} disabled={!name.trim()}>
+          <Button onClick={handleGuest} disabled={!name.trim()}>
             Play as Guest
           </Button>
         </div>

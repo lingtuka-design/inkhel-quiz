@@ -9,9 +9,8 @@ import type {
   RoundReviewQuestion,
 } from '../types'
 import { calculateScore } from './scoring'
-import { computeRoundLeaderboardLocal } from './leaderboardService'
-import { roundAvailability, countQuestions as countRoundQuestions } from './roundService'
-import { apiPost, apiGet } from './apiClient'
+import { getRoundLeaderboard } from './leaderboardService'
+import { roundAvailability } from './roundService'
 
 const ATTEMPT_EXPIRY_GRACE_MS = 0
 
@@ -38,39 +37,6 @@ export function hasCompletedRound(participantId: string, roundId: string): boole
       a.roundId === roundId &&
       (a.status === 'completed' || a.status === 'expired'),
   )
-}
-
-/** Mirrors an attempt returned by the Cloudflare D1 API into the local store. */
-export function mirrorAttemptFromServer(server: Record<string, any>): Attempt {
-  const db = getDb()
-  const existing = db.attempts.find((a) => a.id === server.id)
-  const totalQuestions = countRoundQuestions(server.roundId)
-  const attempt: Attempt = {
-    id: server.id,
-    participantId: server.participantId,
-    roundId: server.roundId,
-    startedAt: server.startedAt,
-    completedAt: server.completedAt ?? null,
-    status: server.status ?? 'in_progress',
-    timeTakenSeconds: server.timeTakenSeconds ?? null,
-    correctAnswers: server.correctAnswers ?? 0,
-    incorrectAnswers: server.incorrectAnswers ?? 0,
-    unansweredQuestions:
-      server.unansweredQuestions ??
-      (server.status === 'in_progress' ? totalQuestions : 0),
-    baseScore: server.baseScore ?? 0,
-    speedBonus: server.speedBonus ?? 0,
-    finalScore: server.finalScore ?? 0,
-    isTestAttempt: Boolean(server.isTestAttempt),
-    createdAt: server.createdAt ?? server.startedAt,
-  }
-  if (existing) {
-    Object.assign(existing, attempt)
-  } else {
-    db.attempts.push(attempt)
-  }
-  saveDb()
-  return attempt
 }
 
 export interface ResumeInfo {
@@ -115,26 +81,11 @@ export function resumeAttempt(participantId: string, roundId: string): ResumeInf
   }
 }
 
-export async function startAttempt(participantId: string, roundId: string): Promise<Attempt> {
+export function startAttempt(participantId: string, roundId: string): Attempt {
   const db = getDb()
   const round = db.rounds.find((r) => r.id === roundId)
   if (!round) throw new Error('Round not found')
 
-  // Cloud-first: the server records the authoritative start time so the same
-  // attempt is shared with every user's leaderboard.
-  const remote = await apiPost<{ attempt?: Record<string, any> }>('/api/attempts', {
-    action: 'start',
-    roundId,
-    participantId,
-  })
-  if (remote?.attempt) {
-    if (remote.attempt.status !== 'in_progress') {
-      throw new Error('You have already completed this round. One attempt per round.')
-    }
-    return mirrorAttemptFromServer(remote.attempt)
-  }
-
-  // Offline fallback
   const availability = roundAvailability(round)
   if (!availability.open) {
     if (availability.reason === 'month-closed') {
@@ -185,94 +136,18 @@ export interface AnswerResult {
   answer: AttemptAnswer
 }
 
-function recordAnswerLocally(
-  attempt: Attempt,
-  questionId: string,
-  optionKey: OptionKey,
-  isCorrect: boolean,
-  elapsed: number,
-): AttemptAnswer {
-  const db = getDb()
-  const existing = db.answers.find(
-    (a) => a.attemptId === attempt.id && a.questionId === questionId,
-  )
-  if (existing) return existing
-  const answer: AttemptAnswer = {
-    id: newId('ans'),
-    attemptId: attempt.id,
-    questionId,
-    selectedOptionKey: optionKey,
-    isCorrect,
-    answeredAt: nowIso(),
-    elapsedSeconds: elapsed,
-  }
-  db.answers.push(answer)
-  saveDb()
-  return answer
-}
-
 /**
  * Server-side answer submission. Idempotent per (attempt, question).
- * The server decides whether the answer arrived before the deadline and
- * evaluates correctness; the local store mirrors it for offline review.
+ * The server decides whether the answer arrived before the deadline.
  */
-export async function submitAnswer(
+export function submitAnswer(
   attemptId: string,
   questionId: string,
   optionKey: OptionKey,
-): Promise<AnswerResult> {
+): AnswerResult {
   const db = getDb()
   const attempt = db.attempts.find((a) => a.id === attemptId)
   if (!attempt) throw new Error('Attempt not found')
-
-  const totalQuestions = countRoundQuestions(attempt.roundId)
-
-  // Cloud-first
-  const elapsed = Math.max(
-    1,
-    Math.round((Date.now() - new Date(attempt.startedAt).getTime()) / 1000),
-  )
-  const remote = await apiPost<{ success?: boolean }>('/api/attempts', {
-    action: 'answer',
-    attemptId,
-    questionId,
-    selectedOptionKey: optionKey,
-    elapsedSeconds: elapsed,
-  })
-  if (remote?.success) {
-    const option = db.options.find(
-      (o) => o.questionId === questionId && o.optionKey === optionKey,
-    )
-    const answer = recordAnswerLocally(attempt, questionId, optionKey, option?.isCorrect ?? false, elapsed)
-    const answeredCount = getAnsweredCount(attemptId)
-    if (answeredCount >= totalQuestions) {
-      const fin = await apiPost<{ attempt?: Record<string, any> }>('/api/attempts', {
-        action: 'finalize',
-        attemptId,
-      })
-      if (fin?.attempt) {
-        const finalized = mirrorAttemptFromServer(fin.attempt)
-        return { attempt: finalized, answeredCount, totalQuestions, finished: true, answer }
-      }
-      finalizeAttempt(attemptId)
-      return {
-        attempt: getAttempt(attemptId)!,
-        answeredCount,
-        totalQuestions,
-        finished: true,
-        answer,
-      }
-    }
-    return {
-      attempt: getAttempt(attemptId)!,
-      answeredCount,
-      totalQuestions,
-      finished: false,
-      answer,
-    }
-  }
-
-  // Offline fallback (server-authoritative rules, evaluated locally)
   if (attempt.status !== 'in_progress') {
     throw new Error(
       attempt.status === 'completed' || attempt.status === 'expired'
@@ -280,10 +155,12 @@ export async function submitAnswer(
         : 'ATTEMPT_ABANDONED',
     )
   }
+
   const round = db.rounds.find((r) => r.id === attempt.roundId)!
   const question = db.questions.find((q) => q.id === questionId && q.roundId === attempt.roundId)
   if (!question) throw new Error('Question not found')
-  const option = db.options.find((o) => o.questionId === questionId && o.optionKey === optionKey)
+  const options = db.options.filter((o) => o.questionId === questionId)
+  const option = options.find((o) => o.optionKey === optionKey)
   if (!option) throw new Error('Invalid option')
 
   const deadline = getAttemptDeadline(attempt, round)
@@ -294,7 +171,7 @@ export async function submitAnswer(
     return {
       attempt: updated,
       answeredCount: getAnsweredCount(attemptId),
-      totalQuestions,
+      totalQuestions: db.questions.filter((q) => q.roundId === attempt.roundId).length,
       finished: true,
       answer: getAnswers(attemptId).find((a) => a.questionId === questionId)!,
     }
@@ -307,36 +184,35 @@ export async function submitAnswer(
     return {
       attempt,
       answeredCount: getAnsweredCount(attemptId),
-      totalQuestions,
-      finished: getAnsweredCount(attemptId) >= totalQuestions,
+      totalQuestions: db.questions.filter((q) => q.roundId === attempt.roundId).length,
+      finished:
+        getAnsweredCount(attemptId) >=
+        db.questions.filter((q) => q.roundId === attempt.roundId).length,
       answer: existing,
     }
   }
 
-  const answer = recordAnswerLocally(
-    attempt,
+  const isCorrect = option.isCorrect
+  const elapsed = Math.round((now - new Date(attempt.startedAt).getTime()) / 1000)
+  const answer: AttemptAnswer = {
+    id: newId('ans'),
+    attemptId,
     questionId,
-    optionKey,
-    option.isCorrect,
-    Math.round((now - new Date(attempt.startedAt).getTime()) / 1000),
-  )
+    selectedOptionKey: optionKey,
+    isCorrect,
+    answeredAt: nowIso(),
+    elapsedSeconds: elapsed,
+  }
+  db.answers.push(answer)
+
+  const totalQuestions = db.questions.filter((q) => q.roundId === attempt.roundId).length
   const answeredCount = getAnsweredCount(attemptId)
   const finished = answeredCount >= totalQuestions
+  saveDb()
   if (finished) finalizeAttempt(attemptId)
 
   const updated = getAttempt(attemptId)!
   return { attempt: updated, answeredCount, totalQuestions, finished, answer }
-}
-
-/** Cloud-first finalization (e.g. on timer expiry). Falls back to local scoring. */
-export async function finalizeAttemptCloud(attemptId: string): Promise<Attempt> {
-  const fin = await apiPost<{ attempt?: Record<string, any> }>('/api/attempts', {
-    action: 'finalize',
-    attemptId,
-    forceExpired: true,
-  })
-  if (fin?.attempt) return mirrorAttemptFromServer(fin.attempt)
-  return finalizeAttempt(attemptId)
 }
 
 export function finalizeAttempt(attemptId: string): Attempt {
@@ -360,7 +236,11 @@ export function finalizeAttempt(attemptId: string): Attempt {
     : Math.max(1, Math.round((now - new Date(attempt.startedAt).getTime()) / 1000))
 
   const status: AttemptStatus =
-    expired ? 'expired' : answered >= allQuestions.length ? 'completed' : 'abandoned'
+    expired
+      ? 'expired'
+      : answered >= allQuestions.length
+        ? 'completed'
+        : 'abandoned'
   const score = calculateScore({
     totalQuestions: allQuestions.length,
     correctAnswers: correct,
@@ -383,7 +263,7 @@ export function finalizeAttempt(attemptId: string): Attempt {
   return attempt
 }
 
-export function getAttemptReviewLocal(attemptId: string, participantId: string): {
+export function getAttemptReview(attemptId: string, participantId: string): {
   attempt: Attempt
   questions: RoundReviewQuestion[]
   rank: number
@@ -412,46 +292,6 @@ export function getAttemptReviewLocal(attemptId: string, participantId: string):
         answered: !!answer,
       }
     })
-  const rank =
-    computeRoundLeaderboardLocal(round.id).find((r) => r.attemptId === attemptId)?.rank ?? 0
+  const rank = getRoundLeaderboard(round.id).find((r) => r.attemptId === attemptId)?.rank ?? 0
   return { attempt, questions, rank }
-}
-
-/**
- * Cloud-first attempt review: the D1 backend holds the authoritative attempt,
- * answers and (post-completion) correct answers. Falls back to the local mirror.
- */
-export async function getAttemptReview(attemptId: string, participantId: string): Promise<{
-  attempt: Attempt
-  questions: RoundReviewQuestion[]
-  rank: number
-} | null> {
-  const remote = await apiGet<{
-    attempt?: Record<string, any>
-    reviewQuestions?: any[]
-  }>(`/api/attempts?id=${encodeURIComponent(attemptId)}`)
-  if (remote?.attempt) {
-    const server = remote.attempt
-    if (server.status === 'in_progress') return null
-    const attempt = mirrorAttemptFromServer(server)
-    const questions: RoundReviewQuestion[] = (remote.reviewQuestions ?? []).map((q: any) => ({
-      id: q.id,
-      text: q.text,
-      order: q.order,
-      options: q.options ?? [],
-      selectedKey: q.selectedKey ?? null,
-      isCorrect: Boolean(q.isCorrect),
-      answered: Boolean(q.answered),
-    }))
-    const cloudRank = await apiGet<any[]>(
-      `/api/leaderboard?type=round&roundId=${encodeURIComponent(attempt.roundId)}`,
-    )
-    const rank =
-      cloudRank?.find((r) => r.attemptId === attemptId)?.rank ??
-      computeRoundLeaderboardLocal(attempt.roundId).find((r) => r.attemptId === attemptId)
-        ?.rank ??
-      0
-    return { attempt, questions, rank }
-  }
-  return getAttemptReviewLocal(attemptId, participantId)
 }

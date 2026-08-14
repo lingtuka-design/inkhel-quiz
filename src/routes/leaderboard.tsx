@@ -12,7 +12,6 @@ import {
 } from '../services/leaderboardService'
 import { listRounds, countQuestions } from '../services/roundService'
 import { getParticipant } from '../services/authService'
-import { ensureCloudCatalog } from '../services/cloudCatalog'
 import { setPageTitle } from '../services/shareService'
 import { cn } from '../lib/utils'
 import { Link } from '@tanstack/react-router'
@@ -24,13 +23,7 @@ export function LeaderboardPage() {
   const participant = getParticipant()
   const [tab, setTab] = useState<Tab>('month')
 
-  const { data: currentMonth } = useQuery({
-    queryKey: ['currentMonth'],
-    queryFn: async () => {
-      await ensureCloudCatalog()
-      return getCurrentMonth()
-    },
-  })
+  const { data: currentMonth } = useQuery({ queryKey: ['currentMonth'], queryFn: getCurrentMonth })
   const { data: months } = useQuery({ queryKey: ['months'], queryFn: listAllMonths })
   const { data: seasons } = useQuery({ queryKey: ['seasons'], queryFn: listSeasons })
   const { data: rounds } = useQuery({

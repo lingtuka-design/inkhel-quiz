@@ -2,7 +2,6 @@ import { getDb, saveDb, newId } from '../db/database'
 import { nowIso } from '../lib/utils'
 import type { Season, SeasonStatus } from '../types'
 import { generateMonths } from './monthService'
-import { apiPost, getD1Token } from './apiClient'
 
 export const DEFAULT_DURATION_MONTHS = 10
 
@@ -72,17 +71,6 @@ export function createSeason(input: SeasonInput): Season {
   db.seasons.push(season)
   saveDb()
   generateMonths(season)
-  // Best-effort mirror to the shared D1 backend (requires admin D1 session)
-  if (getD1Token()) {
-    void apiPost('/api/seasons', {
-      action: 'create',
-      id: season.id,
-      name: season.name,
-      description: season.description,
-      durationMonths: season.durationMonths,
-      startDate: season.startDate.slice(0, 10),
-    })
-  }
   return season
 }
 
@@ -103,15 +91,6 @@ export function updateSeason(id: string, input: SeasonInput): Season {
   if (input.status === 'active') deactivateOthers(db.seasons, id)
   saveDb()
   generateMonths(season)
-  if (getD1Token()) {
-    void apiPost('/api/seasons', {
-      action: 'update',
-      id: season.id,
-      name: season.name,
-      description: season.description,
-      status: season.status,
-    })
-  }
   return season
 }
 
@@ -144,9 +123,6 @@ export function deleteSeason(id: string): { rounds: number; attempts: number } {
   db.answers = db.answers.filter((a) => !attemptIds.includes(a.attemptId))
   db.seasons = db.seasons.filter((s) => s.id !== id)
   saveDb()
-  if (getD1Token()) {
-    void apiPost('/api/seasons', { action: 'delete', id })
-  }
   return { rounds: roundIds.length, attempts: attemptIds.length }
 }
 

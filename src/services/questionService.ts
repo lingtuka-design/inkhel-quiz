@@ -2,7 +2,6 @@ import { getDb, saveDb, newId } from '../db/database'
 import { nowIso } from '../lib/utils'
 import type { Question, QuestionDraft, QuestionOption, QuizQuestion, OptionKey } from '../types'
 import { MIN_QUESTIONS_PER_ROUND } from './roundService'
-import { apiPost, getD1Token } from './apiClient'
 
 export interface QuestionWithOptions extends Question {
   options: QuestionOption[]
@@ -80,18 +79,6 @@ export function saveQuestions(roundId: string, drafts: QuestionDraft[]): Questio
   })
 
   saveDb()
-  if (getD1Token()) {
-    void apiPost('/api/questions', {
-      roundId,
-      drafts: cleaned.map((d) => ({
-        id: d.id ?? undefined,
-        text: d.text.trim(),
-        imageUrl: d.imageUrl ?? null,
-        options: d.options.map((o) => ({ key: o.key, text: o.text.trim() })),
-        correctKey: d.correctKey,
-      })),
-    })
-  }
   return created
 }
 
