@@ -9,6 +9,8 @@ import { getRound } from '../services/roundService'
 import { getQuizQuestions } from '../services/questionService'
 import { getParticipant, saveParticipant, loginWithGoogle } from '../services/authService'
 import { GoogleIcon } from '../components/layout'
+import { getDb, saveDb, newId } from '../db/database'
+import { nowIso } from '../lib/utils'
 import {
   getAttempt,
   resumeAttempt,
@@ -113,26 +115,60 @@ export function QuizPage() {
     }
     setError(null)
     try {
-      let qs = getQuizQuestions(roundId)
-      if (qs.length === 0) {
-        const res = await fetch(`/api/questions?roundId=${roundId}`)
-        if (res.ok) {
-          const data = await res.json()
-          if (Array.isArray(data)) {
-            qs = data.map((q: any) => ({
+      let qs: QuizQuestion[] = []
+      const res = await fetch(`/api/questions?roundId=${roundId}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data) && data.length > 0) {
+          qs = data.map((q: any) => ({
+            id: q.id,
+            text: q.text,
+            order: q.order,
+            imageUrl: q.imageUrl || null,
+            options: (q.options || []).map((o: any) => ({ key: o.optionKey, text: o.text })),
+          }))
+
+          // Sync to local cache
+          const db = getDb()
+          db.questions = db.questions.filter((q) => q.roundId !== roundId)
+          for (const q of data) {
+            db.questions.push({
               id: q.id,
+              roundId,
               text: q.text,
               order: q.order,
-              imageUrl: q.imageUrl,
-              options: (q.options || []).map((o: any) => ({ key: o.optionKey, text: o.text })),
-            }))
+              imageUrl: q.imageUrl || null,
+              createdAt: q.createdAt || nowIso(),
+              updatedAt: q.updatedAt || nowIso(),
+            })
+            if (Array.isArray(q.options)) {
+              db.options = db.options.filter((o) => o.questionId !== q.id)
+              for (const opt of q.options) {
+                db.options.push({
+                  id: opt.id || newId('opt'),
+                  questionId: q.id,
+                  optionKey: opt.optionKey,
+                  text: opt.text,
+                  isCorrect: Boolean(opt.isCorrect),
+                  createdAt: nowIso(),
+                  updatedAt: nowIso(),
+                })
+              }
+            }
           }
+          saveDb()
         }
       }
+
+      if (qs.length === 0) {
+        qs = getQuizQuestions(roundId)
+      }
+
       if (qs.length === 0) {
         setError('This round has no questions yet')
         return
       }
+
       const att = await startAttempt(participant.id, roundId)
       setAttempt(att)
       setQuestions(qs)
