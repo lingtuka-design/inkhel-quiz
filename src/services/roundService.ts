@@ -124,9 +124,6 @@ export function updateRound(id: string, input: RoundInput): Round {
   const db = getDb()
   const round = db.rounds.find((r) => r.id === id)
   if (!round) throw new Error('Round not found')
-  if (hasPublishedAttempts(id) && round.status === 'published') {
-    throw new Error('This round has participant attempts and is locked. Unpublish it first to edit content.')
-  }
   round.title = input.title.trim()
   round.description = input.description.trim()
   round.monthId = input.monthId
@@ -177,26 +174,22 @@ export function validatePublishedContent(roundId: string): string[] {
   return errors
 }
 
-export function deleteRound(id: string): void {
+/** Deletes a round and its questions, options, attempts and answers. */
+export function deleteRound(id: string): { attempts: number } {
   const db = getDb()
   const round = db.rounds.find((r) => r.id === id)
   if (!round) throw new Error('Round not found')
-  if (round.status === 'published' && hasPublishedAttempts(id)) {
-    throw new Error('Published rounds with attempts cannot be deleted. Archive instead.')
-  }
-  const qs = db.questions.filter((q) => q.roundId === id)
-  const qIds = new Set(qs.map((q) => q.id))
-  db.questions = db.questions.filter((q) => !qIds.has(q.id))
-  db.options = db.options.filter((o) => !qIds.has(o.questionId))
+
+  const questionIds = db.questions.filter((q) => q.roundId === id).map((q) => q.id)
+  const attemptIds = db.attempts.filter((a) => a.roundId === id).map((a) => a.id)
+
+  db.questions = db.questions.filter((q) => !questionIds.includes(q.id))
+  db.options = db.options.filter((o) => !questionIds.includes(o.questionId))
+  db.attempts = db.attempts.filter((a) => !attemptIds.includes(a.id))
+  db.answers = db.answers.filter((a) => !attemptIds.includes(a.attemptId))
   db.rounds = db.rounds.filter((r) => r.id !== id)
   saveDb()
-}
-
-export function hasPublishedAttempts(roundId: string): boolean {
-  const db = getDb()
-  return db.attempts.some(
-    (a) => a.roundId === roundId && (a.status === 'completed' || a.status === 'expired') && !a.isTestAttempt,
-  )
+  return { attempts: attemptIds.length }
 }
 
 export function countAttempts(roundId: string): number {

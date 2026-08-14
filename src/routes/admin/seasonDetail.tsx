@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
-import { CalendarPlus, CalendarRange, CheckCircle2, Clock, Plus } from 'lucide-react'
+import { CalendarPlus, CalendarRange, CheckCircle2, Clock, Plus, Trash2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { BackLink } from '../../components/layout'
-import { Badge, Button, Card, SectionHeading } from '../../components/ui'
-import { getSeason, updateSeason } from '../../services/seasonService'
+import { Badge, Button, Card, SectionHeading, toast } from '../../components/ui'
+import { getSeason, updateSeason, deleteSeason } from '../../services/seasonService'
 import { listMonths, monthStatus } from '../../services/monthService'
 import { listRoundsByMonth, countQuestions } from '../../services/roundService'
+import { queryClient } from '../../lib/query'
 import { setPageTitle } from '../../services/shareService'
 import { formatDate } from '../../lib/utils'
 import { cn } from '../../lib/utils'
@@ -35,6 +36,30 @@ export function SeasonDetailPage() {
     if (!season) return
     updateSeason(seasonId, { ...season, status: 'completed' })
     window.location.reload()
+  }
+
+  const handleDelete = () => {
+    if (!season) return
+    const roundsCount = (months ?? []).reduce(
+      (s, m) => s + listRoundsByMonth(m.id).length,
+      0,
+    )
+    if (
+      !window.confirm(
+        `Delete "${season.name}"?\n\nThis permanently removes the season, its ${season.durationMonths} months, all rounds, questions, attempts and leaderboard entries. This cannot be undone.`,
+      )
+    )
+      return
+    try {
+      const result = deleteSeason(seasonId)
+      toast(`Season deleted (${result.rounds} rounds, ${result.attempts} attempts removed)`, 'success')
+      queryClient.invalidateQueries({ queryKey: ['seasons'] })
+      queryClient.invalidateQueries({ queryKey: ['months'] })
+      queryClient.invalidateQueries({ queryKey: ['rounds'] })
+      navigate({ to: '/admin/seasons' })
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Delete failed', 'error')
+    }
   }
 
   if (!season) return null
@@ -67,6 +92,9 @@ export function SeasonDetailPage() {
                 Edit Season
               </Button>
             </Link>
+            <Button variant="danger" size="sm" icon={Trash2} onClick={handleDelete}>
+              Delete Season
+            </Button>
           </div>
         </div>
       </div>

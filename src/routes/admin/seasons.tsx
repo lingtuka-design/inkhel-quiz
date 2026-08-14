@@ -10,6 +10,7 @@ import { setPageTitle } from '../../services/shareService'
 import { formatDate } from '../../lib/utils'
 import { useEffect } from 'react'
 import { cn } from '../../lib/utils'
+import { deleteSeason } from '../../services/seasonService'
 
 const STATUS_TONES = {
   active: { tone: 'green' as const, label: 'Active' },
@@ -33,6 +34,28 @@ export function AdminSeasonsPage() {
       queryClient.invalidateQueries({ queryKey: ['seasons'] })
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Update failed', 'error')
+    }
+  }
+
+  const handleDelete = (id: string, name: string, roundsCount: number) => {
+    if (
+      !window.confirm(
+        `Delete "${name}"?\n\nThis permanently removes the season, its ${roundsCount} rounds, questions, attempts and leaderboard entries. This cannot be undone.`,
+      )
+    )
+      return
+    try {
+      const result = deleteSeason(id)
+      toast(
+        `Season deleted (${result.rounds} rounds, ${result.attempts} attempts removed)`,
+        'success',
+      )
+      queryClient.invalidateQueries({ queryKey: ['seasons'] })
+      queryClient.invalidateQueries({ queryKey: ['months'] })
+      queryClient.invalidateQueries({ queryKey: ['rounds'] })
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] })
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Delete failed', 'error')
     }
   }
 
@@ -160,7 +183,7 @@ export function AdminSeasonsPage() {
                     variant="danger"
                     size="sm"
                     icon={Trash2}
-                    onClick={() => toast('Use Archive instead of delete to preserve history', 'info')}
+                    onClick={() => handleDelete(season.id, season.name, roundCount)}
                   >
                     Delete
                   </Button>

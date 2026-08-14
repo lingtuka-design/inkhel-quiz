@@ -1,7 +1,7 @@
 import { getDb, saveDb, newId } from '../db/database'
 import { nowIso } from '../lib/utils'
 import type { Question, QuestionDraft, QuestionOption, QuizQuestion, OptionKey } from '../types'
-import { hasPublishedAttempts, MIN_QUESTIONS_PER_ROUND } from './roundService'
+import { MIN_QUESTIONS_PER_ROUND } from './roundService'
 
 export interface QuestionWithOptions extends Question {
   options: QuestionOption[]
@@ -24,13 +24,6 @@ export function canEditQuestions(roundId: string): { ok: boolean; message: strin
   const db = getDb()
   const round = db.rounds.find((r) => r.id === roundId)
   if (!round) return { ok: false, message: 'Round not found' }
-  if (round.status === 'published' && hasPublishedAttempts(roundId)) {
-    return {
-      ok: false,
-      message:
-        'This round is published and participants have started. Questions are locked — unpublish the round before editing.',
-    }
-  }
   return { ok: true, message: '' }
 }
 

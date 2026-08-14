@@ -80,9 +80,6 @@ export function updateSeason(id: string, input: SeasonInput): Season {
   const db = getDb()
   const season = db.seasons.find((s) => s.id === id)
   if (!season) throw new Error('Season not found')
-  if (season.status === 'completed' && input.status !== season.status) {
-    throw new Error('Completed seasons cannot be changed')
-  }
   season.name = input.name.trim()
   season.description = input.description.trim()
   season.seasonNumber = input.seasonNumber
@@ -101,6 +98,32 @@ function deactivateOthers(seasons: Season[], exceptId?: string): void {
   for (const s of seasons) {
     if (s.id !== exceptId && s.status === 'active') s.status = 'completed'
   }
+}
+
+/** Deletes a season and everything beneath it: months, rounds, questions, attempts and answers. */
+export function deleteSeason(id: string): { rounds: number; attempts: number } {
+  const db = getDb()
+  const season = db.seasons.find((s) => s.id === id)
+  if (!season) throw new Error('Season not found')
+
+  const monthIds = db.months.filter((m) => m.seasonId === id).map((m) => m.id)
+  const roundIds = db.rounds.filter((r) => monthIds.includes(r.monthId)).map((r) => r.id)
+  const questionIds = db.questions
+    .filter((q) => roundIds.includes(q.roundId))
+    .map((q) => q.id)
+  const attemptIds = db.attempts
+    .filter((a) => roundIds.includes(a.roundId))
+    .map((a) => a.id)
+
+  db.months = db.months.filter((m) => !monthIds.includes(m.id))
+  db.rounds = db.rounds.filter((r) => !roundIds.includes(r.id))
+  db.questions = db.questions.filter((q) => !questionIds.includes(q.id))
+  db.options = db.options.filter((o) => !questionIds.includes(o.questionId))
+  db.attempts = db.attempts.filter((a) => !attemptIds.includes(a.id))
+  db.answers = db.answers.filter((a) => !attemptIds.includes(a.attemptId))
+  db.seasons = db.seasons.filter((s) => s.id !== id)
+  saveDb()
+  return { rounds: roundIds.length, attempts: attemptIds.length }
 }
 
 export function setSeasonStatus(id: string, status: SeasonStatus): Season {

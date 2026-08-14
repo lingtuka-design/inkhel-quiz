@@ -66,10 +66,18 @@ export function MonthDetailPage() {
   }
 
   const handleDelete = (id: string, title: string) => {
-    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return
+    if (
+      !window.confirm(
+        `Delete "${title}"?\n\nThis permanently removes the round, its questions, attempts and leaderboard entries. This cannot be undone.`,
+      )
+    )
+      return
     try {
-      deleteRound(id)
-      toast('Round deleted', 'success')
+      const result = deleteRound(id)
+      toast(
+        `Round deleted (${result.attempts} attempts removed)`,
+        'success',
+      )
       queryClient.invalidateQueries({ queryKey: ['rounds'] })
       queryClient.invalidateQueries({ queryKey: ['adminStats'] })
     } catch (err) {

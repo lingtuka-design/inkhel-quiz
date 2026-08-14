@@ -64,7 +64,7 @@ export function RoundFormPage() {
         <p className="mt-1 text-sm text-ink-300">
           {isNew
             ? 'Pick the month, set the basics — questions come next.'
-            : 'Update round details. Content locks once participants start playing.'}
+            : 'Update round details at any time — even while it is live.'}
         </p>
       </div>
       <Card className="p-6 sm:p-8">

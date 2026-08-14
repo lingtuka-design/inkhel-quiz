@@ -48,7 +48,7 @@ src/
 | `authService` | Admin login (hashed passwords, session tokens), participant identity |
 | `seasonService` | Season CRUD, active-season exclusivity, end-date from duration |
 | `monthService` | Month auto-generation from a season (calendar months), open/closed status |
-| `roundService` | Round CRUD, slug generation, publish validation (≥10 questions), month-window availability, content locking |
+| `roundService` | Round CRUD, slug generation, publish validation (≥10 questions), month-window availability |
 | `questionService` | Question/option editor persistence, publish-safe question fetch (no `isCorrect` exposed) |
 | `attemptService` | Server-authoritative attempts: start, resume, idempotent answers, deadline enforcement, month gating, finalize |
 | `scoring` | Pure scoring + tie-breaking — unit-testable |

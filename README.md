@@ -99,7 +99,9 @@ Copy `.env.example` → `.env` to configure Supabase later. The demo runs fully 
 - The attempt deadline is computed from the server start timestamp; refresh, clock changes and
   DevTools can't reset it.
 - Rounds in a closed month reject new attempts server-side.
-- Published rounds with attempts are content-locked until unpublished.
+- Everything is fully editable and deletable by admins: `deleteRound` cascades the round's
+  questions, options, attempts and answers; `deleteSeason` cascades months, rounds and all data
+  beneath them. Both require a confirmation dialog.
 - Admin routes are guarded in the router and enforced by the service layer.
 
 See `ARCHITECTURE.md` for the full breakdown.
