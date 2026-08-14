@@ -108,6 +108,15 @@ Ordering  = final_score DESC, correct DESC, time ASC, completed_at ASC
 4. Replace the admin `loginAdmin` with Supabase Auth (Google) while keeping the same service
    signatures.
 
+## Persistence & the remote API
+
+- `src/db/database.ts` persists the whole store to localStorage (`inkhel_db_v4`); every service
+  mutation calls `saveDb()`.
+- On startup, the app may fetch `/api/seasons` + `/api/rounds` (Cloudflare Pages Functions +
+  D1) — **only as a fallback for an empty local store**. Remote data must never overwrite local
+  data (`initDb` guards this); localStorage is the source of truth for this demo deployment.
+- Storage write failures are surfaced (console + toast) instead of failing silently.
+
 ## Extensibility
 
 - Future features (unlimited attempts, practice mode, round versioning, admin roles, analytics)

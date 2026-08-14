@@ -83,7 +83,15 @@ The app ships with a seeded local datastore (localStorage) mirroring the product
 - 8 fictional participants and 27 attempts
 
 Your own plays persist per browser. To reset demo data, clear `localStorage` (keys
-`inkhel_db_v3`, `inkhel_admin_token`, `inkhel_participant_id`).
+`inkhel_db_v4`, `inkhel_admin_token`, `inkhel_participant_id`).
+
+### Local storage is the source of truth
+
+The app keeps its full state in `localStorage` (per browser). The optional Cloudflare D1
+integration (`functions/api/*`) is only consulted **when localStorage is completely empty**
+(fresh browser) — remote data is never allowed to overwrite local data, so a refresh can never
+lose your seasons, rounds, questions or attempts. If storage is blocked (private mode, full),
+you'll see a warning and changes won't survive a refresh.
 
 ## Environment
 

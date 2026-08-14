@@ -81,6 +81,21 @@ export function QuestionEditor({ roundId, initial, onSave }: QuestionEditorProps
     setDirty(true)
   }
 
+  const addQuestionAt = (index: number) => {
+    setDrafts((prev) => {
+      const next = [...prev]
+      next.splice(index, 0, {
+        id: null,
+        text: '',
+        order: index + 1,
+        options: LETTERS.map((key) => ({ key, text: '' })),
+        correctKey: 'A',
+      })
+      return next.map((d, i) => ({ ...d, order: i + 1 }))
+    })
+    setDirty(true)
+  }
+
   const duplicateQuestion = (index: number) => {
     const src = drafts[index]!
     setDrafts((prev) => [
@@ -290,6 +305,17 @@ export function QuestionEditor({ roundId, initial, onSave }: QuestionEditorProps
               <p className="text-xs text-ink-300">
                 Click the letter badge to mark the correct answer — exactly one per question.
               </p>
+              <div className="flex items-center gap-3 pt-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={Plus}
+                  onClick={() => addQuestionAt(i + 1)}
+                  className="text-violet-300 hover:bg-violet-500/10 hover:text-violet-200"
+                >
+                  Add Question Below
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -301,7 +327,13 @@ export function QuestionEditor({ roundId, initial, onSave }: QuestionEditorProps
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="sticky bottom-4 z-20 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-ink-900/95 px-4 py-3 shadow-2xl shadow-black/40 backdrop-blur-xl sm:px-5">
+        <p className="text-xs text-ink-300">
+          {drafts.length} question{drafts.length === 1 ? '' : 's'} ·{' '}
+          <span className={dirty ? 'font-semibold text-amber-300' : 'text-emerald-300'}>
+            {dirty ? 'Unsaved changes' : 'All changes saved'}
+          </span>
+        </p>
         <Button onClick={handleSave} loading={saving} icon={Save} disabled={!dirty}>
           Save Questions
         </Button>
