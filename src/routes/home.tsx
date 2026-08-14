@@ -99,7 +99,29 @@ export function HomePage() {
 
   const { data: ranking } = useQuery({
     queryKey: ['ranking', 'season', season?.id],
-    queryFn: () => (season ? getSeasonRanking(season.id, { currentParticipantId: participant?.id ?? null }) : []),
+    queryFn: async () => {
+      if (!season) return []
+      try {
+        const res = await fetch(`/api/leaderboard?type=season&seasonId=${encodeURIComponent(season.id)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) {
+            return data.map((r: any) => ({
+              rank: r.rank,
+              participant: r.participant,
+              points: r.points || r.score || 0,
+              rounds: r.rounds || 1,
+              totalCorrect: r.totalCorrect || 0,
+              avgTimeSeconds: r.avgTimeSeconds || 0,
+              bestScore: r.bestScore ?? r.points ?? 0,
+              worstScore: r.worstScore ?? r.points ?? 0,
+              isCurrentUser: r.isCurrentUser || (participant ? r.participant?.id === participant.id : false),
+            }))
+          }
+        }
+      } catch {}
+      return getSeasonRanking(season.id, { currentParticipantId: participant?.id ?? null })
+    },
     enabled: !!season,
   })
 
@@ -280,8 +302,24 @@ export function HomePage() {
                       isCurrentUser: r.isCurrentUser,
                     }))}
                   />
-                  <div className="mt-6">
-                    <RankingTable rows={ranking.slice(0, 5)} />
+                  <div className="mt-8">
+                    <div className="mb-4 flex items-center justify-between">
+                      <h3 className="font-display text-base font-bold text-white sm:text-lg">
+                        Top 10 Season Standings
+                      </h3>
+                      <span className="text-xs text-ink-300">
+                        {ranking.length} {ranking.length === 1 ? 'player' : 'players'} total
+                      </span>
+                    </div>
+                    <RankingTable rows={ranking.slice(0, 10)} />
+                  </div>
+
+                  <div className="mt-8 flex justify-center">
+                    <Link to="/leaderboard">
+                      <Button variant="outline" icon={Trophy}>
+                        View Full Leaderboard & Monthly Rankings →
+                      </Button>
+                    </Link>
                   </div>
                 </>
               ) : (
