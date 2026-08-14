@@ -2,6 +2,7 @@ import { getDb, saveDb, newId } from '../db/database'
 import { nowIso, slugify } from '../lib/utils'
 import type { Round, RoundStatus } from '../types'
 import { getMonth, isMonthOpen } from './monthService'
+import { apiPost, getD1Token } from './apiClient'
 
 export const MIN_QUESTIONS_PER_ROUND = 10
 
@@ -115,6 +116,30 @@ export function createRound(input: RoundInput): Round {
   }
   db.rounds.push(round)
   saveDb()
+  if (getD1Token()) {
+    void apiPost('/api/rounds', {
+      action: 'create',
+      id: round.id,
+      monthId: round.monthId,
+      title: round.title,
+      description: round.description,
+      bannerGradient: round.bannerGradient,
+      bannerIcon: round.bannerIcon,
+      bannerUrl: round.bannerUrl,
+      timeLimitSeconds: round.timeLimitSeconds,
+    }).then((res: any) => {
+      if (res?.success && (round.status === 'published' || round.status === 'archived')) {
+        void apiPost('/api/rounds', {
+          action: 'update',
+          id: res.id,
+          status: round.status,
+          title: round.title,
+          description: round.description,
+          timeLimitSeconds: round.timeLimitSeconds,
+        })
+      }
+    })
+  }
   return round
 }
 
@@ -137,6 +162,19 @@ export function updateRound(id: string, input: RoundInput): Round {
   round.slug = uniqueSlug(round.title, id)
   round.updatedAt = nowIso()
   saveDb()
+  if (getD1Token()) {
+    void apiPost('/api/rounds', {
+      action: 'update',
+      id: round.id,
+      title: round.title,
+      description: round.description,
+      bannerGradient: round.bannerGradient,
+      bannerIcon: round.bannerIcon,
+      bannerUrl: round.bannerUrl,
+      timeLimitSeconds: round.timeLimitSeconds,
+      status: round.status,
+    })
+  }
   return round
 }
 
@@ -152,6 +190,16 @@ export function setRoundStatus(id: string, status: RoundStatus): Round {
   round.publishedAt = status === 'published' ? nowIso() : null
   round.updatedAt = nowIso()
   saveDb()
+  if (getD1Token()) {
+    void apiPost('/api/rounds', {
+      action: 'update',
+      id: round.id,
+      status,
+      title: round.title,
+      description: round.description,
+      timeLimitSeconds: round.timeLimitSeconds,
+    })
+  }
   return round
 }
 
@@ -189,6 +237,9 @@ export function deleteRound(id: string): { attempts: number } {
   db.answers = db.answers.filter((a) => !attemptIds.includes(a.attemptId))
   db.rounds = db.rounds.filter((r) => r.id !== id)
   saveDb()
+  if (getD1Token()) {
+    void apiPost('/api/rounds', { action: 'delete', id })
+  }
   return { attempts: attemptIds.length }
 }
 

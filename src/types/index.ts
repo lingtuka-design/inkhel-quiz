@@ -42,6 +42,8 @@ export interface Round {
   publishedAt: string | null
   createdAt: string
   updatedAt: string
+  /** Set when the round came from the cloud API */
+  questionCount?: number
 }
 
 export interface Question {

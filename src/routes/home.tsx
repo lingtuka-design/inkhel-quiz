@@ -13,6 +13,7 @@ import { getActiveSeason, listSeasons } from '../services/seasonService'
 import { getCurrentMonth, listAllMonths } from '../services/monthService'
 import { getSeasonRanking } from '../services/leaderboardService'
 import { getParticipant } from '../services/authService'
+import { ensureCloudCatalog } from '../services/cloudCatalog'
 import { setPageTitle } from '../services/shareService'
 import { formatDate } from '../lib/utils'
 import { useEffect } from 'react'
@@ -27,12 +28,14 @@ export function HomePage() {
 
   const { data: rounds } = useQuery({
     queryKey: ['rounds', 'playable'],
-    queryFn: () =>
-      listAllPlayableRounds().map((r) => ({
+    queryFn: async () => {
+      await ensureCloudCatalog()
+      return listAllPlayableRounds().map((r) => ({
         round: r,
         participants: countParticipants(r.id),
-        questions: countQuestions(r.id),
-      })),
+        questions: r.questionCount ?? countQuestions(r.id),
+      }))
+    },
   })
 
   const { data: season } = useQuery({

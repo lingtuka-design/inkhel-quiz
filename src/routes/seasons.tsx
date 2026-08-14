@@ -3,9 +3,11 @@ import { Archive, Calendar, CalendarCheck2, CalendarRange, Clock, Crown, Trophy 
 import { useQuery } from '@tanstack/react-query'
 import { Badge, Card, EmptyState, SectionHeading } from '../components/ui'
 import { listSeasons, getActiveSeason } from '../services/seasonService'
+import { ensureCloudCatalog } from '../services/cloudCatalog'
 import { listMonths, monthStatus, getCurrentMonth } from '../services/monthService'
 import { listRoundsByMonth } from '../services/roundService'
 import { getSeasonRanking } from '../services/leaderboardService'
+import type { RankingRow } from '../types'
 import { setPageTitle } from '../services/shareService'
 import { formatDate } from '../lib/utils'
 import { useEffect } from 'react'
@@ -23,10 +25,26 @@ export function SeasonsPage() {
 
   const { data: seasons } = useQuery({
     queryKey: ['seasons'],
-    queryFn: listSeasons,
+    queryFn: async () => {
+      await ensureCloudCatalog()
+      return listSeasons()
+    },
   })
 
   const { data: currentMonth } = useQuery({ queryKey: ['currentMonth'], queryFn: getCurrentMonth })
+
+  const { data: leaders } = useQuery({
+    queryKey: ['seasonLeaders', seasons?.map((s) => s.id).join(',')],
+    queryFn: async () => {
+      const result = new Map<string, RankingRow>()
+      for (const s of seasons ?? []) {
+        const rows = await getSeasonRanking(s.id)
+        result.set(s.id, rows[0] ?? null)
+      }
+      return result
+    },
+    enabled: !!seasons,
+  })
 
   if (!seasons || seasons.length === 0) {
     return (
@@ -51,9 +69,8 @@ export function SeasonsPage() {
         {seasons.map((season) => {
           const status = STATUS_TONES[season.status]
           const months = listMonths(season.id)
-          const openMonth = months.find((m) => monthStatus(m) === 'open')
           const roundsCount = months.reduce((s, m) => s + listRoundsByMonth(m.id).length, 0)
-          const leader = getSeasonRanking(season.id)[0]
+          const leader = leaders?.get(season.id) ?? null
           return (
             <Card
               key={season.id}

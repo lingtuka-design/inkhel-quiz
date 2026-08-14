@@ -3,8 +3,10 @@ import { hashPassword } from '../lib/crypto'
 import { avatarGradient } from '../lib/banners'
 import { nowIso } from '../lib/utils'
 import { auth, googleProvider } from '../lib/firebase'
-import { signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth'
+import { signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth'
 import type { AdminUser, Participant } from '../types'
+import { apiPost, setD1Token, getD1Token } from './apiClient'
+import { bootstrapD1IfEmpty } from './cloudBootstrap'
 
 const TOKEN_KEY = 'inkhel_admin_token'
 const PARTICIPANT_KEY = 'inkhel_participant_id'
@@ -24,6 +26,27 @@ export async function loginAdmin(username: string, password: string): Promise<Ad
   admin.sessionToken = newId('tok')
   saveDb()
   localStorage.setItem(TOKEN_KEY, admin.sessionToken)
+
+  // Best-effort: also authenticate against the shared Cloudflare D1 backend so
+  // admin content (seasons, rounds, questions) can be mirrored to all users.
+  try {
+    const remote = await apiPost<{ success: boolean; token?: string }>('/api/auth', {
+      action: 'login',
+      username,
+      password,
+    })
+    if (remote?.token) {
+      setD1Token(remote.token)
+      void bootstrapD1IfEmpty()
+    } else {
+      setD1Token(null)
+      console.warn(
+        '[inkhel] D1 admin login failed — content will stay local-only until D1 credentials match',
+      )
+    }
+  } catch {
+    setD1Token(null)
+  }
   return admin
 }
 
@@ -37,7 +60,10 @@ export function logoutAdmin(): void {
       saveDb()
     }
   }
+  const d1Token = getD1Token()
+  if (d1Token) void apiPost('/api/auth', { action: 'logout', token: d1Token })
   localStorage.removeItem(TOKEN_KEY)
+  setD1Token(null)
 }
 
 export function getCurrentAdmin(): AdminUser | null {
@@ -64,6 +90,17 @@ export function getParticipant(): Participant | null {
   return getDb().participants.find((p) => p.id === id) ?? null
 }
 
+function persistParticipant(p: Participant): Participant {
+  const db = getDb()
+  const idx = db.participants.findIndex((x) => x.id === p.id)
+  if (idx >= 0) db.participants[idx] = p
+  else db.participants.push(p)
+  saveDb()
+  localStorage.setItem(PARTICIPANT_KEY, p.id)
+  localStorage.setItem(PARTICIPANT_CACHE_KEY, JSON.stringify(p))
+  return p
+}
+
 export async function loginWithGoogle(): Promise<Participant> {
   const result = await signInWithPopup(auth, googleProvider)
   const user = result.user
@@ -72,54 +109,31 @@ export async function loginWithGoogle(): Promise<Participant> {
   const photoUrl = user.photoURL || null
   const googleId = user.uid
 
-  let participant: Participant
-
-  try {
-    const res = await fetch('/api/participants', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        displayName,
-        email,
-        photoUrl,
-        googleId,
-        avatarGradient: avatarGradient(displayName),
-      }),
-    })
-
-    if (res.ok) {
-      participant = await res.json()
-    } else {
-      throw new Error('Failed to register participant on server')
-    }
-  } catch {
-    // Local / offline fallback
-    participant = {
-      id: `part_${googleId.slice(0, 10)}`,
-      displayName,
-      email,
-      photoUrl,
-      googleId,
-      avatarGradient: avatarGradient(displayName),
-      provider: 'google',
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    }
+  // Register the Google profile on the shared D1 backend (best-effort).
+  const remote = await apiPost<Participant>('/api/participants', {
+    displayName,
+    email,
+    photoUrl,
+    googleId,
+    avatarGradient: avatarGradient(displayName),
+  })
+  if (remote?.id && remote.displayName) {
+    return persistParticipant(remote)
   }
 
-  // Update local DB cache
-  const db = getDb()
-  const idx = db.participants.findIndex((p) => p.id === participant.id || p.email === email)
-  if (idx >= 0) {
-    db.participants[idx] = participant
-  } else {
-    db.participants.push(participant)
+  // Local / offline fallback
+  const participant: Participant = {
+    id: `part_${googleId.slice(0, 10)}`,
+    displayName,
+    email,
+    photoUrl,
+    googleId,
+    avatarGradient: avatarGradient(displayName),
+    provider: 'google',
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
   }
-  saveDb()
-
-  localStorage.setItem(PARTICIPANT_KEY, participant.id)
-  localStorage.setItem(PARTICIPANT_CACHE_KEY, JSON.stringify(participant))
-  return participant
+  return persistParticipant(participant)
 }
 
 export async function logoutParticipant(): Promise<void> {
@@ -128,10 +142,24 @@ export async function logoutParticipant(): Promise<void> {
   localStorage.removeItem(PARTICIPANT_CACHE_KEY)
 }
 
-export function saveParticipant(displayName: string): Participant {
+/**
+ * Creates (or finds) the player's shared identity. Guest players are upserted
+ * to the Cloudflare D1 backend (matched by display name) so their attempts and
+ * scores appear on every user's leaderboard. Falls back to local when offline.
+ */
+export async function saveParticipant(displayName: string): Promise<Participant> {
   const db = getDb()
   const trimmed = displayName.trim().slice(0, 40)
   if (!trimmed) throw new Error('Please enter a player name')
+
+  const remote = await apiPost<Participant>('/api/participants', {
+    displayName: trimmed,
+    avatarGradient: getParticipant()?.avatarGradient ?? avatarGradient(trimmed),
+  })
+  if (remote?.id && remote.displayName) {
+    return persistParticipant(remote)
+  }
+
   let existing = getParticipant()
   if (existing) {
     existing.displayName = trimmed

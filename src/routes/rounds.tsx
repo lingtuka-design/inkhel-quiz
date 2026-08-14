@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { RoundCard } from '../components/rounds'
 import { EmptyState, Input, Select, SectionHeading } from '../components/ui'
 import { listRounds, countParticipants } from '../services/roundService'
+import { ensureCloudCatalog } from '../services/cloudCatalog'
 import { listAllMonths, monthStatus } from '../services/monthService'
 import { setPageTitle } from '../services/shareService'
 import { useEffect } from 'react'
@@ -19,10 +20,12 @@ export function RoundsPage() {
 
   const { data: rounds } = useQuery({
     queryKey: ['rounds'],
-    queryFn: () =>
-      listRounds()
+    queryFn: async () => {
+      await ensureCloudCatalog()
+      return listRounds()
         .filter((r) => r.status !== 'draft')
-        .map((r) => ({ round: r, participants: countParticipants(r.id) })),
+        .map((r) => ({ round: r, participants: countParticipants(r.id) }))
+    },
   })
 
   const { data: months } = useQuery({

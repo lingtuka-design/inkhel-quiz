@@ -58,7 +58,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const now = new Date().toISOString()
 
     if (action === 'create') {
-      const { name, description, durationMonths = 10, startDate } = body
+      const { id, name, description, durationMonths = 10, startDate } = body
       if (!name || !startDate) return err('Name and startDate are required')
 
       const start = new Date(startDate)
@@ -66,7 +66,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       
       const { results: existing } = await env.DB.prepare('SELECT MAX(season_number) as max_num FROM seasons').all()
       const seasonNumber = (((existing[0] as any)?.max_num || 0) + 1)
-      const seasonId = `season_${Date.now()}`
+      const seasonId = id || `season_${Date.now()}`
 
       // Create season
       await env.DB.prepare(
@@ -111,6 +111,45 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       )
         .bind(name, description, status, now, id)
         .run()
+
+      return json({ success: true })
+    }
+
+    if (action === 'delete') {
+      const { id } = body
+      if (!id) return err('Season ID is required')
+
+      const { results: months } = await env.DB.prepare('SELECT id FROM months WHERE season_id = ?')
+        .bind(id)
+        .all<any>()
+      const mIds = months.map((m) => `'${m.id}'`).join(',')
+      if (mIds) {
+        const { results: rounds } = await env.DB.prepare(
+          `SELECT id FROM rounds WHERE month_id IN (${mIds})`
+        ).all<any>()
+        const rIds = rounds.map((r) => `'${r.id}'`).join(',')
+        if (rIds) {
+          const { results: questions } = await env.DB.prepare(
+            `SELECT id FROM questions WHERE round_id IN (${rIds})`
+          ).all<any>()
+          const qIds = questions.map((q) => `'${q.id}'`).join(',')
+          if (qIds) {
+            await env.DB.prepare(`DELETE FROM question_options WHERE question_id IN (${qIds})`).run()
+            await env.DB.prepare(`DELETE FROM questions WHERE id IN (${qIds})`).run()
+          }
+          const { results: attempts } = await env.DB.prepare(
+            `SELECT id FROM attempts WHERE round_id IN (${rIds})`
+          ).all<any>()
+          const aIds = attempts.map((a) => `'${a.id}'`).join(',')
+          if (aIds) {
+            await env.DB.prepare(`DELETE FROM attempt_answers WHERE attempt_id IN (${aIds})`).run()
+            await env.DB.prepare(`DELETE FROM attempts WHERE id IN (${aIds})`).run()
+          }
+          await env.DB.prepare(`DELETE FROM rounds WHERE id IN (${rIds})`).run()
+        }
+        await env.DB.prepare(`DELETE FROM months WHERE id IN (${mIds})`).run()
+      }
+      await env.DB.prepare('DELETE FROM seasons WHERE id = ?').bind(id).run()
 
       return json({ success: true })
     }
