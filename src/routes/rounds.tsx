@@ -120,6 +120,7 @@ export function RoundsPage() {
               round={round}
               month={months?.find((m) => m.id === round.monthId)}
               participantCount={participants}
+              questionCount={(round as any).questionCount}
             />
           ))}
         </div>

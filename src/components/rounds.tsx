@@ -64,15 +64,19 @@ export function roundStatusBadge(
 export function RoundCard({
   round,
   month,
-  participantCount = 0,
+  participantCount,
+  questionCount,
 }: {
   round: Round
   month?: Month
   participantCount?: number
+  questionCount?: number
 }) {
   const badge = roundStatusBadge(round)
   const availability = roundAvailability(round)
   const href = `/rounds/${round.id}`
+  const players = participantCount ?? (round as any).participantCount ?? 0
+  const qCount = questionCount ?? (round as any).questionCount ?? countQuestionsOf(round.id) ?? 10
   return (
     <Card className="group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-2xl hover:shadow-violet-500/10">
       <div className="relative">
@@ -112,10 +116,10 @@ export function RoundCard({
             <Clock className="h-3.5 w-3.5" /> {formatTime(round.timeLimitSeconds)}
           </span>
           <span className="flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5" /> {pluralize(participantCount, 'player')}
+            <Users className="h-3.5 w-3.5" /> {pluralize(players, 'player')}
           </span>
           <span className="flex items-center gap-1.5">
-            <Zap className="h-3.5 w-3.5" /> {countQuestionsOf(round.id)} questions
+            <Zap className="h-3.5 w-3.5" /> {qCount} questions
           </span>
         </div>
         <Link to={href} className="mt-4 block">

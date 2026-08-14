@@ -16,25 +16,28 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       const round = await env.DB.prepare(query).bind(param).first()
       if (!round) return err('Round not found', 404)
 
-      // get question count
-      const qCount = await env.DB.prepare('SELECT COUNT(*) as count FROM questions WHERE round_id = ?')
-        .bind((round as any).id)
-        .first<{ count: number }>()
+      const counts = await env.DB.prepare(
+        `SELECT
+          (SELECT COUNT(*) FROM questions WHERE round_id = ?) as question_count,
+          (SELECT COUNT(DISTINCT participant_id) FROM attempts WHERE round_id = ? AND status IN ('completed', 'expired')) as participant_count`
+      )
+        .bind((round as any).id, (round as any).id)
+        .first<{ question_count: number; participant_count: number }>()
 
       return json({
         ...toCamelCase(round),
-        questionCount: qCount?.count || 0,
+        questionCount: counts?.question_count || 0,
+        participantCount: counts?.participant_count || 0,
       })
     }
 
     if (monthId) {
       const { results: rounds } = await env.DB.prepare(
-        `SELECT r.*, COUNT(q.id) as question_count, COUNT(DISTINCT a.id) as participant_count
+        `SELECT r.*,
+          (SELECT COUNT(*) FROM questions q WHERE q.round_id = r.id) as question_count,
+          (SELECT COUNT(DISTINCT a.participant_id) FROM attempts a WHERE a.round_id = r.id AND a.status IN ('completed', 'expired')) as participant_count
          FROM rounds r
-         LEFT JOIN questions q ON r.id = q.round_id
-         LEFT JOIN attempts a ON r.id = a.round_id AND a.status != 'abandoned'
          WHERE r.month_id = ?
-         GROUP BY r.id
          ORDER BY r.created_at ASC`
       )
         .bind(monthId)
@@ -42,13 +45,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       return json(toCamelCase(rounds))
     }
 
-    // Default: return all rounds with question_count
+    // Default: return all rounds with question_count & participant_count
     const { results: rounds } = await env.DB.prepare(
-      `SELECT r.*, COUNT(q.id) as question_count, COUNT(DISTINCT a.id) as participant_count
+      `SELECT r.*,
+        (SELECT COUNT(*) FROM questions q WHERE q.round_id = r.id) as question_count,
+        (SELECT COUNT(DISTINCT a.participant_id) FROM attempts a WHERE a.round_id = r.id AND a.status IN ('completed', 'expired')) as participant_count
        FROM rounds r
-       LEFT JOIN questions q ON r.id = q.round_id
-       LEFT JOIN attempts a ON r.id = a.round_id AND a.status != 'abandoned'
-       GROUP BY r.id
        ORDER BY r.created_at DESC`
     ).all()
 

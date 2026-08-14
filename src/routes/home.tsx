@@ -221,12 +221,13 @@ export function HomePage() {
           }
         />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {live.slice(0, 3).map(({ round, participants }) => (
+          {live.slice(0, 3).map(({ round, participants, questions }) => (
             <RoundCard
               key={round.id}
               round={round}
               month={currentMonth ?? undefined}
               participantCount={participants}
+              questionCount={questions}
             />
           ))}
         </div>
