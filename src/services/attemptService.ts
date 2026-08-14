@@ -146,11 +146,11 @@ export interface AnswerResult {
   answer: AttemptAnswer
 }
 
-export function submitAnswer(
+export async function submitAnswer(
   attemptId: string,
   questionId: string,
   optionKey: OptionKey,
-): AnswerResult {
+): Promise<AnswerResult> {
   const db = getDb()
   const attempt = db.attempts.find((a) => a.id === attemptId)
   if (!attempt) throw new Error('Attempt not found')
@@ -162,7 +162,7 @@ export function submitAnswer(
     )
   }
 
-  const round = db.rounds.find((r) => r.id === attempt.roundId)!
+  const round = db.rounds.find((r) => r.id === attempt.roundId)
   const question = db.questions.find((q) => q.id === questionId && q.roundId === attempt.roundId)
   const options = db.options.filter((o) => o.questionId === questionId)
   const option = options.find((o) => o.optionKey === optionKey)
@@ -170,52 +170,21 @@ export function submitAnswer(
   const deadline = round ? getAttemptDeadline(attempt, round) : 0
   const now = Date.now()
   if (deadline && now > deadline + ATTEMPT_EXPIRY_GRACE_MS) {
-    finalizeAttempt(attemptId)
-    const updated = getAttempt(attemptId)!
+    const finalized = await finalizeAttempt(attemptId)
     return {
-      attempt: updated,
+      attempt: finalized,
       answeredCount: getAnsweredCount(attemptId),
-      totalQuestions: db.questions.filter((q) => q.roundId === attempt.roundId).length,
+      totalQuestions: db.questions.filter((q) => q.roundId === attempt.roundId).length || 10,
       finished: true,
       answer: getAnswers(attemptId).find((a) => a.questionId === questionId)!,
     }
   }
 
-  const existing = db.answers.find(
-    (a) => a.attemptId === attemptId && a.questionId === questionId,
-  )
-  if (existing) {
-    return {
-      attempt,
-      answeredCount: getAnsweredCount(attemptId),
-      totalQuestions: db.questions.filter((q) => q.roundId === attempt.roundId).length,
-      finished:
-        getAnsweredCount(attemptId) >=
-        db.questions.filter((q) => q.roundId === attempt.roundId).length,
-      answer: existing,
-    }
-  }
-
   const isCorrect = option?.isCorrect ?? false
   const elapsed = Math.round((now - new Date(attempt.startedAt).getTime()) / 1000)
-  const answer: AttemptAnswer = {
-    id: newId('ans'),
-    attemptId,
-    questionId,
-    selectedOptionKey: optionKey,
-    isCorrect,
-    answeredAt: nowIso(),
-    elapsedSeconds: elapsed,
-  }
-  db.answers.push(answer)
 
-  const totalQuestions = db.questions.filter((q) => q.roundId === attempt.roundId).length
-  const answeredCount = getAnsweredCount(attemptId)
-  const finished = answeredCount >= totalQuestions
-  saveDb()
-
-  // Sync answer to Cloudflare D1
-  fetch('/api/attempts', {
+  // Send answer to Cloudflare D1 synchronously
+  await fetch('/api/attempts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -227,8 +196,30 @@ export function submitAnswer(
     }),
   }).catch(() => {})
 
+  const answer: AttemptAnswer = {
+    id: newId('ans'),
+    attemptId,
+    questionId,
+    selectedOptionKey: optionKey,
+    isCorrect,
+    answeredAt: nowIso(),
+    elapsedSeconds: elapsed,
+  }
+  db.answers = db.answers.filter((a) => !(a.attemptId === attemptId && a.questionId === questionId))
+  db.answers.push(answer)
+
+  const totalQuestions = db.questions.filter((q) => q.roundId === attempt.roundId).length || 10
+  const answeredCount = getAnsweredCount(attemptId)
+  const finished = answeredCount >= totalQuestions
+  saveDb()
+
+  let finalAttempt = attempt
+  if (finished) {
+    finalAttempt = await finalizeAttempt(attemptId)
+  }
+
   return {
-    attempt,
+    attempt: finalAttempt,
     answeredCount,
     totalQuestions,
     finished,

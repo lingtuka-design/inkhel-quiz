@@ -14,6 +14,7 @@ import {
   resumeAttempt,
   startAttempt,
   submitAnswer,
+  finalizeAttempt,
 } from '../services/attemptService'
 import { queryClient } from '../lib/query'
 import type { Attempt, OptionKey, QuizQuestion } from '../types'
@@ -55,11 +56,13 @@ export function QuizPage() {
   )
 
   const handleFinalize = useCallback(
-    (attemptId: string) => {
+    async (attemptId: string) => {
       if (!attemptId) return
-      const final = getAttempt(attemptId)
-      if (!final) return
-      queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
+      try {
+        await finalizeAttempt(attemptId)
+      } catch {}
+      await queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
+      await queryClient.invalidateQueries({ queryKey: ['played'] })
       goToResult(attemptId)
     },
     [goToResult],
@@ -141,14 +144,14 @@ export function QuizPage() {
     }
   }
 
-  const submit = (key: OptionKey) => {
+  const submit = async (key: OptionKey) => {
     if (!attempt || submitting) return
     setSubmitting(true)
     setError(null)
     try {
-      const result = submitAnswer(attempt.id, questions[index]!.id, key)
+      const result = await submitAnswer(attempt.id, questions[index]!.id, key)
       if (result.finished) {
-        handleFinalize(result.attempt.id)
+        await handleFinalize(result.attempt.id)
       } else {
         setIndex(result.answeredCount)
       }
@@ -156,7 +159,7 @@ export function QuizPage() {
       const msg = err instanceof Error ? err.message : 'Failed to submit answer'
       if (msg === 'ATTEMPT_FINISHED') {
         toast('Time expired — your attempt was auto-submitted', 'info')
-        handleFinalize(attempt.id)
+        await handleFinalize(attempt.id)
       } else {
         setError(msg)
       }
