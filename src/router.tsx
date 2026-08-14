@@ -28,6 +28,7 @@ import { MonthDetailPage } from './routes/admin/monthDetail'
 import { RoundFormPage } from './routes/admin/roundForm'
 import { AdminRoundQuestionsPage } from './routes/admin/roundQuestions'
 import { AdminRoundLeaderboardPage } from './routes/admin/roundLeaderboard'
+import { AdminRoundsPage } from './routes/admin/rounds'
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -166,6 +167,12 @@ const adminRoundLeaderboardRoute = createRoute({
   component: AdminRoundLeaderboardPage,
 })
 
+const adminRoundsRoute = createRoute({
+  getParentRoute: () => adminLayout,
+  path: '/admin/rounds',
+  component: AdminRoundsPage,
+})
+
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '*',
@@ -206,6 +213,7 @@ const routeTree = rootRoute.addChildren([
     adminSeasonEditRoute,
     adminSeasonDetailRoute,
     adminMonthDetailRoute,
+    adminRoundsRoute,
     adminRoundFormRoute,
     adminRoundQuestionsRoute,
     adminRoundLeaderboardRoute,
