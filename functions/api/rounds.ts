@@ -129,6 +129,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       return json({ success: true })
     }
 
+    if (action === 'delete') {
+      const { id } = body
+      if (!id) return err('Round ID is required')
+
+      // Cascade delete questions, options, attempt_answers, attempts, and round
+      await env.DB.prepare('DELETE FROM rounds WHERE id = ?').bind(id).run()
+      return json({ success: true })
+    }
+
     return err('Unknown action')
   } catch (e: any) {
     return err(e.message || 'Server error', 500)

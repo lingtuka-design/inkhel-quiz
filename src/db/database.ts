@@ -9,10 +9,9 @@ import type {
   Round,
   Season,
 } from '../types'
-import { buildSeed } from './seed'
 import { uid } from '../lib/crypto'
 
-const DB_KEY = 'inkhel_db_v4'
+const DB_KEY = 'inkhel_db_v5'
 
 export interface DBShape {
   seasons: Season[]
@@ -33,18 +32,27 @@ function notifyStorageFailure(): void {
   if (storageWarned || typeof window === 'undefined') return
   storageWarned = true
   console.error('[inkhel] Failed to persist data to localStorage. Changes will be lost on refresh.')
-  try {
-    window.dispatchEvent(
-      new CustomEvent('inkhel-toast', {
-        detail: {
-          message:
-            'Warning: your browser is blocking local storage (private mode or full storage). Changes will be lost after refresh.',
-          kind: 'error',
-        },
-      }),
-    )
-  } catch {
-    // ignore
+}
+
+const DEFAULT_ADMIN: AdminUser = {
+  id: 'admin_1',
+  username: 'admin',
+  passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // sha-256 for 'admin'
+  sessionToken: null,
+  createdAt: new Date().toISOString(),
+}
+
+export function createEmptyDb(): DBShape {
+  return {
+    seasons: [],
+    months: [],
+    rounds: [],
+    questions: [],
+    options: [],
+    participants: [],
+    attempts: [],
+    answers: [],
+    admins: [DEFAULT_ADMIN],
   }
 }
 
@@ -61,61 +69,88 @@ export async function initDb(): Promise<void> {
   }
 
   if (!cache) {
-    cache = await buildSeed()
+    cache = createEmptyDb()
     persist()
   }
 
-  // Best-effort remote sync.
-  // CRITICAL: remote data is ONLY used as a fallback for a completely empty local
-  // store. It must NEVER overwrite data the user has created locally — otherwise
-  // every refresh would clobber local changes with stale database content.
-  let loadedFromLocal = false
-  try {
-    loadedFromLocal = !!localStorage.getItem(DB_KEY)
-  } catch {
-    loadedFromLocal = false
+  // Ensure default admin exists
+  if (!cache.admins || cache.admins.length === 0) {
+    cache.admins = [DEFAULT_ADMIN]
   }
-  if (!loadedFromLocal) {
-    try {
-      const [seasonsRes, roundsRes] = await Promise.all([
-        fetch('/api/seasons'),
-        fetch('/api/rounds?all=true'),
-      ])
 
-      if (seasonsRes.ok) {
-        const remoteSeasons = await seasonsRes.json()
-        if (Array.isArray(remoteSeasons) && remoteSeasons.length > 0) {
-          cache.seasons = remoteSeasons.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            description: s.description,
-            seasonNumber: s.seasonNumber,
-            durationMonths: s.durationMonths,
-            startDate: s.startDate,
-            endDate: s.endDate,
-            status: s.status,
-            createdAt: s.createdAt,
-            updatedAt: s.updatedAt,
-          }))
-          const allMonths: Month[] = []
-          for (const s of remoteSeasons) {
-            if (s.months) allMonths.push(...s.months)
-          }
-          if (allMonths.length > 0) cache.months = allMonths
-          persist()
-        }
-      }
+  // Sync latest seasons & rounds directly from Cloudflare D1
+  try {
+    const token = localStorage.getItem('inkhel_admin_token')
+    const headers: Record<string, string> = token ? { 'X-Admin-Token': token } : {}
 
-      if (roundsRes.ok) {
-        const remoteRounds = await roundsRes.json()
-        if (Array.isArray(remoteRounds) && remoteRounds.length > 0) {
-          cache.rounds = remoteRounds
-          persist()
+    const [seasonsRes, roundsRes] = await Promise.all([
+      fetch('/api/seasons', { headers }),
+      fetch('/api/rounds?all=true', { headers }),
+    ])
+
+    if (seasonsRes.ok) {
+      const remoteSeasons = await seasonsRes.json()
+      if (Array.isArray(remoteSeasons)) {
+        cache.seasons = remoteSeasons.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          seasonNumber: s.seasonNumber,
+          durationMonths: s.durationMonths,
+          startDate: s.startDate,
+          endDate: s.endDate,
+          status: s.status,
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt,
+        }))
+        const allMonths: Month[] = []
+        for (const s of remoteSeasons) {
+          if (s.months) allMonths.push(...s.months)
         }
+        cache.months = allMonths
       }
-    } catch {
-      // Offline or no backend — local seed stays authoritative
     }
+
+    if (roundsRes.ok) {
+      const remoteRounds = await roundsRes.json()
+      if (Array.isArray(remoteRounds)) {
+        cache.rounds = remoteRounds
+      }
+    }
+
+    // Sync questions from D1 for all rounds
+    if (cache.rounds && cache.rounds.length > 0) {
+      const qPromises = cache.rounds.map(async (r) => {
+        try {
+          const qRes = await fetch(`/api/questions?roundId=${encodeURIComponent(r.id)}`, { headers })
+          if (qRes.ok) {
+            const data = await qRes.json()
+            return { roundId: r.id, questions: data.questions || [], options: data.options || [] }
+          }
+        } catch {}
+        return null
+      })
+
+      const qResults = await Promise.all(qPromises)
+      const allQuestions: Question[] = []
+      const allOptions: QuestionOption[] = []
+
+      for (const res of qResults) {
+        if (res) {
+          allQuestions.push(...res.questions)
+          allOptions.push(...res.options)
+        }
+      }
+
+      if (allQuestions.length > 0) {
+        cache.questions = allQuestions
+        cache.options = allOptions
+      }
+    }
+
+    persist()
+  } catch (err) {
+    console.warn('[inkhel] D1 sync deferred/offline:', err)
   }
 }
 
@@ -129,7 +164,9 @@ function persist(): void {
 }
 
 export function getDb(): DBShape {
-  if (!cache) throw new Error('Database not initialised — call initDb() first')
+  if (!cache) {
+    cache = createEmptyDb()
+  }
   return cache
 }
 
@@ -138,7 +175,6 @@ export function resetDb(): void {
   cache = null
 }
 
-/** Clears the in-memory cache only — simulates a page refresh (storage is untouched). */
 export function clearCache(): void {
   cache = null
 }

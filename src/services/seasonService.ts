@@ -71,6 +71,17 @@ export function createSeason(input: SeasonInput): Season {
   db.seasons.push(season)
   saveDb()
   generateMonths(season)
+
+  const token = localStorage.getItem('inkhel_admin_token')
+  fetch('/api/seasons', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ action: 'create', ...input }),
+  }).catch(() => {})
+
   return season
 }
 
@@ -91,6 +102,17 @@ export function updateSeason(id: string, input: SeasonInput): Season {
   if (input.status === 'active') deactivateOthers(db.seasons, id)
   saveDb()
   generateMonths(season)
+
+  const token = localStorage.getItem('inkhel_admin_token')
+  fetch('/api/seasons', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ action: 'update', id, ...input }),
+  }).catch(() => {})
+
   return season
 }
 
@@ -123,6 +145,17 @@ export function deleteSeason(id: string): { rounds: number; attempts: number } {
   db.answers = db.answers.filter((a) => !attemptIds.includes(a.attemptId))
   db.seasons = db.seasons.filter((s) => s.id !== id)
   saveDb()
+
+  const token = localStorage.getItem('inkhel_admin_token')
+  fetch('/api/seasons', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ action: 'delete', id }),
+  }).catch(() => {})
+
   return { rounds: roundIds.length, attempts: attemptIds.length }
 }
 

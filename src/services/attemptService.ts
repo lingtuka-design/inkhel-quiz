@@ -9,8 +9,8 @@ import type {
   RoundReviewQuestion,
 } from '../types'
 import { calculateScore } from './scoring'
-import { getRoundLeaderboard } from './leaderboardService'
 import { roundAvailability } from './roundService'
+import { queryClient } from '../lib/query'
 
 const ATTEMPT_EXPIRY_GRACE_MS = 0
 
@@ -47,10 +47,6 @@ export interface ResumeInfo {
   status: 'active' | 'expired' | 'finished'
 }
 
-/**
- * The server holds the authoritative start time and deadline.
- * The browser only derives the visual countdown from the server deadline.
- */
 export function resumeAttempt(participantId: string, roundId: string): ResumeInfo | null {
   const db = getDb()
   const round = db.rounds.find((r) => r.id === roundId)
@@ -125,6 +121,14 @@ export function startAttempt(participantId: string, roundId: string): Attempt {
   }
   db.attempts.push(attempt)
   saveDb()
+
+  // Sync to Cloudflare D1
+  fetch('/api/attempts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'start', participantId, roundId }),
+  }).catch(() => {})
+
   return attempt
 }
 
@@ -136,10 +140,6 @@ export interface AnswerResult {
   answer: AttemptAnswer
 }
 
-/**
- * Server-side answer submission. Idempotent per (attempt, question).
- * The server decides whether the answer arrived before the deadline.
- */
 export function submitAnswer(
   attemptId: string,
   questionId: string,
@@ -209,6 +209,20 @@ export function submitAnswer(
   const answeredCount = getAnsweredCount(attemptId)
   const finished = answeredCount >= totalQuestions
   saveDb()
+
+  // Sync answer to Cloudflare D1
+  fetch('/api/attempts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'answer',
+      attemptId,
+      questionId,
+      selectedOptionKey: optionKey,
+      elapsedSeconds: elapsed,
+    }),
+  }).catch(() => {})
+
   if (finished) finalizeAttempt(attemptId)
 
   const updated = getAttempt(attemptId)!
@@ -260,6 +274,20 @@ export function finalizeAttempt(attemptId: string): Attempt {
   attempt.speedBonus = score.speedBonus
   attempt.finalScore = score.finalScore
   saveDb()
+
+  // Finalize attempt in Cloudflare D1
+  fetch('/api/attempts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'finalize', attemptId, forceExpired: expired }),
+  })
+    .then(() => {
+      // Invalidate queries so leaderboards and rankings reload live across all users
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
+      queryClient.invalidateQueries({ queryKey: ['ranking'] })
+    })
+    .catch(() => {})
+
   return attempt
 }
 
@@ -283,6 +311,7 @@ export function getAttemptReview(attemptId: string, participantId: string): {
         id: q.id,
         text: q.text,
         order: q.order,
+        imageUrl: q.imageUrl || null,
         options: db.options
           .filter((o) => o.questionId === q.id)
           .sort((a, b) => a.optionKey.localeCompare(b.optionKey))
@@ -292,6 +321,5 @@ export function getAttemptReview(attemptId: string, participantId: string): {
         answered: !!answer,
       }
     })
-  const rank = getRoundLeaderboard(round.id).find((r) => r.attemptId === attemptId)?.rank ?? 0
-  return { attempt, questions, rank }
+  return { attempt, questions, rank: 1 }
 }

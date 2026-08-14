@@ -115,6 +115,17 @@ export function createRound(input: RoundInput): Round {
   }
   db.rounds.push(round)
   saveDb()
+
+  const token = localStorage.getItem('inkhel_admin_token')
+  fetch('/api/rounds', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ action: 'create', ...input }),
+  }).catch(() => {})
+
   return round
 }
 
@@ -137,6 +148,17 @@ export function updateRound(id: string, input: RoundInput): Round {
   round.slug = uniqueSlug(round.title, id)
   round.updatedAt = nowIso()
   saveDb()
+
+  const token = localStorage.getItem('inkhel_admin_token')
+  fetch('/api/rounds', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ action: 'update', id, ...input }),
+  }).catch(() => {})
+
   return round
 }
 
@@ -152,6 +174,17 @@ export function setRoundStatus(id: string, status: RoundStatus): Round {
   round.publishedAt = status === 'published' ? nowIso() : null
   round.updatedAt = nowIso()
   saveDb()
+
+  const token = localStorage.getItem('inkhel_admin_token')
+  fetch('/api/rounds', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ action: 'update', id, status }),
+  }).catch(() => {})
+
   return round
 }
 
@@ -189,6 +222,17 @@ export function deleteRound(id: string): { attempts: number } {
   db.answers = db.answers.filter((a) => !attemptIds.includes(a.attemptId))
   db.rounds = db.rounds.filter((r) => r.id !== id)
   saveDb()
+
+  const token = localStorage.getItem('inkhel_admin_token')
+  fetch('/api/rounds', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ action: 'delete', id }),
+  }).catch(() => {})
+
   return { attempts: attemptIds.length }
 }
 

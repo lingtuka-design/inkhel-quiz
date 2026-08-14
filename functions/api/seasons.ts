@@ -115,6 +115,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       return json({ success: true })
     }
 
+    if (action === 'delete') {
+      const { id } = body
+      if (!id) return err('Season ID is required')
+
+      await env.DB.prepare('DELETE FROM seasons WHERE id = ?').bind(id).run()
+      return json({ success: true })
+    }
+
     return err('Unknown action')
   } catch (e: any) {
     return err(e.message || 'Server error', 500)

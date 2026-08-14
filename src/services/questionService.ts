@@ -58,6 +58,7 @@ export function saveQuestions(roundId: string, drafts: QuestionDraft[]): Questio
       roundId,
       text: draft.text.trim(),
       order: index + 1,
+      imageUrl: draft.imageUrl || null,
       createdAt: nowIso(),
       updatedAt: nowIso(),
     }
@@ -79,6 +80,17 @@ export function saveQuestions(roundId: string, drafts: QuestionDraft[]): Questio
   })
 
   saveDb()
+
+  const token = localStorage.getItem('inkhel_admin_token')
+  fetch('/api/questions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ roundId, drafts: cleaned }),
+  }).catch(() => {})
+
   return created
 }
 
@@ -91,6 +103,7 @@ export function getQuizQuestions(roundId: string): QuizQuestion[] {
       id: q.id,
       text: q.text,
       order: q.order,
+      imageUrl: q.imageUrl || null,
       options: db.options
         .filter((o) => o.questionId === q.id)
         .sort((a, b) => a.optionKey.localeCompare(b.optionKey))
