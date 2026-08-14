@@ -82,11 +82,6 @@ export function AdminLoginPage() {
               Sign In
             </Button>
           </form>
-
-          <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-xs text-ink-300">
-            Demo credentials: <span className="font-semibold text-white">admin</span> /{' '}
-            <span className="font-semibold text-white">admin123</span>
-          </div>
         </Card>
       </div>
     </div>

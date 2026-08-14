@@ -29,14 +29,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         .first<{ id: string; username: string; password_hash: string }>()
 
       const validDefaultHashes = [
-        '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // 'admin'
-        '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', // 'admin123'
+        'fc3cd237022ac11687162de698acede3863826c5d1378784f97a17eb633ddd4a', // 'MAWLA1984@mala'
       ]
 
       const isValid =
         (user && user.password_hash === passwordHash) ||
         (user && validDefaultHashes.includes(passwordHash)) ||
-        (u === 'admin' && (p === 'admin' || p === 'admin123'))
+        (u === 'admin' && p === 'MAWLA1984@mala')
 
       if (!isValid) {
         return err('Invalid username or password', 401)

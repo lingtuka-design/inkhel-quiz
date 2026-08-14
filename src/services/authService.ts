@@ -50,11 +50,10 @@ export async function loginAdmin(username: string, password: string): Promise<Ad
   // Local/Offline Fallback
   const hash = await hashPassword(trimmedPass)
   const validHashes = [
-    '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', // admin123
-    '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // admin
+    'fc3cd237022ac11687162de698acede3863826c5d1378784f97a17eb633ddd4a', // MAWLA1984@mala
   ]
 
-  if (trimmedUser.toLowerCase() === 'admin' && (validHashes.includes(hash) || trimmedPass === 'admin' || trimmedPass === 'admin123')) {
+  if (trimmedUser.toLowerCase() === 'admin' && (validHashes.includes(hash) || trimmedPass === 'MAWLA1984@mala')) {
     const sessionToken = newId('tok')
     localStorage.setItem(TOKEN_KEY, sessionToken)
     const admin: AdminUser = {

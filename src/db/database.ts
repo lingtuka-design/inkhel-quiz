@@ -37,7 +37,7 @@ function notifyStorageFailure(): void {
 const DEFAULT_ADMIN: AdminUser = {
   id: 'admin_1',
   username: 'admin',
-  passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // sha-256 for 'admin'
+  passwordHash: 'fc3cd237022ac11687162de698acede3863826c5d1378784f97a17eb633ddd4a', // sha-256 for 'MAWLA1984@mala'
   sessionToken: null,
   createdAt: new Date().toISOString(),
 }
