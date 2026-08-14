@@ -1,36 +1,35 @@
 import { useEffect } from 'react'
-import { Link, useNavigate, useParams } from '@tanstack/react-router'
+import { Link, useParams } from '@tanstack/react-router'
 import { Eye, Rocket, Search } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { BackLink } from '../../components/layout'
 import { QuestionEditor } from '../../components/admin/QuestionEditor'
 import { Badge, Button, Card, toast } from '../../components/ui'
-import { getEpisode, setEpisodeStatus, validatePublishedContent } from '../../services/episodeService'
+import { getRound, setRoundStatus, validatePublishedContent } from '../../services/roundService'
 import { getQuestionsWithOptions, saveQuestions } from '../../services/questionService'
 import { queryClient } from '../../lib/query'
 import { setPageTitle } from '../../services/shareService'
 import type { QuestionDraft } from '../../types'
 
-export function AdminQuestionsPage() {
-  const { episodeId } = useParams({ from: '/admin/episodes/$episodeId/questions' })
-  const navigate = useNavigate()
+export function AdminRoundQuestionsPage() {
+  const { roundId } = useParams({ strict: false })
 
-  const { data: episode } = useQuery({
-    queryKey: ['episode', episodeId],
-    queryFn: () => getEpisode(episodeId),
+  const { data: round } = useQuery({
+    queryKey: ['round', roundId],
+    queryFn: () => getRound(roundId),
   })
 
   const { data: questions } = useQuery({
-    queryKey: ['questions', episodeId],
-    queryFn: () => getQuestionsWithOptions(episodeId),
-    enabled: !!episode,
+    queryKey: ['questions', roundId],
+    queryFn: () => getQuestionsWithOptions(roundId),
+    enabled: !!round,
   })
 
   useEffect(() => {
-    if (episode) setPageTitle(`Questions — ${episode.title}`)
-  }, [episode])
+    if (round) setPageTitle(`Questions — ${round.title}`)
+  }, [round])
 
-  if (!episode) return null
+  if (!round) return null
 
   const initialDrafts: QuestionDraft[] = (questions ?? []).map((q) => ({
     id: q.id,
@@ -41,38 +40,45 @@ export function AdminQuestionsPage() {
   }))
 
   const handleSave = (drafts: QuestionDraft[]) => {
-    saveQuestions(episodeId, drafts)
-    queryClient.invalidateQueries({ queryKey: ['questions', episodeId] })
-    queryClient.invalidateQueries({ queryKey: ['episodes'] })
+    saveQuestions(roundId, drafts)
+    queryClient.invalidateQueries({ queryKey: ['questions', roundId] })
+    queryClient.invalidateQueries({ queryKey: ['rounds'] })
   }
 
   const handlePublish = () => {
     try {
-      setEpisodeStatus(episodeId, 'published')
-      queryClient.invalidateQueries({ queryKey: ['episodes'] })
-      toast('Episode published — it is now live for players', 'success')
-      navigate({ to: '/admin/episodes' })
+      setRoundStatus(roundId, 'published')
+      queryClient.invalidateQueries({ queryKey: ['rounds'] })
+      toast('Round published — it is now live for players', 'success')
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Publish failed', 'error')
     }
   }
 
-  const errors = validatePublishedContent(episodeId)
+  const errors = validatePublishedContent(roundId)
   const validationCount = (questions ?? []).length
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <BackLink to="/admin/episodes" label="Episodes" />
+        <BackLink to="/admin/seasons" label="Seasons" />
         <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-bold text-white sm:text-3xl">
-              {episode.title}
+              {round.title}
               <span className="ml-3 align-middle text-sm font-semibold text-ink-300">Questions</span>
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Badge tone={episode.status === 'published' ? 'green' : episode.status === 'archived' ? 'amber' : 'slate'}>
-                {episode.status === 'published' ? 'Live' : episode.status === 'archived' ? 'Archived' : 'Draft'}
+              <Badge
+                tone={
+                  round.status === 'published' ? 'green' : round.status === 'archived' ? 'amber' : 'slate'
+                }
+              >
+                {round.status === 'published'
+                  ? 'Live'
+                  : round.status === 'archived'
+                    ? 'Archived'
+                    : 'Draft'}
               </Badge>
               <Badge tone={validationCount > 0 ? 'violet' : 'slate'}>{validationCount} questions</Badge>
               {errors.length > 0 ? (
@@ -85,12 +91,12 @@ export function AdminQuestionsPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Link to={`/episodes/${episodeId}/quiz`}>
+            <Link to={`/rounds/${roundId}/quiz`}>
               <Button variant="secondary" size="sm" icon={Eye}>
-                Preview Quiz
+                Preview Round
               </Button>
             </Link>
-            {episode.status !== 'published' && (
+            {round.status !== 'published' && (
               <Button size="sm" icon={Rocket} onClick={handlePublish}>
                 Publish
               </Button>
@@ -99,7 +105,7 @@ export function AdminQuestionsPage() {
         </div>
       </div>
 
-      <QuestionEditor episodeId={episodeId} initial={initialDrafts} onSave={handleSave} />
+      <QuestionEditor roundId={roundId} initial={initialDrafts} onSave={handleSave} />
 
       {errors.length > 0 && (
         <Card className="border-amber-500/30 bg-amber-500/10 p-5">

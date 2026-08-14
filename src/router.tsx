@@ -11,8 +11,8 @@ import { AdminLayout, PublicLayout } from './components/layout'
 import { isAdminLoggedIn } from './services/authService'
 
 import { HomePage } from './routes/home'
-import { EpisodesPage } from './routes/episodes'
-import { EpisodeDetailPage } from './routes/episodeDetail'
+import { RoundsPage } from './routes/rounds'
+import { RoundDetailPage } from './routes/roundDetail'
 import { QuizPage } from './routes/quiz'
 import { ResultPage } from './routes/result'
 import { LeaderboardPage } from './routes/leaderboard'
@@ -22,10 +22,11 @@ import { AdminLoginPage } from './routes/admin/login'
 import { AdminDashboardPage } from './routes/admin/dashboard'
 import { AdminSeasonsPage } from './routes/admin/seasons'
 import { SeasonFormPage } from './routes/admin/seasonForm'
-import { AdminEpisodesPage } from './routes/admin/episodes'
-import { EpisodeFormPage } from './routes/admin/episodeForm'
-import { AdminQuestionsPage } from './routes/admin/questions'
-import { AdminEpisodeLeaderboardPage } from './routes/admin/episodeLeaderboard'
+import { SeasonDetailPage } from './routes/admin/seasonDetail'
+import { MonthDetailPage } from './routes/admin/monthDetail'
+import { RoundFormPage } from './routes/admin/roundForm'
+import { AdminRoundQuestionsPage } from './routes/admin/roundQuestions'
+import { AdminRoundLeaderboardPage } from './routes/admin/roundLeaderboard'
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -48,27 +49,27 @@ const homeRoute = createRoute({
   component: HomePage,
 })
 
-const episodesRoute = createRoute({
+const roundsRoute = createRoute({
   getParentRoute: () => publicLayout,
-  path: '/episodes',
-  component: EpisodesPage,
+  path: '/rounds',
+  component: RoundsPage,
 })
 
-const episodeDetailRoute = createRoute({
+const roundDetailRoute = createRoute({
   getParentRoute: () => publicLayout,
-  path: '/episodes/$episodeId',
-  component: EpisodeDetailPage,
+  path: '/rounds/$roundId',
+  component: RoundDetailPage,
 })
 
 const quizRoute = createRoute({
   getParentRoute: () => publicLayout,
-  path: '/episodes/$episodeId/quiz',
+  path: '/rounds/$roundId/quiz',
   component: QuizPage,
 })
 
 const resultRoute = createRoute({
   getParentRoute: () => publicLayout,
-  path: '/episodes/$episodeId/result',
+  path: '/rounds/$roundId/result',
   component: ResultPage,
   validateSearch: (search: Record<string, unknown>) => ({
     attemptId: typeof search.attemptId === 'string' ? search.attemptId : '',
@@ -116,34 +117,46 @@ const adminSeasonsRoute = createRoute({
   component: AdminSeasonsPage,
 })
 
-const adminSeasonFormRoute = createRoute({
+const adminSeasonNewRoute = createRoute({
   getParentRoute: () => adminLayout,
-  path: '/admin/seasons/$seasonId',
+  path: '/admin/seasons/new',
   component: SeasonFormPage,
 })
 
-const adminEpisodesRoute = createRoute({
+const adminSeasonEditRoute = createRoute({
   getParentRoute: () => adminLayout,
-  path: '/admin/episodes',
-  component: AdminEpisodesPage,
+  path: '/admin/seasons/$seasonId/edit',
+  component: SeasonFormPage,
 })
 
-const adminEpisodeFormRoute = createRoute({
+const adminSeasonDetailRoute = createRoute({
   getParentRoute: () => adminLayout,
-  path: '/admin/episodes/$episodeId',
-  component: EpisodeFormPage,
+  path: '/admin/seasons/$seasonId',
+  component: SeasonDetailPage,
 })
 
-const adminQuestionsRoute = createRoute({
+const adminMonthDetailRoute = createRoute({
   getParentRoute: () => adminLayout,
-  path: '/admin/episodes/$episodeId/questions',
-  component: AdminQuestionsPage,
+  path: '/admin/seasons/$seasonId/months/$monthId',
+  component: MonthDetailPage,
 })
 
-const adminEpisodeLeaderboardRoute = createRoute({
+const adminRoundFormRoute = createRoute({
   getParentRoute: () => adminLayout,
-  path: '/admin/episodes/$episodeId/leaderboard',
-  component: AdminEpisodeLeaderboardPage,
+  path: '/admin/rounds/$roundId',
+  component: RoundFormPage,
+})
+
+const adminRoundQuestionsRoute = createRoute({
+  getParentRoute: () => adminLayout,
+  path: '/admin/rounds/$roundId/questions',
+  component: AdminRoundQuestionsPage,
+})
+
+const adminRoundLeaderboardRoute = createRoute({
+  getParentRoute: () => adminLayout,
+  path: '/admin/rounds/$roundId/leaderboard',
+  component: AdminRoundLeaderboardPage,
 })
 
 const notFoundRoute = createRoute({
@@ -158,7 +171,10 @@ function NotFoundPage() {
       <p className="font-display text-7xl font-bold text-gradient">404</p>
       <h1 className="mt-3 font-display text-2xl font-bold text-white">Page not found</h1>
       <p className="mt-2 text-sm text-ink-300">The page you're looking for doesn't exist.</p>
-      <Link to="/" className="mt-6 rounded-xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 hover:brightness-110">
+      <Link
+        to="/"
+        className="mt-6 rounded-xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/25 hover:brightness-110"
+      >
         Back to home
       </Link>
     </div>
@@ -168,8 +184,8 @@ function NotFoundPage() {
 const routeTree = rootRoute.addChildren([
   publicLayout.addChildren([
     homeRoute,
-    episodesRoute,
-    episodeDetailRoute,
+    roundsRoute,
+    roundDetailRoute,
     quizRoute,
     resultRoute,
     leaderboardRoute,
@@ -178,11 +194,13 @@ const routeTree = rootRoute.addChildren([
   adminLayout.addChildren([
     adminDashboardRoute,
     adminSeasonsRoute,
-    adminSeasonFormRoute,
-    adminEpisodesRoute,
-    adminEpisodeFormRoute,
-    adminQuestionsRoute,
-    adminEpisodeLeaderboardRoute,
+    adminSeasonNewRoute,
+    adminSeasonEditRoute,
+    adminSeasonDetailRoute,
+    adminMonthDetailRoute,
+    adminRoundFormRoute,
+    adminRoundQuestionsRoute,
+    adminRoundLeaderboardRoute,
   ]),
   adminLoginRoute,
   notFoundRoute,

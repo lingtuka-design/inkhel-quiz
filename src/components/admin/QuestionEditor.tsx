@@ -18,18 +18,18 @@ import { cn } from '../../lib/utils'
 const LETTERS: OptionKey[] = ['A', 'B', 'C', 'D']
 
 export interface QuestionEditorProps {
-  episodeId: string
+  roundId: string
   initial: QuestionDraft[]
   onSave: (drafts: QuestionDraft[]) => void
 }
 
-export function QuestionEditor({ episodeId, initial, onSave }: QuestionEditorProps) {
+export function QuestionEditor({ roundId, initial, onSave }: QuestionEditorProps) {
   const [drafts, setDrafts] = useState<QuestionDraft[]>(() => initial)
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({})
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const lock = canEditQuestions(episodeId)
+  const lock = canEditQuestions(roundId)
 
   const update = (index: number, patch: Partial<QuestionDraft>) => {
     setDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)))

@@ -2,20 +2,22 @@ import type {
   AdminUser,
   Attempt,
   AttemptAnswer,
-  Episode,
+  Month,
   Participant,
   Question,
   QuestionOption,
+  Round,
   Season,
 } from '../types'
 import { buildSeed } from './seed'
 import { uid } from '../lib/crypto'
 
-const DB_KEY = 'inkhel_db_v2'
+const DB_KEY = 'inkhel_db_v3'
 
 export interface DBShape {
   seasons: Season[]
-  episodes: Episode[]
+  months: Month[]
+  rounds: Round[]
   questions: Question[]
   options: QuestionOption[]
   participants: Participant[]

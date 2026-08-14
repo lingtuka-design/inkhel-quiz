@@ -4,12 +4,13 @@ import type {
   Attempt,
   AttemptAnswer,
   AttemptStatus,
-  Episode,
-  EpisodeReviewQuestion,
   OptionKey,
+  Round,
+  RoundReviewQuestion,
 } from '../types'
 import { calculateScore } from './scoring'
-import { getEpisodeLeaderboard } from './leaderboardService'
+import { getRoundLeaderboard } from './leaderboardService'
+import { roundAvailability } from './roundService'
 
 const ATTEMPT_EXPIRY_GRACE_MS = 0
 
@@ -17,8 +18,8 @@ export function getAttempt(id: string): Attempt | null {
   return getDb().attempts.find((a) => a.id === id) ?? null
 }
 
-export function getAttemptDeadline(attempt: Attempt, episode: Episode): number {
-  return new Date(attempt.startedAt).getTime() + episode.timeLimitSeconds * 1000
+export function getAttemptDeadline(attempt: Attempt, round: Round): number {
+  return new Date(attempt.startedAt).getTime() + round.timeLimitSeconds * 1000
 }
 
 export function getAnsweredCount(attemptId: string): number {
@@ -29,11 +30,11 @@ export function getAnswers(attemptId: string): AttemptAnswer[] {
   return getDb().answers.filter((a) => a.attemptId === attemptId)
 }
 
-export function hasCompletedEpisode(participantId: string, episodeId: string): boolean {
+export function hasCompletedRound(participantId: string, roundId: string): boolean {
   return getDb().attempts.some(
     (a) =>
       a.participantId === participantId &&
-      a.episodeId === episodeId &&
+      a.roundId === roundId &&
       (a.status === 'completed' || a.status === 'expired'),
   )
 }
@@ -50,16 +51,16 @@ export interface ResumeInfo {
  * The server holds the authoritative start time and deadline.
  * The browser only derives the visual countdown from the server deadline.
  */
-export function resumeAttempt(participantId: string, episodeId: string): ResumeInfo | null {
+export function resumeAttempt(participantId: string, roundId: string): ResumeInfo | null {
   const db = getDb()
-  const episode = db.episodes.find((e) => e.id === episodeId)
-  if (!episode) return null
+  const round = db.rounds.find((r) => r.id === roundId)
+  if (!round) return null
   const attempt = db.attempts.find(
-    (a) => a.participantId === participantId && a.episodeId === episodeId && a.status === 'in_progress',
+    (a) => a.participantId === participantId && a.roundId === roundId && a.status === 'in_progress',
   )
   if (!attempt) return null
-  const totalQuestions = db.questions.filter((q) => q.episodeId === episodeId).length
-  const deadline = getAttemptDeadline(attempt, episode)
+  const totalQuestions = db.questions.filter((q) => q.roundId === roundId).length
+  const deadline = getAttemptDeadline(attempt, round)
   if (Date.now() > deadline) {
     finalizeAttempt(attempt.id)
     const updated = getAttempt(attempt.id)!
@@ -80,25 +81,35 @@ export function resumeAttempt(participantId: string, episodeId: string): ResumeI
   }
 }
 
-export function startAttempt(participantId: string, episodeId: string): Attempt {
+export function startAttempt(participantId: string, roundId: string): Attempt {
   const db = getDb()
-  const episode = db.episodes.find((e) => e.id === episodeId)
-  if (!episode) throw new Error('Episode not found')
-  if (episode.status !== 'published') throw new Error('This episode is not open for play')
+  const round = db.rounds.find((r) => r.id === roundId)
+  if (!round) throw new Error('Round not found')
+
+  const availability = roundAvailability(round)
+  if (!availability.open) {
+    if (availability.reason === 'month-closed') {
+      throw new Error('This round belongs to a past month and is no longer playable')
+    }
+    if (availability.reason === 'month-upcoming') {
+      throw new Error('This round belongs to a future month and is not open yet')
+    }
+    throw new Error('This round is not open for play')
+  }
 
   const existing = db.attempts.find(
-    (a) => a.participantId === participantId && a.episodeId === episodeId,
+    (a) => a.participantId === participantId && a.roundId === roundId,
   )
   if (existing && existing.status !== 'in_progress') {
-    throw new Error('You have already completed this episode. One attempt per episode.')
+    throw new Error('You have already completed this round. One attempt per round.')
   }
   if (existing && existing.status === 'in_progress') return existing
 
-  const totalQuestions = db.questions.filter((q) => q.episodeId === episodeId).length
+  const totalQuestions = db.questions.filter((q) => q.roundId === roundId).length
   const attempt: Attempt = {
     id: newId('att'),
     participantId,
-    episodeId,
+    roundId,
     startedAt: nowIso(),
     completedAt: null,
     status: 'in_progress',
@@ -138,17 +149,21 @@ export function submitAnswer(
   const attempt = db.attempts.find((a) => a.id === attemptId)
   if (!attempt) throw new Error('Attempt not found')
   if (attempt.status !== 'in_progress') {
-    throw new Error(attempt.status === 'completed' || attempt.status === 'expired' ? 'ATTEMPT_FINISHED' : 'ATTEMPT_ABANDONED')
+    throw new Error(
+      attempt.status === 'completed' || attempt.status === 'expired'
+        ? 'ATTEMPT_FINISHED'
+        : 'ATTEMPT_ABANDONED',
+    )
   }
 
-  const episode = db.episodes.find((e) => e.id === attempt.episodeId)!
-  const question = db.questions.find((q) => q.id === questionId && q.episodeId === attempt.episodeId)
+  const round = db.rounds.find((r) => r.id === attempt.roundId)!
+  const question = db.questions.find((q) => q.id === questionId && q.roundId === attempt.roundId)
   if (!question) throw new Error('Question not found')
   const options = db.options.filter((o) => o.questionId === questionId)
   const option = options.find((o) => o.optionKey === optionKey)
   if (!option) throw new Error('Invalid option')
 
-  const deadline = getAttemptDeadline(attempt, episode)
+  const deadline = getAttemptDeadline(attempt, round)
   const now = Date.now()
   if (now > deadline + ATTEMPT_EXPIRY_GRACE_MS) {
     finalizeAttempt(attemptId)
@@ -156,7 +171,7 @@ export function submitAnswer(
     return {
       attempt: updated,
       answeredCount: getAnsweredCount(attemptId),
-      totalQuestions: db.questions.filter((q) => q.episodeId === attempt.episodeId).length,
+      totalQuestions: db.questions.filter((q) => q.roundId === attempt.roundId).length,
       finished: true,
       answer: getAnswers(attemptId).find((a) => a.questionId === questionId)!,
     }
@@ -169,8 +184,10 @@ export function submitAnswer(
     return {
       attempt,
       answeredCount: getAnsweredCount(attemptId),
-      totalQuestions: db.questions.filter((q) => q.episodeId === attempt.episodeId).length,
-      finished: getAnsweredCount(attemptId) >= db.questions.filter((q) => q.episodeId === attempt.episodeId).length,
+      totalQuestions: db.questions.filter((q) => q.roundId === attempt.roundId).length,
+      finished:
+        getAnsweredCount(attemptId) >=
+        db.questions.filter((q) => q.roundId === attempt.roundId).length,
       answer: existing,
     }
   }
@@ -188,7 +205,7 @@ export function submitAnswer(
   }
   db.answers.push(answer)
 
-  const totalQuestions = db.questions.filter((q) => q.episodeId === attempt.episodeId).length
+  const totalQuestions = db.questions.filter((q) => q.roundId === attempt.roundId).length
   const answeredCount = getAnsweredCount(attemptId)
   const finished = answeredCount >= totalQuestions
   saveDb()
@@ -204,25 +221,31 @@ export function finalizeAttempt(attemptId: string): Attempt {
   if (!attempt) throw new Error('Attempt not found')
   if (attempt.status !== 'in_progress') return attempt
 
-  const episode = db.episodes.find((e) => e.id === attempt.episodeId)!
-  const allQuestions = db.questions.filter((q) => q.episodeId === attempt.episodeId)
+  const round = db.rounds.find((r) => r.id === attempt.roundId)!
+  const allQuestions = db.questions.filter((q) => q.roundId === attempt.roundId)
   const answers = getAnswers(attemptId)
-  const answeredQuestionIds = new Set(answers.map((a) => a.questionId))
   const correct = answers.filter((a) => a.isCorrect).length
   const answered = answers.length
   const unanswered = allQuestions.length - answered
 
-  const deadline = getAttemptDeadline(attempt, episode)
+  const deadline = getAttemptDeadline(attempt, round)
   const now = Date.now()
   const expired = now >= deadline
-  const timeTaken = expired ? episode.timeLimitSeconds : Math.max(1, Math.round((now - new Date(attempt.startedAt).getTime()) / 1000))
+  const timeTaken = expired
+    ? round.timeLimitSeconds
+    : Math.max(1, Math.round((now - new Date(attempt.startedAt).getTime()) / 1000))
 
-  const status: AttemptStatus = expired ? 'expired' : answered >= allQuestions.length ? 'completed' : 'abandoned'
+  const status: AttemptStatus =
+    expired
+      ? 'expired'
+      : answered >= allQuestions.length
+        ? 'completed'
+        : 'abandoned'
   const score = calculateScore({
     totalQuestions: allQuestions.length,
     correctAnswers: correct,
     unansweredQuestions: unanswered,
-    timeLimitSeconds: episode.timeLimitSeconds,
+    timeLimitSeconds: round.timeLimitSeconds,
     timeTakenSeconds: timeTaken,
     status: status === 'completed' ? 'completed' : status === 'expired' ? 'expired' : 'abandoned',
   })
@@ -242,17 +265,17 @@ export function finalizeAttempt(attemptId: string): Attempt {
 
 export function getAttemptReview(attemptId: string, participantId: string): {
   attempt: Attempt
-  questions: EpisodeReviewQuestion[]
+  questions: RoundReviewQuestion[]
   rank: number
 } | null {
   const db = getDb()
   const attempt = db.attempts.find((a) => a.id === attemptId)
   if (!attempt || attempt.participantId !== participantId) return null
   if (attempt.status === 'in_progress') return null
-  const episode = db.episodes.find((e) => e.id === attempt.episodeId)!
+  const round = db.rounds.find((r) => r.id === attempt.roundId)!
   const answers = new Map(getAnswers(attemptId).map((a) => [a.questionId, a]))
-  const questions: EpisodeReviewQuestion[] = db.questions
-    .filter((q) => q.episodeId === episode.id)
+  const questions: RoundReviewQuestion[] = db.questions
+    .filter((q) => q.roundId === round.id)
     .sort((a, b) => a.order - b.order)
     .map((q) => {
       const answer = answers.get(q.id)
@@ -269,6 +292,6 @@ export function getAttemptReview(attemptId: string, participantId: string): {
         answered: !!answer,
       }
     })
-  const rank = getEpisodeLeaderboard(episode.id).find((r) => r.attemptId === attemptId)?.rank ?? 0
+  const rank = getRoundLeaderboard(round.id).find((r) => r.attemptId === attemptId)?.rank ?? 0
   return { attempt, questions, rank }
 }

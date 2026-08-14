@@ -13,20 +13,21 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { ShareButtons } from '../components/episodes'
+import { ShareButtons } from '../components/rounds'
 import { AnswerOption } from '../components/quiz'
 import { Badge, Button, Card, SectionHeading, Spinner } from '../components/ui'
 import { getAttemptReview } from '../services/attemptService'
-import { getEpisode } from '../services/episodeService'
+import { getRound } from '../services/roundService'
+import { getMonth } from '../services/monthService'
 import { getSeason } from '../services/seasonService'
 import { getParticipant } from '../services/authService'
 import { setPageTitle } from '../services/shareService'
 import { formatTime } from '../lib/utils'
 import { cn } from '../lib/utils'
-import type { EpisodeReviewQuestion } from '../types'
+import type { RoundReviewQuestion } from '../types'
 
 export function ResultPage() {
-  const { episodeId } = useParams({ strict: false })
+  const { roundId } = useParams({ strict: false })
   const { attemptId } = useSearch({ strict: false }) as { attemptId?: string }
   const participant = getParticipant()
 
@@ -39,21 +40,27 @@ export function ResultPage() {
     enabled: !!participant && !!attemptId,
   })
 
-  const { data: episode } = useQuery({
-    queryKey: ['episode', episodeId],
-    queryFn: () => getEpisode(episodeId),
+  const { data: round } = useQuery({
+    queryKey: ['round', roundId],
+    queryFn: () => getRound(roundId),
     enabled: !!review,
   })
 
+  const { data: month } = useQuery({
+    queryKey: ['month', round?.monthId],
+    queryFn: () => (round ? getMonth(round.monthId) : null),
+    enabled: !!round,
+  })
+
   const { data: season } = useQuery({
-    queryKey: ['season', episode?.seasonId],
-    queryFn: () => (episode ? getSeason(episode.seasonId) : null),
-    enabled: !!episode,
+    queryKey: ['season', month?.seasonId],
+    queryFn: () => (month ? getSeason(month.seasonId) : null),
+    enabled: !!month,
   })
 
   useEffect(() => {
-    if (episode) setPageTitle(`Result — ${episode.title}`)
-  }, [episode])
+    if (round) setPageTitle(`Result — ${round.title}`)
+  }, [round])
 
   const summary = useMemo(() => {
     if (!review) return null
@@ -69,21 +76,21 @@ export function ResultPage() {
       <div className="mx-auto max-w-md px-4 py-32 text-center sm:px-6">
         <AlertTriangle className="mx-auto h-10 w-10 text-amber-400" />
         <h1 className="mt-4 font-display text-xl font-bold text-white">No result to show</h1>
-        <p className="mt-2 text-sm text-ink-300">Complete a quiz to see your results here.</p>
-        <Link to="/episodes" className="mt-6 inline-block">
-          <Button variant="secondary">Browse episodes</Button>
+        <p className="mt-2 text-sm text-ink-300">Complete a round to see your results here.</p>
+        <Link to="/rounds" className="mt-6 inline-block">
+          <Button variant="secondary">Browse rounds</Button>
         </Link>
       </div>
     )
   }
 
-  if (!review || !episode) {
+  if (!review || !round) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center px-4 py-32 text-center sm:px-6">
         <Spinner />
         <p className="mt-4 text-sm text-ink-300">Loading results…</p>
-        <Link to="/episodes" className="mt-6 inline-block text-violet-400 hover:text-violet-300">
-          Browse episodes
+        <Link to="/rounds" className="mt-6 inline-block text-violet-400 hover:text-violet-300">
+          Browse rounds
         </Link>
       </div>
     )
@@ -97,10 +104,10 @@ export function ResultPage() {
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
       <div className="animate-fade-up text-center">
         <Badge tone="violet" className="mb-4 px-4 py-1.5">
-          {episode.title} · {season?.name}
+          {round.title} · {month?.name} · {season?.name}
         </Badge>
         <h1 className="font-display text-3xl font-bold text-white sm:text-4xl">
-          Quiz <span className="text-gradient">Complete</span>
+          Round <span className="text-gradient">Complete</span>
         </h1>
         <p className="mt-2 text-sm text-ink-300">
           {attempt.status === 'expired'
@@ -136,7 +143,7 @@ export function ResultPage() {
                 {rank > 0 ? `#${rank}` : '—'}
               </p>
               <p className="mt-1 text-sm text-ink-300">
-                {isTop3 ? 'On the podium! Incredible.' : rank > 0 ? 'On the leaderboard.' : 'Rank pending.'}
+                {isTop3 ? 'On the podium! Incredible.' : rank > 0 ? 'On the round leaderboard.' : 'Rank pending.'}
               </p>
             </div>
           </div>
@@ -197,7 +204,7 @@ export function ResultPage() {
             {summary!.correct} × 10 = {attempt.baseScore} + speed bonus +{attempt.speedBonus} ={' '}
             <span className="font-bold text-white">{attempt.finalScore} total</span>
           </p>
-          <ShareButtons episode={episode} />
+          <ShareButtons round={round} />
         </div>
       </Card>
 
@@ -219,17 +226,17 @@ export function ResultPage() {
       )}
 
       <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
-        <Link to={`/episodes/${episode.id}`}>
-          <Button icon={Trophy}>Episode Leaderboard</Button>
+        <Link to={`/rounds/${round.id}`}>
+          <Button icon={Trophy}>Round Leaderboard</Button>
         </Link>
         <Link to="/leaderboard">
           <Button variant="outline" icon={Medal}>
-            Overall Ranking
+            Monthly & Season Ranking
           </Button>
         </Link>
-        <Link to="/episodes">
+        <Link to="/rounds">
           <Button variant="ghost" icon={Home}>
-            More Episodes
+            More Rounds
           </Button>
         </Link>
       </div>
@@ -237,7 +244,7 @@ export function ResultPage() {
   )
 }
 
-function ReviewCard({ question }: { question: EpisodeReviewQuestion }) {
+function ReviewCard({ question }: { question: RoundReviewQuestion }) {
   return (
     <Card className="animate-fade-up p-5 sm:p-6">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -257,10 +264,11 @@ function ReviewCard({ question }: { question: EpisodeReviewQuestion }) {
       <div className="grid gap-2.5">
         {question.options.map((opt, i) => {
           const isSelected = question.selectedKey === opt.key
-          const state =
-            opt.isCorrect ? 'reveal-correct'
-            : isSelected ? 'wrong'
-            : 'disabled'
+          const state = opt.isCorrect
+            ? 'reveal-correct'
+            : isSelected
+              ? 'wrong'
+              : 'disabled'
           return (
             <AnswerOption
               key={opt.key}
@@ -278,10 +286,8 @@ function ReviewCard({ question }: { question: EpisodeReviewQuestion }) {
         </p>
       )}
       <div className="mt-4 flex items-center gap-2 text-xs font-medium text-emerald-300">
-        <ArrowRight className="h-3.5 w-3.5" /> Correct answer:{" "}
-        <span className="font-semibold">
-          {question.options.find((o) => o.isCorrect)?.text}
-        </span>
+        <ArrowRight className="h-3.5 w-3.5" /> Correct answer:{' '}
+        <span className="font-semibold">{question.options.find((o) => o.isCorrect)?.text}</span>
       </div>
     </Card>
   )

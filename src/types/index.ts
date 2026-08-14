@@ -1,5 +1,6 @@
 export type SeasonStatus = 'draft' | 'active' | 'completed' | 'archived'
-export type EpisodeStatus = 'draft' | 'published' | 'archived'
+export type MonthStatus = 'upcoming' | 'open' | 'completed'
+export type RoundStatus = 'draft' | 'published' | 'archived'
 export type AttemptStatus = 'in_progress' | 'completed' | 'expired' | 'abandoned'
 export type OptionKey = 'A' | 'B' | 'C' | 'D'
 
@@ -16,9 +17,20 @@ export interface Season {
   updatedAt: string
 }
 
-export interface Episode {
+export interface Month {
   id: string
   seasonId: string
+  monthNumber: number
+  name: string
+  startDate: string
+  endDate: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Round {
+  id: string
+  monthId: string
   title: string
   slug: string
   description: string
@@ -26,7 +38,7 @@ export interface Episode {
   bannerIcon: string
   bannerUrl: string | null
   timeLimitSeconds: number
-  status: EpisodeStatus
+  status: RoundStatus
   publishedAt: string | null
   createdAt: string
   updatedAt: string
@@ -34,7 +46,7 @@ export interface Episode {
 
 export interface Question {
   id: string
-  episodeId: string
+  roundId: string
   text: string
   order: number
   createdAt: string
@@ -64,7 +76,7 @@ export interface Participant {
 export interface Attempt {
   id: string
   participantId: string
-  episodeId: string
+  roundId: string
   startedAt: string
   completedAt: string | null
   status: AttemptStatus
@@ -104,7 +116,7 @@ export interface QuizQuestion {
   options: { key: OptionKey; text: string }[]
 }
 
-export interface EpisodeReviewQuestion {
+export interface RoundReviewQuestion {
   id: string
   text: string
   order: number
@@ -129,7 +141,7 @@ export interface LeaderboardRow {
 export interface RankingRow {
   rank: number
   participant: Participant
-  episodes: number
+  rounds: number
   points: number
   totalCorrect: number
   avgTimeSeconds: number

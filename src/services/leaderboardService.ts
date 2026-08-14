@@ -1,6 +1,8 @@
 import { getDb } from '../db/database'
 import type { Attempt, LeaderboardRow, Participant, RankingRow } from '../types'
 import { compareAttempts } from './scoring'
+import { listMonths } from './monthService'
+import { listRoundsByMonth } from './roundService'
 
 const VALID_STATUSES = new Set(['completed', 'expired'])
 
@@ -23,19 +25,62 @@ function participantById(id: string): Participant {
   )
 }
 
-export interface EpisodeLeaderboardInput {
+export interface RankingOptions {
   currentParticipantId?: string | null
 }
 
-export function getEpisodeLeaderboard(
-  episodeId: string,
-  opts: EpisodeLeaderboardInput = {},
+function aggregateRows(
+  attempts: Attempt[],
+  opts: RankingOptions,
+): RankingRow[] {
+  const byParticipant = new Map<string, Attempt[]>()
+  for (const a of attempts) {
+    const list = byParticipant.get(a.participantId) ?? []
+    list.push(a)
+    byParticipant.set(a.participantId, list)
+  }
+  const rows = [...byParticipant.entries()]
+    .map(([pid, list]) => {
+      const total = list.reduce((s, a) => s + a.finalScore, 0)
+      const correct = list.reduce((s, a) => s + a.correctAnswers, 0)
+      const avgTime = Math.round(
+        list.reduce((s, a) => s + (a.timeTakenSeconds ?? 0), 0) / list.length,
+      )
+      const scores = list.map((a) => a.finalScore)
+      return {
+        participantId: pid,
+        rounds: list.length,
+        points: total,
+        totalCorrect: correct,
+        avgTimeSeconds: avgTime,
+        bestScore: Math.max(...scores),
+        worstScore: Math.min(...scores),
+      }
+    })
+    .sort((a, b) => b.points - a.points || b.rounds - a.rounds)
+  return rows.map((r, i) => ({
+    rank: i + 1,
+    participant: participantById(r.participantId),
+    rounds: r.rounds,
+    points: r.points,
+    totalCorrect: r.totalCorrect,
+    avgTimeSeconds: r.avgTimeSeconds,
+    bestScore: r.bestScore,
+    worstScore: r.worstScore,
+    isCurrentUser: r.participantId === opts.currentParticipantId,
+  }))
+}
+
+/** Level 1 — per-round leaderboard */
+export function getRoundLeaderboard(
+  roundId: string,
+  opts: RankingOptions = {},
 ): LeaderboardRow[] {
   const db = getDb()
   const attempts = db.attempts
-    .filter((a) => a.episodeId === episodeId && isValidAttempt(a))
+    .filter((a) => a.roundId === roundId && isValidAttempt(a))
     .sort(compareAttempts)
-  const totalQuestions = db.questions.filter((q) => q.episodeId === episodeId).length
+  const totalQuestions = db.questions.filter((q) => q.roundId === roundId).length
   return attempts.map((a, i) => ({
     rank: i + 1,
     participant: participantById(a.participantId),
@@ -49,61 +94,39 @@ export function getEpisodeLeaderboard(
   }))
 }
 
-export function getSeasonRanking(
-  seasonId: string,
-  opts: EpisodeLeaderboardInput = {},
-): RankingRow[] {
-  const db = getDb()
-  const episodes = db.episodes.filter((e) => e.seasonId === seasonId).map((e) => e.id)
-  const attempts = db.attempts.filter((a) => episodes.includes(a.episodeId) && isValidAttempt(a))
-  const byParticipant = new Map<string, Attempt[]>()
-  for (const a of attempts) {
-    const list = byParticipant.get(a.participantId) ?? []
-    list.push(a)
-    byParticipant.set(a.participantId, list)
-  }
-  const rows = [...byParticipant.entries()]
-    .map(([pid, list]) => {
-      const total = list.reduce((s, a) => s + a.finalScore, 0)
-      const correct = list.reduce((s, a) => s + a.correctAnswers, 0)
-      const avgTime = Math.round(list.reduce((s, a) => s + (a.timeTakenSeconds ?? 0), 0) / list.length)
-      const scores = list.map((a) => a.finalScore)
-      return {
-        participantId: pid,
-        episodes: list.length,
-        points: total,
-        totalCorrect: correct,
-        avgTimeSeconds: avgTime,
-        bestScore: Math.max(...scores),
-        worstScore: Math.min(...scores),
-      }
-    })
-    .sort((a, b) => b.points - a.points || b.episodes - a.episodes)
-  return rows.map((r, i) => ({
-    rank: i + 1,
-    participant: participantById(r.participantId),
-    episodes: r.episodes,
-    points: r.points,
-    totalCorrect: r.totalCorrect,
-    avgTimeSeconds: r.avgTimeSeconds,
-    bestScore: r.bestScore,
-    worstScore: r.worstScore,
-    isCurrentUser: r.participantId === opts.currentParticipantId,
-  }))
+/** Level 2 — monthly ranking (sum of round scores within the month) */
+export function getMonthRanking(monthId: string, opts: RankingOptions = {}): RankingRow[] {
+  const rounds = listRoundsByMonth(monthId).map((r) => r.id)
+  const attempts = getDb().attempts.filter(
+    (a) => rounds.includes(a.roundId) && isValidAttempt(a),
+  )
+  return aggregateRows(attempts, opts)
 }
 
-export function getOverallRanking(opts: EpisodeLeaderboardInput = {}): RankingRow[] {
+/** Level 3 — season overall ranking (sum across all months of the season) */
+export function getSeasonRanking(seasonId: string, opts: RankingOptions = {}): RankingRow[] {
+  const monthIds = listMonths(seasonId).map((m) => m.id)
+  const roundIds = monthIds.flatMap((mid) => listRoundsByMonth(mid).map((r) => r.id))
+  const attempts = getDb().attempts.filter(
+    (a) => roundIds.includes(a.roundId) && isValidAttempt(a),
+  )
+  return aggregateRows(attempts, opts)
+}
+
+export function getOverallRanking(opts: RankingOptions = {}): RankingRow[] {
   const db = getDb()
-  const seasons = db.seasons.map((s) => s.id)
-  const rows = seasons.map((s) => getSeasonRanking(s, opts)).flat()
+  const seasonIds = db.seasons.map((s) => s.id)
+  const rows = seasonIds.flatMap((sid) => getSeasonRanking(sid, opts))
   const byParticipant = new Map<string, RankingRow>()
   for (const r of rows) {
     const existing = byParticipant.get(r.participant.id)
     if (existing) {
-      existing.episodes += r.episodes
+      existing.rounds += r.rounds
       existing.points += r.points
       existing.totalCorrect += r.totalCorrect
-      existing.avgTimeSeconds = Math.round((existing.avgTimeSeconds + r.avgTimeSeconds) / 2)
+      existing.avgTimeSeconds = Math.round(
+        (existing.avgTimeSeconds + r.avgTimeSeconds) / 2,
+      )
       existing.bestScore = Math.max(existing.bestScore, r.bestScore)
       existing.worstScore = Math.min(existing.worstScore, r.worstScore)
     } else {
@@ -111,17 +134,13 @@ export function getOverallRanking(opts: EpisodeLeaderboardInput = {}): RankingRo
     }
   }
   return [...byParticipant.values()]
-    .sort((a, b) => b.points - a.points || b.episodes - a.episodes)
+    .sort((a, b) => b.points - a.points || b.rounds - a.rounds)
     .map((r, i) => ({ ...r, rank: i + 1 }))
-}
-
-export function getAdminSeasonStats(seasonId: string): RankingRow[] {
-  return getSeasonRanking(seasonId, {})
 }
 
 export function getAttemptRank(attemptId: string): number {
   const db = getDb()
   const attempt = db.attempts.find((a) => a.id === attemptId)
   if (!attempt) return 0
-  return getEpisodeLeaderboard(attempt.episodeId).find((r) => r.attemptId === attemptId)?.rank ?? 0
+  return getRoundLeaderboard(attempt.roundId).find((r) => r.attemptId === attemptId)?.rank ?? 0
 }

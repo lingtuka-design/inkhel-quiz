@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ImagePlus, Save, Timer as TimerIcon } from 'lucide-react'
-import type { Episode, EpisodeStatus } from '../../types'
+import type { Round, RoundStatus } from '../../types'
 import { Button, ErrorNote, Field, Input, Select, Textarea, toast } from '../ui'
 import { BANNER_PRESETS, resolveIcon } from '../../lib/banners'
 import { cn } from '../../lib/utils'
@@ -16,20 +16,22 @@ export const TIME_PRESETS = [
 
 const MAX_BANNER_BYTES = 1.5 * 1024 * 1024
 
-export function EpisodeForm({
+export function RoundForm({
   initial,
-  seasons,
+  months,
+  defaultMonthId,
   onSave,
-  submitLabel = 'Save Episode',
+  submitLabel = 'Save Round',
 }: {
-  initial?: Episode | null
-  seasons: { id: string; name: string }[]
+  initial?: Round | null
+  months: { id: string; label: string; seasonName?: string; open: boolean }[]
+  defaultMonthId?: string
   onSave: (input: {
     title: string
     description: string
-    seasonId: string
+    monthId: string
     timeLimitSeconds: number
-    status: EpisodeStatus
+    status: RoundStatus
     bannerGradient: string
     bannerIcon: string
     bannerUrl: string | null
@@ -38,7 +40,7 @@ export function EpisodeForm({
 }) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
-  const [seasonId, setSeasonId] = useState(initial?.seasonId ?? seasons[0]?.id ?? '')
+  const [monthId, setMonthId] = useState(initial?.monthId ?? defaultMonthId ?? months[0]?.id ?? '')
   const [timePreset, setTimePreset] = useState(() =>
     TIME_PRESETS.some((t) => t.seconds === initial?.timeLimitSeconds) ? String(initial?.timeLimitSeconds) : '300',
   )
@@ -47,7 +49,7 @@ export function EpisodeForm({
       ? String(initial.timeLimitSeconds)
       : '',
   )
-  const [status, setStatus] = useState<EpisodeStatus>(initial?.status ?? 'draft')
+  const [status, setStatus] = useState<RoundStatus>(initial?.status ?? 'draft')
   const [bannerGradient, setBannerGradient] = useState(initial?.bannerGradient ?? 'aurora')
   const [bannerIcon, setBannerIcon] = useState(initial?.bannerIcon ?? 'Zap')
   const [bannerUrl, setBannerUrl] = useState<string | null>(initial?.bannerUrl ?? null)
@@ -70,24 +72,24 @@ export function EpisodeForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (!title.trim()) return setError('Episode title is required')
-    if (!seasonId) return setError('Select a season')
+    if (!title.trim()) return setError('Round title is required')
+    if (!monthId) return setError('Select the month this round belongs to')
     if (!timeLimitSeconds || timeLimitSeconds <= 0) return setError('Time limit must be greater than zero')
     setSaving(true)
     try {
       onSave({
         title,
         description,
-        seasonId,
+        monthId,
         timeLimitSeconds,
         status,
         bannerGradient,
         bannerIcon,
         bannerUrl,
       })
-      toast('Episode saved', 'success')
+      toast('Round saved', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save episode')
+      setError(err instanceof Error ? err.message : 'Failed to save round')
     } finally {
       setSaving(false)
     }
@@ -99,17 +101,19 @@ export function EpisodeForm({
 
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-5">
-          <Field label="Episode title">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. General Knowledge Challenge" required />
+          <Field label="Round title">
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Round 4 — Football Fever" required />
           </Field>
           <Field label="Short description">
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What will players face?" />
           </Field>
-          <Field label="Season">
-            <Select value={seasonId} onChange={(e) => setSeasonId(e.target.value)} required>
-              {seasons.map((s) => (
-                <option key={s.id} value={s.id} className="bg-ink-800">
-                  {s.name}
+          <Field label="Month" hint="Rounds stay playable until this month ends, then close automatically.">
+            <Select value={monthId} onChange={(e) => setMonthId(e.target.value)} required>
+              {months.map((m) => (
+                <option key={m.id} value={m.id} className="bg-ink-800">
+                  {m.seasonName ? `${m.seasonName} — ` : ''}
+                  {m.label}
+                  {m.open ? ' (open)' : ' (closed)'}
                 </option>
               ))}
             </Select>
@@ -151,7 +155,7 @@ export function EpisodeForm({
             )}
           </div>
           <Field label="Status">
-            <Select value={status} onChange={(e) => setStatus(e.target.value as EpisodeStatus)}>
+            <Select value={status} onChange={(e) => setStatus(e.target.value as RoundStatus)}>
               <option value="draft" className="bg-ink-800">Draft</option>
               <option value="published" className="bg-ink-800">Published</option>
               <option value="archived" className="bg-ink-800">Archived</option>
@@ -200,7 +204,10 @@ export function EpisodeForm({
           </Field>
           <div className="overflow-hidden rounded-xl border border-white/10">
             <div
-              className={cn('flex h-28 items-center justify-center bg-gradient-to-br', BANNER_PRESETS.find((p) => p.id === bannerGradient)?.gradient)}
+              className={cn(
+                'flex h-28 items-center justify-center bg-gradient-to-br',
+                BANNER_PRESETS.find((p) => p.id === bannerGradient)?.gradient,
+              )}
             >
               {bannerUrl ? (
                 <img src={bannerUrl} alt="Banner preview" className="h-full w-full object-cover" />
@@ -209,7 +216,7 @@ export function EpisodeForm({
               )}
             </div>
             <div className="bg-white/5 px-4 py-2 text-xs text-ink-300">
-              Preview of {title || 'Episode title'} · {description || 'Episode description'}
+              Preview of {title || 'Round title'} · {description || 'Round description'}
             </div>
           </div>
         </div>

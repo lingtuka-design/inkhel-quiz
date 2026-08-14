@@ -2,15 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { AlertTriangle, ListChecks, Play, ShieldAlert, Timer as TimerIcon, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { EpisodeBanner } from '../components/episodes'
+import { RoundBanner } from '../components/rounds'
 import { QuestionCard, QuizTimer, useCountdown } from '../components/quiz'
 import { Button, Card, ErrorNote, Input, Modal, toast } from '../components/ui'
-import { getEpisode } from '../services/episodeService'
+import { getRound } from '../services/roundService'
 import { getQuizQuestions } from '../services/questionService'
-import {
-  getParticipant,
-  saveParticipant,
-} from '../services/authService'
+import { getParticipant, saveParticipant } from '../services/authService'
 import {
   getAttempt,
   resumeAttempt,
@@ -23,12 +20,12 @@ import type { Attempt, OptionKey, QuizQuestion } from '../types'
 type Phase = 'boot' | 'instructions' | 'playing' | 'done'
 
 export function QuizPage() {
-  const { episodeId } = useParams({ strict: false })
+  const { roundId } = useParams({ strict: false })
   const navigate = useNavigate()
 
-  const { data: episode } = useQuery({
-    queryKey: ['episode', episodeId],
-    queryFn: () => getEpisode(episodeId),
+  const { data: round } = useQuery({
+    queryKey: ['round', roundId],
+    queryFn: () => getRound(roundId),
   })
 
   const [phase, setPhase] = useState<Phase>('boot')
@@ -46,20 +43,19 @@ export function QuizPage() {
   }, [attempt])
 
   useEffect(() => {
-    document.title = episode ? `${episode.title} — Inkhel` : 'Quiz — Inkhel'
-  }, [episode])
+    document.title = round ? `${round.title} — Inkhel` : 'Quiz — Inkhel'
+  }, [round])
 
   const goToResult = useCallback(
     (attemptId: string) => {
-      navigate({ to: `/episodes/${episodeId}/result?attemptId=${attemptId}` })
+      navigate({ to: `/rounds/${roundId}/result?attemptId=${attemptId}` })
     },
-    [navigate, episodeId],
+    [navigate, roundId],
   )
 
   const handleFinalize = useCallback(
     (attemptId: string) => {
       if (!attemptId) return
-      // Server already finalized; just read the current attempt row
       const final = getAttempt(attemptId)
       if (!final) return
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
@@ -70,10 +66,10 @@ export function QuizPage() {
 
   // Boot: check for a resumable attempt
   useEffect(() => {
-    if (!episode || phase !== 'boot') return
+    if (!round || phase !== 'boot') return
     const participant = getParticipant()
-    if (episode.status !== 'published') {
-      setError('This episode is not open for play')
+    if (round.status !== 'published') {
+      setError('This round is not open for play')
       setPhase('done')
       return
     }
@@ -82,15 +78,15 @@ export function QuizPage() {
       setPhase('instructions')
       return
     }
-    const resume = resumeAttempt(participant.id, episodeId)
+    const resume = resumeAttempt(participant.id, roundId)
     if (!resume) {
       setPhase('instructions')
       return
     }
     if (resume.status === 'active') {
-      const qs = getQuizQuestions(episodeId)
+      const qs = getQuizQuestions(roundId)
       if (qs.length === 0) {
-        setError('This episode has no questions yet')
+        setError('This round has no questions yet')
         setPhase('done')
         return
       }
@@ -103,7 +99,7 @@ export function QuizPage() {
       toast('Your previous attempt was auto-submitted when time ran out', 'info')
       handleFinalize(resume.attempt.id)
     }
-  }, [episode, episodeId, phase, handleFinalize])
+  }, [round, roundId, phase, handleFinalize])
 
   const start = () => {
     const participant = getParticipant()
@@ -112,16 +108,16 @@ export function QuizPage() {
       return
     }
     setError(null)
-    const qs = getQuizQuestions(episodeId)
+    const qs = getQuizQuestions(roundId)
     if (qs.length === 0) {
-      setError('This episode has no questions yet')
+      setError('This round has no questions yet')
       return
     }
-    const att = startAttempt(participant.id, episodeId)
+    const att = startAttempt(participant.id, roundId)
     setAttempt(att)
     setQuestions(qs)
     setIndex(0)
-    setDeadline(new Date(att.startedAt).getTime() + (episode?.timeLimitSeconds ?? 0) * 1000)
+    setDeadline(new Date(att.startedAt).getTime() + (round?.timeLimitSeconds ?? 0) * 1000)
     setPhase('playing')
   }
 
@@ -157,12 +153,12 @@ export function QuizPage() {
     }
   })
 
-  if (!episode) {
+  if (!round) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6">
-        <h1 className="font-display text-2xl font-bold text-white">Episode not found</h1>
-        <Link to="/episodes" className="mt-4 inline-block text-violet-400 hover:text-violet-300">
-          Browse all episodes
+        <h1 className="font-display text-2xl font-bold text-white">Round not found</h1>
+        <Link to="/rounds" className="mt-4 inline-block text-violet-400 hover:text-violet-300">
+          Browse all rounds
         </Link>
       </div>
     )
@@ -172,76 +168,80 @@ export function QuizPage() {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center sm:px-6">
         <ErrorNote message={error} />
-        <Link to={`/episodes/${episode.id}`} className="mt-6 inline-block">
-          <Button variant="secondary">Back to episode</Button>
+        <Link to={`/rounds/${round.id}`} className="mt-6 inline-block">
+          <Button variant="secondary">Back to round</Button>
         </Link>
       </div>
     )
   }
 
   if (phase === 'instructions') {
-    const minutes = Math.round(episode.timeLimitSeconds / 60)
+    const minutes = Math.round(round.timeLimitSeconds / 60)
     return (
       <>
         <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-16">
-        <Card className="animate-fade-up overflow-hidden">
-          <EpisodeBanner episode={episode} className="h-40 sm:h-52" iconSize="h-16 w-16" />
-          <div className="space-y-6 p-6 sm:p-10">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-violet-400">
-                {episode.title}
-              </p>
-              <h1 className="mt-1 font-display text-2xl font-bold text-white sm:text-3xl">
-                Ready to play?
-              </h1>
-              <p className="mt-2 text-sm text-ink-300">
-                {questions.length || '10'} questions · {minutes} minute{minutes === 1 ? '' : 's'} on the
-                clock.
-              </p>
-            </div>
+          <Card className="animate-fade-up overflow-hidden">
+            <RoundBanner round={round} className="h-40 sm:h-52" iconSize="h-16 w-16" />
+            <div className="space-y-6 p-6 sm:p-10">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-violet-400">
+                  {round.title}
+                </p>
+                <h1 className="mt-1 font-display text-2xl font-bold text-white sm:text-3xl">
+                  Ready to play?
+                </h1>
+                <p className="mt-2 text-sm text-ink-300">
+                  {questions.length || '10'} questions · {minutes} minute{minutes === 1 ? '' : 's'} on
+                  the clock.
+                </p>
+              </div>
 
-            <ul className="space-y-3 text-sm text-ink-200">
-              <li className="flex items-start gap-3">
-                <TimerIcon className="mt-0.5 h-5 w-5 shrink-0 text-violet-400" />
-                <span>
-                  The timer starts the moment you press Start and <strong className="text-white">cannot be paused</strong> —
-                  refreshing the page won't reset it.
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Zap className="mt-0.5 h-5 w-5 shrink-0 text-violet-400" />
-                <span>
-                  Answers lock in the moment you tap — you move straight to the next question. No going back.
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <ListChecks className="mt-0.5 h-5 w-5 shrink-0 text-violet-400" />
-                <span>
-                  Unanswered questions count as incorrect when time runs out, and the attempt is submitted automatically.
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
-                <span className="text-amber-300">
-                  Fair play enforced server-side: every score and timestamp is validated on the server.
-                </span>
-              </li>
-            </ul>
+              <ul className="space-y-3 text-sm text-ink-200">
+                <li className="flex items-start gap-3">
+                  <TimerIcon className="mt-0.5 h-5 w-5 shrink-0 text-violet-400" />
+                  <span>
+                    The timer starts the moment you press Start and{' '}
+                    <strong className="text-white">cannot be paused</strong> — refreshing the page
+                    won't reset it.
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Zap className="mt-0.5 h-5 w-5 shrink-0 text-violet-400" />
+                  <span>
+                    Answers lock in the moment you tap — you move straight to the next question. No
+                    going back.
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <ListChecks className="mt-0.5 h-5 w-5 shrink-0 text-violet-400" />
+                  <span>
+                    Unanswered questions count as incorrect when time runs out, and the attempt is
+                    submitted automatically.
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+                  <span className="text-amber-300">
+                    Fair play enforced server-side: every score and timestamp is validated on the
+                    server.
+                  </span>
+                </li>
+              </ul>
 
-            {error && <ErrorNote message={error} />}
+              {error && <ErrorNote message={error} />}
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" icon={Play} onClick={start}>
-                Start Quiz
-              </Button>
-              <Link to={`/episodes/${episode.id}`}>
-                <Button size="lg" variant="ghost">
-                  Back to episode
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button size="lg" icon={Play} onClick={start}>
+                  Start Round
                 </Button>
-              </Link>
+                <Link to={`/rounds/${round.id}`}>
+                  <Button size="lg" variant="ghost">
+                    Back to round
+                  </Button>
+                </Link>
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
         </div>
         <PlayerNameModal
           open={namePromptOpen}
@@ -265,7 +265,7 @@ export function QuizPage() {
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
         <div className="mb-8 flex items-center justify-between gap-4">
           <p className="text-sm font-semibold text-ink-300">
-            <span className="hidden sm:inline">{episode.title} · </span>
+            <span className="hidden sm:inline">{round.title} · </span>
             {index + 1} of {questions.length}
           </p>
           <QuizTimer remainingMs={remaining} />
@@ -277,7 +277,11 @@ export function QuizPage() {
           onSubmit={submit}
           submitting={submitting}
         />
-        {error && <div className="mt-4"><ErrorNote message={error} /></div>}
+        {error && (
+          <div className="mt-4">
+            <ErrorNote message={error} />
+          </div>
+        )}
       </div>
     )
   }

@@ -1,18 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
-import { ArrowLeft, Save } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { BackLink } from '../../components/layout'
 import { SeasonForm } from '../../components/admin/SeasonForm'
-import { Card } from '../../components/ui'
+import { Card, toast } from '../../components/ui'
 import { createSeason, getSeason, updateSeason } from '../../services/seasonService'
 import { queryClient } from '../../lib/query'
 import { setPageTitle } from '../../services/shareService'
-import { toast } from '../../components/ui'
 
 export function SeasonFormPage() {
-  const { seasonId } = useParams({ from: '/admin/seasons/$seasonId' })
-  const isNew = seasonId === 'new'
+  const { seasonId } = useParams({ strict: false })
+  const isNew = window.location.pathname.endsWith('/admin/seasons/new')
   const navigate = useNavigate()
 
   useEffect(() => setPageTitle(isNew ? 'New Season' : 'Edit Season'), [isNew])
@@ -25,16 +23,17 @@ export function SeasonFormPage() {
 
   const handleSave = (input: Parameters<typeof createSeason>[0]) => {
     if (isNew) {
-      const created = createSeason(input)
+      createSeason(input)
       queryClient.invalidateQueries({ queryKey: ['seasons'] })
-      toast('Season created', 'success')
+      queryClient.invalidateQueries({ queryKey: ['months'] })
+      toast('Season created — months generated', 'success')
       navigate({ to: '/admin/seasons' })
-      void created
     } else {
       updateSeason(seasonId, input)
       queryClient.invalidateQueries({ queryKey: ['seasons'] })
+      queryClient.invalidateQueries({ queryKey: ['months'] })
       toast('Season updated', 'success')
-      navigate({ to: '/admin/seasons' })
+      navigate({ to: `/admin/seasons/${seasonId}` })
     }
   }
 
@@ -47,7 +46,7 @@ export function SeasonFormPage() {
         </h1>
         <p className="mt-1 text-sm text-ink-300">
           {isNew
-            ? 'Name it, set the duration, and define the championship window.'
+            ? 'Name it, set the duration — the monthly periods are generated automatically.'
             : 'Update the details of this season.'}
         </p>
       </div>

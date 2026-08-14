@@ -39,7 +39,7 @@ export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
 }
 
 const NAV = [
-  { to: '/episodes', label: 'Episodes', icon: Clapperboard },
+  { to: '/rounds', label: 'Rounds', icon: Clapperboard },
   { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   { to: '/seasons', label: 'Seasons', icon: Calendar },
 ]
@@ -91,7 +91,7 @@ export function PublicLayout() {
                 <span className="text-sm font-semibold text-white">{participant.displayName}</span>
               </div>
             ) : null}
-            <Button variant="secondary" size="sm" onClick={() => navigate({ to: '/episodes' })}>
+            <Button variant="secondary" size="sm" onClick={() => navigate({ to: '/rounds' })}>
               Play Quiz
             </Button>
           </div>
@@ -118,7 +118,7 @@ export function PublicLayout() {
                 </Link>
               ))}
               <div className="pt-2">
-                <Button variant="secondary" size="sm" className="w-full" onClick={() => navigate({ to: '/episodes' })}>
+                <Button variant="secondary" size="sm" className="w-full" onClick={() => navigate({ to: '/rounds' })}>
                   Play Quiz
                 </Button>
               </div>
@@ -138,8 +138,8 @@ export function PublicLayout() {
             Beat the clock. Own the leaderboard. Every second counts.
           </p>
           <div className="flex items-center gap-4 text-sm text-ink-300">
-            <Link to="/episodes" className="hover:text-white">
-              Episodes
+            <Link to="/rounds" className="hover:text-white">
+              Rounds
             </Link>
             <Link to="/leaderboard" className="hover:text-white">
               Leaderboard
@@ -175,7 +175,7 @@ export function AdminLayout() {
   const items = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/admin/seasons', label: 'Seasons', icon: Calendar },
-    { to: '/admin/episodes', label: 'Episodes', icon: Clapperboard },
+    { to: '/admin/rounds', label: 'Rounds', icon: Clapperboard },
   ]
 
   return (

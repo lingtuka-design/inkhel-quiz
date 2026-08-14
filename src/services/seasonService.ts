@@ -1,6 +1,9 @@
 import { getDb, saveDb, newId } from '../db/database'
 import { nowIso } from '../lib/utils'
 import type { Season, SeasonStatus } from '../types'
+import { generateMonths } from './monthService'
+
+export const DEFAULT_DURATION_MONTHS = 10
 
 export interface SeasonInput {
   name: string
@@ -15,9 +18,8 @@ export interface SeasonInput {
 export function computeEndDate(startDate: string, durationMonths: number): string {
   const d = new Date(startDate)
   if (Number.isNaN(d.getTime())) return startDate
-  d.setMonth(d.getMonth() + durationMonths)
-  d.setDate(d.getDate() - 1)
-  return d.toISOString()
+  const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + durationMonths, 0, 23, 59, 59, 999))
+  return lastDay.toISOString()
 }
 
 export function listSeasons(): Season[] {
@@ -45,7 +47,7 @@ export function validateSeason(input: SeasonInput): string[] {
   if (Number.isNaN(start.getTime())) errors.push('Start date is invalid')
   if (Number.isNaN(end.getTime())) errors.push('End date is invalid')
   if (start.getTime() >= end.getTime()) errors.push('End date must be after the start date')
-  if (input.durationMonths < 1) errors.push('Duration must be at least 1 month')
+  if (input.durationMonths < 1 || input.durationMonths > 12) errors.push('Duration must be between 1 and 12 months')
   return errors
 }
 
@@ -68,6 +70,7 @@ export function createSeason(input: SeasonInput): Season {
   if (season.status === 'active') deactivateOthers(db.seasons)
   db.seasons.push(season)
   saveDb()
+  generateMonths(season)
   return season
 }
 
@@ -90,6 +93,7 @@ export function updateSeason(id: string, input: SeasonInput): Season {
   season.updatedAt = nowIso()
   if (input.status === 'active') deactivateOthers(db.seasons, id)
   saveDb()
+  generateMonths(season)
   return season
 }
 

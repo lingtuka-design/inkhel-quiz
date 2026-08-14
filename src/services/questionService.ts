@@ -1,16 +1,16 @@
 import { getDb, saveDb, newId } from '../db/database'
 import { nowIso } from '../lib/utils'
 import type { Question, QuestionDraft, QuestionOption, QuizQuestion, OptionKey } from '../types'
-import { hasPublishedAttempts } from './episodeService'
+import { hasPublishedAttempts, MIN_QUESTIONS_PER_ROUND } from './roundService'
 
 export interface QuestionWithOptions extends Question {
   options: QuestionOption[]
 }
 
-export function getQuestionsWithOptions(episodeId: string): QuestionWithOptions[] {
+export function getQuestionsWithOptions(roundId: string): QuestionWithOptions[] {
   const db = getDb()
   return db.questions
-    .filter((q) => q.episodeId === episodeId)
+    .filter((q) => q.roundId === roundId)
     .sort((a, b) => a.order - b.order)
     .map((q) => ({
       ...q,
@@ -20,22 +20,22 @@ export function getQuestionsWithOptions(episodeId: string): QuestionWithOptions[
     }))
 }
 
-export function canEditQuestions(episodeId: string): { ok: boolean; message: string } {
+export function canEditQuestions(roundId: string): { ok: boolean; message: string } {
   const db = getDb()
-  const episode = db.episodes.find((e) => e.id === episodeId)
-  if (!episode) return { ok: false, message: 'Episode not found' }
-  if (episode.status === 'published' && hasPublishedAttempts(episodeId)) {
+  const round = db.rounds.find((r) => r.id === roundId)
+  if (!round) return { ok: false, message: 'Round not found' }
+  if (round.status === 'published' && hasPublishedAttempts(roundId)) {
     return {
       ok: false,
       message:
-        'This episode is published and participants have started. Questions are locked — unpublish the episode before editing.',
+        'This round is published and participants have started. Questions are locked — unpublish the round before editing.',
     }
   }
   return { ok: true, message: '' }
 }
 
-export function saveQuestions(episodeId: string, drafts: QuestionDraft[]): QuestionWithOptions[] {
-  const lock = canEditQuestions(episodeId)
+export function saveQuestions(roundId: string, drafts: QuestionDraft[]): QuestionWithOptions[] {
+  const lock = canEditQuestions(roundId)
   if (!lock.ok) throw new Error(lock.message)
 
   const cleaned = drafts.filter((d) => d.text.trim() || d.options.some((o) => o.text.trim()))
@@ -45,9 +45,14 @@ export function saveQuestions(episodeId: string, drafts: QuestionDraft[]): Quest
     const filled = d.options.filter((o) => o.text.trim()).length
     if (filled !== 4) throw new Error('Every question must have exactly four options')
   }
+  if (cleaned.length < MIN_QUESTIONS_PER_ROUND) {
+    throw new Error(
+      `A round must contain at least ${MIN_QUESTIONS_PER_ROUND} questions before publishing (currently ${cleaned.length})`,
+    )
+  }
 
   const db = getDb()
-  const existingQuestions = db.questions.filter((q) => q.episodeId === episodeId)
+  const existingQuestions = db.questions.filter((q) => q.roundId === roundId)
   const existingIds = new Set(existingQuestions.map((q) => q.id))
   for (const q of existingQuestions) {
     db.options = db.options.filter((o) => o.questionId !== q.id)
@@ -57,10 +62,10 @@ export function saveQuestions(episodeId: string, drafts: QuestionDraft[]): Quest
   const created: QuestionWithOptions[] = cleaned.map((draft, index) => {
     const question: Question = {
       id: draft.id ?? newId('q'),
-      episodeId,
+      roundId,
       text: draft.text.trim(),
       order: index + 1,
-      createdAt: existingIds.has(draft.id!) ? nowIso() : nowIso(),
+      createdAt: nowIso(),
       updatedAt: nowIso(),
     }
     const options: QuestionOption[] = (['A', 'B', 'C', 'D'] as OptionKey[]).map((key) => {
@@ -84,10 +89,10 @@ export function saveQuestions(episodeId: string, drafts: QuestionDraft[]): Quest
   return created
 }
 
-export function getQuizQuestions(episodeId: string): QuizQuestion[] {
+export function getQuizQuestions(roundId: string): QuizQuestion[] {
   const db = getDb()
   return db.questions
-    .filter((q) => q.episodeId === episodeId)
+    .filter((q) => q.roundId === roundId)
     .sort((a, b) => a.order - b.order)
     .map((q) => ({
       id: q.id,

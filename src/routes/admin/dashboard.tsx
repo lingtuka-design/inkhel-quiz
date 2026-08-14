@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   Calendar,
+  CalendarRange,
   Clapperboard,
   FileEdit,
   Gauge,
@@ -14,24 +15,30 @@ import {
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Badge, Button, Card, SectionHeading, StatCard } from '../../components/ui'
-import { listEpisodes, countQuestions, countParticipants, countAttempts as countEpAttempts } from '../../services/episodeService'
+import { listRounds, countQuestions, countParticipants, countAttempts as countRoundAttempts } from '../../services/roundService'
 import { getActiveSeason, listSeasons } from '../../services/seasonService'
+import { getCurrentMonth, listAllMonths, monthStatus } from '../../services/monthService'
 import { getDb } from '../../db/database'
-import { statusBadge } from '../../components/episodes'
+import { roundStatusBadge } from '../../components/rounds'
 import { setPageTitle } from '../../services/shareService'
 import { formatDate } from '../../lib/utils'
 
 export function AdminDashboardPage() {
   useEffect(() => setPageTitle('Dashboard'), [])
 
-  const { data: episodes } = useQuery({
-    queryKey: ['episodes'],
-    queryFn: listEpisodes,
+  const { data: rounds } = useQuery({
+    queryKey: ['rounds'],
+    queryFn: listRounds,
   })
 
   const { data: seasons } = useQuery({
     queryKey: ['seasons'],
     queryFn: listSeasons,
+  })
+
+  const { data: months } = useQuery({
+    queryKey: ['months'],
+    queryFn: listAllMonths,
   })
 
   const { data: stats } = useQuery({
@@ -43,13 +50,13 @@ export function AdminDashboardPage() {
       const avg = completed.length
         ? Math.round(completed.reduce((s, a) => s + a.finalScore, 0) / completed.length)
         : 0
-      const popular = [...db.episodes]
-        .map((e) => ({ e, count: countEpAttempts(e.id) }))
+      const popular = [...db.rounds]
+        .map((r) => ({ r, count: countRoundAttempts(r.id) }))
         .sort((a, b) => b.count - a.count)[0]
       return {
-        total: db.episodes.length,
-        published: db.episodes.filter((e) => e.status === 'published').length,
-        drafts: db.episodes.filter((e) => e.status === 'draft').length,
+        total: db.rounds.length,
+        published: db.rounds.filter((r) => r.status === 'published').length,
+        drafts: db.rounds.filter((r) => r.status === 'draft').length,
         participants: db.participants.length,
         attempts: valid.length,
         avg,
@@ -59,6 +66,8 @@ export function AdminDashboardPage() {
   })
 
   const activeSeason = getActiveSeason()
+  const currentMonth = getCurrentMonth()
+  const openMonths = (months ?? []).filter((m) => monthStatus(m) === 'open').length
 
   return (
     <div className="space-y-8">
@@ -66,9 +75,11 @@ export function AdminDashboardPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-white sm:text-3xl">Dashboard</h1>
           <p className="mt-1 text-sm text-ink-300">
-            {activeSeason
-              ? `${activeSeason.name} is active until ${formatDate(activeSeason.endDate)}`
-              : 'No active season — create one to publish episodes.'}
+            {currentMonth
+              ? `${currentMonth.name} is underway — rounds close ${formatDate(currentMonth.endDate)}`
+              : activeSeason
+                ? `${activeSeason.name} is active`
+                : 'No active season — create one to publish rounds.'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -77,31 +88,31 @@ export function AdminDashboardPage() {
               New Season
             </Button>
           </Link>
-          <Link to="/admin/episodes/new">
+          <Link to={`/admin/rounds/new?monthId=${currentMonth?.id ?? ''}`}>
             <Button size="sm" icon={Clapperboard}>
-              New Episode
+              New Round
             </Button>
           </Link>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard icon={Clapperboard} label="Total Episodes" value={stats?.total ?? '—'} accent="violet" />
+        <StatCard icon={Clapperboard} label="Total Rounds" value={stats?.total ?? '—'} accent="violet" />
         <StatCard icon={Play} label="Published" value={stats?.published ?? '—'} accent="emerald" />
         <StatCard icon={FileEdit} label="Drafts" value={stats?.drafts ?? '—'} accent="amber" />
         <StatCard icon={Users} label="Participants" value={stats?.participants ?? '—'} accent="sky" />
         <StatCard icon={Zap} label="Quiz Attempts" value={stats?.attempts ?? '—'} accent="rose" />
-        <StatCard icon={Calendar} label="Active Season" value={activeSeason ? `S${activeSeason.seasonNumber}` : '—'} accent="violet" />
+        <StatCard icon={CalendarRange} label="Current Month" value={currentMonth?.name ?? '—'} accent="violet" />
         <StatCard icon={Gauge} label="Average Score" value={stats?.avg ?? '—'} accent="amber" />
-        <StatCard icon={TrendingUp} label="Most Popular" value={stats?.popular?.count ?? 0} accent="emerald" />
+        <StatCard icon={TrendingUp} label="Most Played Round" value={stats?.popular?.count ?? 0} accent="emerald" />
       </div>
 
       <section>
         <SectionHeading
           eyebrow="Activity"
-          title="Recent episodes"
+          title="Recent rounds"
           action={
-            <Link to="/admin/episodes" className="focus-ring inline-flex items-center gap-1.5 text-sm font-semibold text-violet-400 hover:text-violet-300">
+            <Link to="/admin/rounds" className="focus-ring inline-flex items-center gap-1.5 text-sm font-semibold text-violet-400 hover:text-violet-300">
               Manage all →
             </Link>
           }
@@ -111,8 +122,8 @@ export function AdminDashboardPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-ink-300">
-                  <th className="px-4 py-3 font-semibold">Episode</th>
-                  <th className="px-4 py-3 font-semibold">Season</th>
+                  <th className="px-4 py-3 font-semibold">Round</th>
+                  <th className="px-4 py-3 font-semibold">Month</th>
                   <th className="px-4 py-3 text-center font-semibold">Questions</th>
                   <th className="px-4 py-3 text-center font-semibold">Time</th>
                   <th className="px-4 py-3 text-center font-semibold">Players</th>
@@ -122,22 +133,25 @@ export function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {episodes?.slice(0, 8).map((ep) => {
-                  const badge = statusBadge(ep.status)
-                  const season = seasons?.find((s) => s.id === ep.seasonId)
+                {rounds?.slice(0, 8).map((round) => {
+                  const badge = roundStatusBadge(round)
+                  const month = months?.find((m) => m.id === round.monthId)
                   return (
-                    <tr key={ep.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.03]">
-                      <td className="px-4 py-3 font-semibold text-white">{ep.title}</td>
-                      <td className="px-4 py-3 text-ink-200">{season?.name ?? '—'}</td>
-                      <td className="px-4 py-3 text-center text-ink-200">{countQuestions(ep.id)}</td>
-                      <td className="px-4 py-3 text-center text-ink-200">{Math.round(ep.timeLimitSeconds / 60)}m</td>
-                      <td className="px-4 py-3 text-center text-ink-200">{countParticipants(ep.id)}</td>
+                    <tr key={round.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.03]">
+                      <td className="px-4 py-3 font-semibold text-white">{round.title}</td>
+                      <td className="px-4 py-3 text-ink-200">{month?.name ?? '—'}</td>
+                      <td className="px-4 py-3 text-center text-ink-200">{countQuestions(round.id)}</td>
+                      <td className="px-4 py-3 text-center text-ink-200">{Math.round(round.timeLimitSeconds / 60)}m</td>
+                      <td className="px-4 py-3 text-center text-ink-200">{countParticipants(round.id)}</td>
                       <td className="px-4 py-3">
                         <Badge tone={badge.tone}>{badge.label}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-ink-200">{formatDate(ep.createdAt)}</td>
+                      <td className="px-4 py-3 text-ink-200">{formatDate(round.createdAt)}</td>
                       <td className="px-4 py-3 text-right">
-                        <Link to={`/admin/episodes/${ep.id}`} className="focus-ring inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-violet-300 hover:bg-violet-500/10">
+                        <Link
+                          to={`/admin/rounds/${round.id}`}
+                          className="focus-ring inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-violet-300 hover:bg-violet-500/10"
+                        >
                           <Pencil className="h-3.5 w-3.5" /> Edit
                         </Link>
                       </td>
@@ -151,16 +165,18 @@ export function AdminDashboardPage() {
       </section>
 
       <section>
-        <SectionHeading
-          eyebrow="Quick actions"
-          title="Jump right in"
-        />
+        <SectionHeading eyebrow="Quick actions" title="Jump right in" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { to: '/admin/seasons/new', icon: Calendar, label: 'Create Season', desc: 'Open a new championship' },
-            { to: '/admin/episodes/new', icon: Clapperboard, label: 'Create Episode', desc: 'Build a fresh quiz' },
-            { to: '/admin/episodes', icon: FileEdit, label: 'Manage Episodes', desc: 'Edit, publish, archive' },
-            { to: '/leaderboard', icon: Trophy, label: 'View Leaderboard', desc: 'Public overall ranking' },
+            { to: '/admin/seasons/new', icon: Calendar, label: 'Create Season', desc: '10 months, 10 battles' },
+            {
+              to: `/admin/rounds/new?monthId=${currentMonth?.id ?? ''}`,
+              icon: Clapperboard,
+              label: 'Create Round',
+              desc: 'Build a fresh quiz for this month',
+            },
+            { to: '/admin/seasons', icon: FileEdit, label: 'Manage Seasons', desc: 'View months, edit, activate' },
+            { to: '/leaderboard', icon: Trophy, label: 'View Leaderboard', desc: 'Round · month · season' },
           ].map((a) => (
             <Link key={a.to} to={a.to}>
               <Card className="group h-full p-5 transition-all hover:-translate-y-0.5 hover:border-violet-500/30">

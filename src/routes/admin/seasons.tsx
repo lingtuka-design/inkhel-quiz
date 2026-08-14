@@ -1,13 +1,15 @@
-import { Link, useParams } from '@tanstack/react-router'
-import { Calendar, CalendarPlus, Clapperboard, Pencil, Trash2 } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { Calendar, CalendarPlus, CalendarRange, ChevronRight, Clapperboard, Pencil, Trash2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Badge, Button, Card, EmptyState, SectionHeading, toast } from '../../components/ui'
 import { listSeasons, setSeasonStatus } from '../../services/seasonService'
-import { listEpisodesBySeason } from '../../services/episodeService'
+import { listMonths, monthStatus } from '../../services/monthService'
+import { listRoundsByMonth } from '../../services/roundService'
 import { queryClient } from '../../lib/query'
 import { setPageTitle } from '../../services/shareService'
 import { formatDate } from '../../lib/utils'
 import { useEffect } from 'react'
+import { cn } from '../../lib/utils'
 
 const STATUS_TONES = {
   active: { tone: 'green' as const, label: 'Active' },
@@ -41,7 +43,7 @@ export function AdminSeasonsPage() {
         <EmptyState
           icon={Calendar}
           title="No seasons yet"
-          description="Create your first season to start publishing episodes."
+          description="Create your first season — its 10 months are generated automatically."
           action={
             <Link to="/admin/seasons/new">
               <Button icon={CalendarPlus}>Create Season</Button>
@@ -57,7 +59,9 @@ export function AdminSeasonsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-white sm:text-3xl">Seasons</h1>
-          <p className="mt-1 text-sm text-ink-300">Championships that group episodes into ranking periods.</p>
+          <p className="mt-1 text-sm text-ink-300">
+            Each season spans {seasons[0]?.durationMonths ?? 10} months, one competition period per month.
+          </p>
         </div>
         <Link to="/admin/seasons/new">
           <Button size="sm" icon={CalendarPlus}>
@@ -69,7 +73,9 @@ export function AdminSeasonsPage() {
       <div className="space-y-4">
         {seasons.map((season) => {
           const st = STATUS_TONES[season.status]
-          const episodes = listEpisodesBySeason(season.id)
+          const months = listMonths(season.id)
+          const openCount = months.filter((m) => monthStatus(m) === 'open').length
+          const roundCount = months.reduce((s, m) => s + listRoundsByMonth(m.id).length, 0)
           return (
             <Card key={season.id} className="p-5 sm:p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -79,19 +85,39 @@ export function AdminSeasonsPage() {
                   </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-display text-lg font-bold text-white">
-                        {season.name}{' '}
-                        <span className="text-sm font-semibold text-ink-300">
-                          · Season {season.seasonNumber}
-                        </span>
-                      </h2>
+                      <Link to={`/admin/seasons/${season.id}`} className="focus-ring rounded-lg">
+                        <h2 className="font-display text-lg font-bold text-white hover:text-violet-300">
+                          {season.name}{' '}
+                          <span className="text-sm font-semibold text-ink-300">
+                            · Season {season.seasonNumber}
+                          </span>
+                        </h2>
+                      </Link>
                       <Badge tone={st.tone}>{st.label}</Badge>
                     </div>
                     <p className="mt-1 text-sm text-ink-300">
-                      {formatDate(season.startDate)} — {formatDate(season.endDate)} ·{' '}
-                      {season.durationMonths} month{season.durationMonths === 1 ? '' : 's'} ·{' '}
-                      {episodes.length} episode{episodes.length === 1 ? '' : 's'}
+                      {formatDate(season.startDate)} — {formatDate(season.endDate)} · {season.durationMonths}{' '}
+                      months · {months.length} created · {roundCount} rounds
                     </p>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {months.slice(0, 10).map((m) => {
+                        const open = monthStatus(m) === 'open'
+                        return (
+                          <Link
+                            key={m.id}
+                            to={`/admin/seasons/${season.id}/months/${m.id}`}
+                            className={cn(
+                              'focus-ring rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
+                              open
+                                ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+                                : 'border-white/10 bg-white/5 text-ink-300 hover:border-white/25 hover:text-white',
+                            )}
+                          >
+                            {m.name}
+                          </Link>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -106,12 +132,17 @@ export function AdminSeasonsPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleStatus(season.id, season.status === 'completed' ? 'active' : 'completed')}
+                    onClick={() => handleStatus(season.id, 'completed')}
                     disabled={season.status === 'completed'}
                   >
                     Complete
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleStatus(season.id, 'archived')} disabled={season.status === 'archived'}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleStatus(season.id, 'archived')}
+                    disabled={season.status === 'archived'}
+                  >
                     Archive
                   </Button>
                   <Link to={`/admin/seasons/${season.id}`}>
@@ -119,12 +150,18 @@ export function AdminSeasonsPage() {
                       Edit
                     </Button>
                   </Link>
-                  <Link to={`/admin/episodes?season=${season.id}`}>
-                    <Button variant="ghost" size="sm" icon={Clapperboard}>
-                      Episodes
+                  <Link to={`/admin/seasons/${season.id}`}>
+                    <Button variant="secondary" size="sm" icon={CalendarRange}>
+                      Months
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <Button variant="danger" size="sm" icon={Trash2} onClick={() => toast('Use Archive instead of delete to preserve history', 'info')}>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon={Trash2}
+                    onClick={() => toast('Use Archive instead of delete to preserve history', 'info')}
+                  >
                     Delete
                   </Button>
                 </div>

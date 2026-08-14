@@ -156,7 +156,7 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-ink-300">
               <th className="px-4 py-3 font-semibold">Rank</th>
               <th className="px-4 py-3 font-semibold">Player</th>
-              <th className="px-4 py-3 text-center font-semibold">Episodes</th>
+              <th className="px-4 py-3 text-center font-semibold">Rounds</th>
               <th className="px-4 py-3 text-center font-semibold">Correct</th>
               <th className="px-4 py-3 text-center font-semibold">Avg Time</th>
               <th className="px-4 py-3 text-right font-semibold">Points</th>
@@ -187,7 +187,7 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
                     </span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-center text-ink-200">{row.episodes}</td>
+                <td className="px-4 py-3 text-center text-ink-200">{row.rounds}</td>
                 <td className="px-4 py-3 text-center text-ink-200">{row.totalCorrect}</td>
                 <td className="px-4 py-3 text-center text-ink-200">{formatTime(row.avgTimeSeconds)}</td>
                 <td className="px-4 py-3 text-right">

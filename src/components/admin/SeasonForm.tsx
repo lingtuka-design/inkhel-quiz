@@ -2,16 +2,26 @@ import { useEffect, useMemo, useState } from 'react'
 import { CalendarRange, Save } from 'lucide-react'
 import type { Season } from '../../types'
 import { Button, ErrorNote, Field, Input, Select, Textarea, toast } from '../ui'
-import { computeEndDate } from '../../services/seasonService'
+import { computeEndDate, DEFAULT_DURATION_MONTHS } from '../../services/seasonService'
 import { formatDate } from '../../lib/utils'
+import { cn } from '../../lib/utils'
 
 export const DURATION_OPTIONS = [
+  { value: '10', label: '10 months (recommended)' },
   { value: '1', label: '1 month' },
   { value: '2', label: '2 months' },
   { value: '3', label: '3 months' },
   { value: '6', label: '6 months' },
   { value: '12', label: '12 months' },
 ]
+
+function monthName(year: number, month0: number): string {
+  return new Date(Date.UTC(year, month0, 1)).toLocaleString('en-US', {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
 
 export function SeasonForm({
   initial,
@@ -33,7 +43,9 @@ export function SeasonForm({
   const defaultStart = useMemo(() => new Date().toISOString().slice(0, 10), [])
   const [name, setName] = useState(initial?.name ?? '')
   const [seasonNumber, setSeasonNumber] = useState(String(initial?.seasonNumber ?? 1))
-  const [durationMonths, setDurationMonths] = useState(String(initial?.durationMonths ?? 3))
+  const [durationMonths, setDurationMonths] = useState(
+    String(initial?.durationMonths ?? DEFAULT_DURATION_MONTHS),
+  )
   const [startDate, setStartDate] = useState(initial?.startDate?.slice(0, 10) ?? defaultStart)
   const [description, setDescription] = useState(initial?.description ?? '')
   const [status, setStatus] = useState<Season['status']>(initial?.status ?? 'draft')
@@ -43,18 +55,28 @@ export function SeasonForm({
   const autoEnd = useMemo(() => {
     const d = new Date(startDate)
     if (Number.isNaN(d.getTime())) return ''
-    return new Date(computeEndDate(startDate, Number(durationMonths) || 1)).toISOString().slice(0, 10)
+    return new Date(computeEndDate(startDate, Number(durationMonths) || 1))
+      .toISOString()
+      .slice(0, 10)
   }, [startDate, durationMonths])
 
   const [endDate, setEndDate] = useState(() => {
     if (initial?.endDate) return initial.endDate.slice(0, 10)
-    return computeEndDate(defaultStart, 3).slice(0, 10)
+    return computeEndDate(defaultStart, DEFAULT_DURATION_MONTHS).slice(0, 10)
   })
 
   useEffect(() => {
     if (!initial) setEndDate(autoEnd)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoEnd])
+
+  const monthPreview = useMemo(() => {
+    const start = new Date(startDate)
+    if (Number.isNaN(start.getTime())) return []
+    return Array.from({ length: Number(durationMonths) || 1 }, (_, i) =>
+      monthName(start.getUTCFullYear(), start.getUTCMonth() + i),
+    )
+  }, [startDate, durationMonths])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,7 +121,7 @@ export function SeasonForm({
       </div>
 
       <div className="grid gap-5 sm:grid-cols-3">
-        <Field label="Duration in months" hint="End date is calculated automatically, then editable.">
+        <Field label="Duration in months" hint="One month per competition period.">
           <Select value={durationMonths} onChange={(e) => setDurationMonths(e.target.value)}>
             {DURATION_OPTIONS.map((o) => (
               <option key={o.value} value={o.value} className="bg-ink-800">
@@ -108,17 +130,38 @@ export function SeasonForm({
             ))}
           </Select>
         </Field>
-        <Field label="Start date">
+        <Field label="Season starts">
           <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
         </Field>
-        <Field label="End date" hint={`Calculated: ${durationMonths} month(s) from start`}>
+        <Field label="Season ends" hint={`Calculated: ${durationMonths} month(s) from start`}>
           <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
         </Field>
       </div>
 
-      <div className="flex items-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-300">
-        <CalendarRange className="h-4 w-4 shrink-0" />
-        Auto-calculated end date: <span className="font-semibold">{formatDate(new Date(endDate).toISOString())}</span>
+      <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-3">
+        <p className="flex items-center gap-2 text-sm text-sky-300">
+          <CalendarRange className="h-4 w-4 shrink-0" />
+          {Number(durationMonths)} months will be created automatically:{' '}
+          <span className="font-semibold">{formatDate(new Date(endDate).toISOString())}</span>{' '}
+          <span className="text-sky-300/70">(final day of the last month)</span>
+        </p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {monthPreview.map((m, i) => (
+            <span
+              key={m}
+              className={cn(
+                'rounded-full border px-2.5 py-1 text-[11px] font-semibold',
+                i === 0
+                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                  : 'border-white/10 bg-white/5 text-ink-200',
+              )}
+            >
+              {i === 0 ? 'Start · ' : ''}
+              {m}
+              {i === monthPreview.length - 1 ? ' · End' : ''}
+            </span>
+          ))}
+        </div>
       </div>
 
       <Field label="Description">
