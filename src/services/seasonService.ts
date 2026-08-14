@@ -1,0 +1,104 @@
+import { getDb, saveDb, newId } from '../db/database'
+import { nowIso } from '../lib/utils'
+import type { Season, SeasonStatus } from '../types'
+
+export interface SeasonInput {
+  name: string
+  seasonNumber: number
+  description: string
+  durationMonths: number
+  startDate: string
+  endDate: string
+  status: SeasonStatus
+}
+
+export function computeEndDate(startDate: string, durationMonths: number): string {
+  const d = new Date(startDate)
+  if (Number.isNaN(d.getTime())) return startDate
+  d.setMonth(d.getMonth() + durationMonths)
+  d.setDate(d.getDate() - 1)
+  return d.toISOString()
+}
+
+export function listSeasons(): Season[] {
+  return [...getDb().seasons].sort((a, b) => a.seasonNumber - b.seasonNumber)
+}
+
+export function getSeason(id: string): Season | null {
+  return getDb().seasons.find((s) => s.id === id) ?? null
+}
+
+export function getActiveSeason(): Season | null {
+  return (
+    getDb().seasons.find((s) => s.status === 'active') ??
+    getDb().seasons.find((s) => s.status === 'draft') ??
+    null
+  )
+}
+
+export function validateSeason(input: SeasonInput): string[] {
+  const errors: string[] = []
+  if (!input.name.trim()) errors.push('Season name is required')
+  if (!Number.isFinite(input.seasonNumber) || input.seasonNumber < 1) errors.push('Season number must be at least 1')
+  const start = new Date(input.startDate)
+  const end = new Date(input.endDate)
+  if (Number.isNaN(start.getTime())) errors.push('Start date is invalid')
+  if (Number.isNaN(end.getTime())) errors.push('End date is invalid')
+  if (start.getTime() >= end.getTime()) errors.push('End date must be after the start date')
+  if (input.durationMonths < 1) errors.push('Duration must be at least 1 month')
+  return errors
+}
+
+export function createSeason(input: SeasonInput): Season {
+  const errors = validateSeason(input)
+  if (errors.length) throw new Error(errors[0])
+  const db = getDb()
+  const season: Season = {
+    id: newId('season'),
+    name: input.name.trim(),
+    description: input.description.trim(),
+    seasonNumber: input.seasonNumber,
+    durationMonths: input.durationMonths,
+    startDate: new Date(input.startDate).toISOString(),
+    endDate: new Date(input.endDate).toISOString(),
+    status: input.status,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  }
+  if (season.status === 'active') deactivateOthers(db.seasons)
+  db.seasons.push(season)
+  saveDb()
+  return season
+}
+
+export function updateSeason(id: string, input: SeasonInput): Season {
+  const errors = validateSeason(input)
+  if (errors.length) throw new Error(errors[0])
+  const db = getDb()
+  const season = db.seasons.find((s) => s.id === id)
+  if (!season) throw new Error('Season not found')
+  if (season.status === 'completed' && input.status !== season.status) {
+    throw new Error('Completed seasons cannot be changed')
+  }
+  season.name = input.name.trim()
+  season.description = input.description.trim()
+  season.seasonNumber = input.seasonNumber
+  season.durationMonths = input.durationMonths
+  season.startDate = new Date(input.startDate).toISOString()
+  season.endDate = new Date(input.endDate).toISOString()
+  season.status = input.status
+  season.updatedAt = nowIso()
+  if (input.status === 'active') deactivateOthers(db.seasons, id)
+  saveDb()
+  return season
+}
+
+function deactivateOthers(seasons: Season[], exceptId?: string): void {
+  for (const s of seasons) {
+    if (s.id !== exceptId && s.status === 'active') s.status = 'completed'
+  }
+}
+
+export function setSeasonStatus(id: string, status: SeasonStatus): Season {
+  return updateSeason(id, { ...getSeason(id)!, status })
+}

@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink-950: #06060e;
+  --color-ink-900: #0a0a16;
+  --color-ink-850: #0e0e1e;
+  --color-ink-800: #14142a;
+  --color-ink-700: #1d1d3a;
+  --color-ink-600: #2b2b52;
+  --color-ink-300: #a6a6cd;
+  --color-ink-200: #cbcbe8;
+  --color-ink-100: #ededfa;
+
+  --animate-fade-up: fade-up 0.5s ease-out both;
+  --animate-fade-in: fade-in 0.4s ease-out both;
+  --animate-pop: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.5s linear infinite;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-ink-950 text-ink-100 font-sans antialiased;
+  background-image:
+    radial-gradient(1100px 550px at 85% -10%, rgba(124, 58, 237, 0.16), transparent 60%),
+    radial-gradient(900px 480px at -10% 5%, rgba(99, 102, 241, 0.13), transparent 55%),
+    radial-gradient(700px 400px at 50% 110%, rgba(217, 70, 239, 0.07), transparent 60%);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgba(139, 92, 246, 0.4);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+  background-clip: content-box;
+  border: 2px solid transparent;
+}
+
+.glass {
+  @apply bg-white/[0.045] border border-white/10 backdrop-blur-xl;
+}
+
+.text-gradient {
+  @apply bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent;
+}
+
+.dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+@utility focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950;
+}
+
+input, select, textarea {
+  @apply focus-ring;
+}
