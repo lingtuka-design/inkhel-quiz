@@ -121,14 +121,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
          WHERE id = ?`
       )
         .bind(
-          title,
-          description,
-          bannerGradient,
-          bannerIcon,
+          title ?? null,
+          description ?? null,
+          bannerGradient ?? null,
+          bannerIcon ?? null,
           bannerUrl !== undefined ? bannerUrl : null,
-          timeLimitSeconds,
-          status,
-          status,
+          timeLimitSeconds ?? null,
+          status ?? null,
+          status ?? null,
           publishedAt,
           now,
           id,

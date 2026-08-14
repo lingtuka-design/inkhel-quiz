@@ -196,14 +196,6 @@ export async function updateRound(id: string, input: RoundInput): Promise<Round>
 }
 
 export async function setRoundStatus(id: string, status: RoundStatus): Promise<Round> {
-  const db = getDb()
-  const round = db.rounds.find((r) => r.id === id)
-  if (!round) throw new Error('Round not found')
-  if (status === 'published') {
-    const contentErrors = validatePublishedContent(id)
-    if (contentErrors.length) throw new Error(contentErrors[0])
-  }
-
   const token = localStorage.getItem('inkhel_admin_token')
   const res = await fetch('/api/rounds', {
     method: 'POST',
@@ -219,12 +211,31 @@ export async function setRoundStatus(id: string, status: RoundStatus): Promise<R
     throw new Error(errData.error || 'Failed to update round status in database')
   }
 
-  round.status = status
-  round.publishedAt = status === 'published' ? nowIso() : null
-  round.updatedAt = nowIso()
-  saveDb()
+  const db = getDb()
+  const round = db.rounds.find((r) => r.id === id)
+  if (round) {
+    round.status = status
+    round.publishedAt = status === 'published' ? nowIso() : null
+    round.updatedAt = nowIso()
+    saveDb()
+    return round
+  }
 
-  return round
+  return {
+    id,
+    monthId: '',
+    title: '',
+    slug: '',
+    description: '',
+    bannerGradient: 'aurora',
+    bannerIcon: 'Zap',
+    bannerUrl: null,
+    timeLimitSeconds: 180,
+    status,
+    publishedAt: status === 'published' ? nowIso() : null,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  }
 }
 
 export function validatePublishedContent(roundId: string): string[] {
