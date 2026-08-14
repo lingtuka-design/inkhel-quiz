@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   CheckCircle2,
   ChevronDown,
@@ -34,6 +34,12 @@ export function QuestionEditor({ roundId, initial, onSave }: QuestionEditorProps
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const lock = canEditQuestions(roundId)
+
+  useEffect(() => {
+    if (initial && initial.length > 0 && (!dirty || drafts.length === 0)) {
+      setDrafts(initial)
+    }
+  }, [initial])
 
   const handleQuestionImage = async (index: number, file: File | undefined) => {
     if (!file) return

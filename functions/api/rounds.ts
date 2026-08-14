@@ -29,20 +29,29 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
     if (monthId) {
       const { results: rounds } = await env.DB.prepare(
-        'SELECT * FROM rounds WHERE month_id = ? ORDER BY created_at ASC'
+        `SELECT r.*, COUNT(q.id) as question_count, COUNT(DISTINCT a.id) as participant_count
+         FROM rounds r
+         LEFT JOIN questions q ON r.id = q.round_id
+         LEFT JOIN attempts a ON r.id = a.round_id AND a.status != 'abandoned'
+         WHERE r.month_id = ?
+         GROUP BY r.id
+         ORDER BY r.created_at ASC`
       )
         .bind(monthId)
         .all()
       return json(toCamelCase(rounds))
     }
 
-    // Default: return published rounds (or all if admin requested)
-    const isAdmin = await verifyAdmin(request, env.DB)
-    const sql = (all && isAdmin)
-      ? 'SELECT * FROM rounds ORDER BY created_at DESC'
-      : "SELECT * FROM rounds WHERE status = 'published' ORDER BY created_at DESC"
+    // Default: return all rounds with question_count
+    const { results: rounds } = await env.DB.prepare(
+      `SELECT r.*, COUNT(q.id) as question_count, COUNT(DISTINCT a.id) as participant_count
+       FROM rounds r
+       LEFT JOIN questions q ON r.id = q.round_id
+       LEFT JOIN attempts a ON r.id = a.round_id AND a.status != 'abandoned'
+       GROUP BY r.id
+       ORDER BY r.created_at DESC`
+    ).all()
 
-    const { results: rounds } = await env.DB.prepare(sql).all()
     return json(toCamelCase(rounds))
   } catch (e: any) {
     return err(e.message || 'Server error', 500)

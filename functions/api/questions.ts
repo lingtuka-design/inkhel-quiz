@@ -29,13 +29,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     for (const opt of options as any[]) {
       if (!optMap[opt.question_id]) optMap[opt.question_id] = []
       
-      // If NOT admin, do not expose is_correct in public quiz view
       const cleanOpt = {
         id: opt.id,
         questionId: opt.question_id,
         optionKey: opt.option_key,
         text: opt.text,
-        ...(isAdmin ? { isCorrect: Boolean(opt.is_correct) } : {}),
+        isCorrect: Boolean(opt.is_correct),
       }
       optMap[opt.question_id].push(cleanOpt)
     }

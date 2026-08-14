@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BackLink } from '../../components/layout'
 import { QuestionEditor } from '../../components/admin/QuestionEditor'
 import { Badge, Button, Card, toast } from '../../components/ui'
+import { getDb, saveDb } from '../../db/database'
 import { getRound, setRoundStatus, validatePublishedContent } from '../../services/roundService'
 import { getQuestionsWithOptions, saveQuestions } from '../../services/questionService'
 import { queryClient } from '../../lib/query'
@@ -19,10 +20,48 @@ export function AdminRoundQuestionsPage() {
     queryFn: () => getRound(roundId),
   })
 
-  const { data: questions } = useQuery({
+  const { data: questions, isLoading: loadingQuestions } = useQuery({
     queryKey: ['questions', roundId],
-    queryFn: () => getQuestionsWithOptions(roundId),
-    enabled: !!round,
+    queryFn: async () => {
+      const token = localStorage.getItem('inkhel_admin_token')
+      const res = await fetch(`/api/questions?roundId=${roundId}`, {
+        headers: token ? { 'X-Admin-Token': token } : {},
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data)) {
+          const db = getDb()
+          db.questions = db.questions.filter((q) => q.roundId !== roundId)
+          for (const q of data) {
+            db.questions.push({
+              id: q.id,
+              roundId: q.roundId,
+              text: q.text,
+              order: q.order,
+              imageUrl: q.imageUrl,
+              createdAt: q.createdAt || new Date().toISOString(),
+              updatedAt: q.updatedAt || new Date().toISOString(),
+            })
+            db.options = db.options.filter((o) => o.questionId !== q.id)
+            for (const opt of q.options || []) {
+              db.options.push({
+                id: opt.id,
+                questionId: q.id,
+                optionKey: opt.optionKey,
+                text: opt.text,
+                isCorrect: Boolean(opt.isCorrect),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              })
+            }
+          }
+          saveDb()
+          return data
+        }
+      }
+      return getQuestionsWithOptions(roundId!)
+    },
+    enabled: !!roundId,
   })
 
   useEffect(() => {
@@ -31,12 +70,12 @@ export function AdminRoundQuestionsPage() {
 
   if (!round) return null
 
-  const initialDrafts: QuestionDraft[] = (questions ?? []).map((q) => ({
+  const initialDrafts: QuestionDraft[] = (questions ?? []).map((q: any) => ({
     id: q.id,
     text: q.text,
     order: q.order,
-    options: q.options.map((o) => ({ key: o.optionKey, text: o.text })),
-    correctKey: q.options.find((o) => o.isCorrect)?.optionKey ?? 'A',
+    options: (q.options || []).map((o: any) => ({ key: o.optionKey, text: o.text })),
+    correctKey: (q.options || []).find((o: any) => o.isCorrect)?.optionKey ?? 'A',
   }))
 
   const handleSave = async (drafts: QuestionDraft[]) => {
