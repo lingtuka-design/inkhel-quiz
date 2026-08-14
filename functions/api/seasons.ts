@@ -58,7 +58,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const now = new Date().toISOString()
 
     if (action === 'create') {
-      const { name, description, durationMonths = 10, startDate } = body
+      const { name, description, durationMonths = 10, startDate, status = 'active' } = body
       if (!name || !startDate) return err('Name and startDate are required')
 
       const start = new Date(startDate)
@@ -68,12 +68,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       const seasonNumber = (((existing[0] as any)?.max_num || 0) + 1)
       const seasonId = `season_${Date.now()}`
 
+      if (status === 'active') {
+        await env.DB.prepare("UPDATE seasons SET status = 'completed' WHERE status = 'active'").run()
+      }
+
       // Create season
       await env.DB.prepare(
         `INSERT INTO seasons (id, name, description, season_number, duration_months, start_date, end_date, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-        .bind(seasonId, name, description || '', seasonNumber, durationMonths, start.toISOString(), end.toISOString(), now, now)
+        .bind(seasonId, name, description || '', seasonNumber, durationMonths, start.toISOString(), end.toISOString(), status, now, now)
         .run()
 
       // Generate months
