@@ -96,11 +96,31 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const nowIso = now.toISOString()
 
     if (action === 'start') {
-      const { roundId, participantId } = body
+      const { roundId, participantId, displayName, email, photoUrl, avatarGradient, provider } = body
       if (!roundId || !participantId) return err('roundId and participantId are required')
 
       const round = await env.DB.prepare('SELECT * FROM rounds WHERE id = ?').bind(roundId).first<any>()
       if (!round) return err('Round not found', 404)
+
+      // Ensure participant exists in D1 table to satisfy Foreign Key constraint
+      const part = await env.DB.prepare('SELECT id FROM participants WHERE id = ?').bind(participantId).first()
+      if (!part) {
+        await env.DB.prepare(
+          `INSERT OR IGNORE INTO participants (id, display_name, email, photo_url, avatar_gradient, provider, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+          .bind(
+            participantId,
+            displayName || 'Player',
+            email || null,
+            photoUrl || null,
+            avatarGradient || 'from-indigo-500 to-sky-500',
+            provider || 'guest',
+            nowIso,
+            nowIso,
+          )
+          .run()
+      }
 
       // Check existing attempt
       const existing = await env.DB.prepare(

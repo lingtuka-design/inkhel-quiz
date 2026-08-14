@@ -116,11 +116,22 @@ export async function startAttempt(participantId: string, roundId: string): Prom
     throw new Error('This round is not open for play')
   }
 
+  const participant = db.participants.find((p) => p.id === participantId)
+
   // Call Cloudflare D1
   const res = await fetch('/api/attempts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'start', participantId, roundId }),
+    body: JSON.stringify({
+      action: 'start',
+      participantId,
+      roundId,
+      displayName: participant?.displayName,
+      email: participant?.email,
+      photoUrl: participant?.photoUrl,
+      avatarGradient: participant?.avatarGradient,
+      provider: participant?.provider,
+    }),
   })
 
   if (!res.ok) {

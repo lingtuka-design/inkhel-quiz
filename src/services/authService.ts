@@ -212,5 +212,20 @@ export function saveParticipant(displayName: string): Participant {
   saveDb()
   localStorage.setItem(PARTICIPANT_KEY, existing.id)
   localStorage.setItem(PARTICIPANT_CACHE_KEY, JSON.stringify(existing))
+
+  // Sync to Cloudflare D1 in background
+  fetch('/api/participants', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: existing.id,
+      displayName: existing.displayName,
+      email: existing.email,
+      photoUrl: existing.photoUrl,
+      avatarGradient: existing.avatarGradient,
+      provider: existing.provider,
+    }),
+  }).catch(() => {})
+
   return existing
 }
