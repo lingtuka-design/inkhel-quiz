@@ -62,12 +62,42 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         })
       }
 
+      // Calculate authoritative rank for this attempt in this round
+      const rankResult = await env.DB.prepare(
+        `SELECT COUNT(*) + 1 as rank
+         FROM attempts
+         WHERE round_id = ?
+           AND status IN ('completed', 'expired')
+           AND is_test_attempt = 0
+           AND (
+             final_score > ?
+             OR (final_score = ? AND correct_answers > ?)
+             OR (final_score = ? AND correct_answers = ? AND time_taken_seconds < ?)
+             OR (final_score = ? AND correct_answers = ? AND time_taken_seconds = ? AND completed_at < ?)
+           )`
+      )
+        .bind(
+          (attempt as any).round_id,
+          (attempt as any).final_score ?? 0,
+          (attempt as any).final_score ?? 0,
+          (attempt as any).correct_answers ?? 0,
+          (attempt as any).final_score ?? 0,
+          (attempt as any).correct_answers ?? 0,
+          (attempt as any).time_taken_seconds ?? 0,
+          (attempt as any).final_score ?? 0,
+          (attempt as any).correct_answers ?? 0,
+          (attempt as any).time_taken_seconds ?? 0,
+          (attempt as any).completed_at ?? new Date().toISOString(),
+        )
+        .first<{ rank: number }>()
+
       return json({
         attempt: toCamelCase(attempt),
         round: toCamelCase(round),
         participant: toCamelCase(participant),
         answers: toCamelCase(answers),
         reviewQuestions,
+        rank: rankResult?.rank || 1,
       })
     }
 
