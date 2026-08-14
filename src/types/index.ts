@@ -49,6 +49,7 @@ export interface Question {
   roundId: string
   text: string
   order: number
+  imageUrl?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -113,6 +114,7 @@ export interface QuizQuestion {
   id: string
   text: string
   order: number
+  imageUrl?: string | null
   options: { key: OptionKey; text: string }[]
 }
 
@@ -120,6 +122,7 @@ export interface RoundReviewQuestion {
   id: string
   text: string
   order: number
+  imageUrl?: string | null
   options: { key: OptionKey; text: string; isCorrect: boolean }[]
   selectedKey: OptionKey | null
   isCorrect: boolean
@@ -154,6 +157,7 @@ export interface QuestionDraft {
   id: string | null
   text: string
   order: number
+  imageUrl?: string | null
   options: { key: OptionKey; text: string }[]
   correctKey: OptionKey
 }

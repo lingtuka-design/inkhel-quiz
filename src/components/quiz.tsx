@@ -145,6 +145,15 @@ export function QuestionCard({
   return (
     <div className="animate-fade-up space-y-6">
       <QuizProgress current={index + 1} total={total} percent={percent} />
+      {question.imageUrl && (
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+          <img
+            src={question.imageUrl}
+            alt="Question clue"
+            className="max-h-64 w-full object-contain p-2"
+          />
+        </div>
+      )}
       <h2 className="font-display text-xl font-bold leading-snug text-white sm:text-2xl md:text-3xl">
         {question.text}
       </h2>

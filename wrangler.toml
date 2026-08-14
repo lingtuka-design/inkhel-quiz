@@ -1,3 +1,13 @@
 name = "quiz"
-compatibility_date = "2026-08-14"
 pages_build_output_dir = "dist"
+compatibility_date = "2024-09-23"
+compatibility_flags = [ "nodejs_compat" ]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "quiz-inkhel-db"
+database_id = "c6d70f55-60a6-49b0-8328-76a8d2e3eb15"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "quiz-images"

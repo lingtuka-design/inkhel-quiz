@@ -261,6 +261,11 @@ function ReviewCard({ question }: { question: RoundReviewQuestion }) {
           </Badge>
         )}
       </div>
+      {question.imageUrl && (
+        <div className="mb-4 overflow-hidden rounded-xl border border-white/10 bg-black/40">
+          <img src={question.imageUrl} alt="Question clue" className="max-h-52 w-full object-contain p-2" />
+        </div>
+      )}
       <div className="grid gap-2.5">
         {question.options.map((opt, i) => {
           const isSelected = question.selectedKey === opt.key

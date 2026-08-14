@@ -5,14 +5,17 @@ import {
   ChevronUp,
   Copy,
   GripVertical,
+  ImagePlus,
   Lock,
   Plus,
   Save,
   Trash2,
+  X,
 } from 'lucide-react'
 import type { OptionKey, QuestionDraft } from '../../types'
 import { Button, ErrorNote, Input, toast } from '../ui'
 import { canEditQuestions } from '../../services/questionService'
+import { uploadImageToR2 } from '../../services/uploadService'
 import { cn } from '../../lib/utils'
 
 const LETTERS: OptionKey[] = ['A', 'B', 'C', 'D']
@@ -28,8 +31,27 @@ export function QuestionEditor({ roundId, initial, onSave }: QuestionEditorProps
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({})
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const lock = canEditQuestions(roundId)
+
+  const handleQuestionImage = async (index: number, file: File | undefined) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) return setError('Only image files are allowed')
+    if (file.size > 10 * 1024 * 1024) return setError('Image is too large — max 10 MB')
+
+    try {
+      setUploadingIndex(index)
+      setError(null)
+      const res = await uploadImageToR2(file)
+      update(index, { imageUrl: res.url })
+      toast('Question image uploaded to R2!', 'success')
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload question image to R2')
+    } finally {
+      setUploadingIndex(null)
+    }
+  }
 
   const update = (index: number, patch: Partial<QuestionDraft>) => {
     setDrafts((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)))
@@ -201,11 +223,42 @@ export function QuestionEditor({ roundId, initial, onSave }: QuestionEditorProps
 
           {!collapsed[i] && (
             <div className="space-y-4 px-4 py-4 sm:px-5">
-              <Input
-                value={d.text}
-                onChange={(e) => update(i, { text: e.target.value })}
-                placeholder="Question text — e.g. What is the capital of France?"
-              />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    value={d.text}
+                    onChange={(e) => update(i, { text: e.target.value })}
+                    placeholder="Question text — e.g. What is the capital of France?"
+                  />
+                </div>
+                <label className="focus-ring flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-ink-300 hover:border-violet-400/40 hover:bg-violet-500/10 hover:text-white">
+                  <ImagePlus className="h-4 w-4 text-violet-400" />
+                  <span className="hidden sm:inline">
+                    {uploadingIndex === i ? 'Uploading...' : d.imageUrl ? 'Change Image' : 'Add Image'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingIndex === i}
+                    className="hidden"
+                    onChange={(e) => handleQuestionImage(i, e.target.files?.[0])}
+                  />
+                </label>
+              </div>
+
+              {d.imageUrl && (
+                <div className="relative inline-block overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                  <img src={d.imageUrl} alt="Question asset" className="h-28 max-w-full rounded-xl object-contain" />
+                  <button
+                    type="button"
+                    onClick={() => update(i, { imageUrl: null })}
+                    className="focus-ring absolute right-1.5 top-1.5 rounded-full bg-black/70 p-1 text-ink-300 hover:bg-red-500 hover:text-white"
+                    title="Remove image"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
               <div className="grid gap-3 sm:grid-cols-2">
                 {d.options.map((opt) => {
                   const isCorrect = d.correctKey === opt.key

@@ -4,6 +4,7 @@ import type { Round, RoundStatus } from '../../types'
 import { Button, ErrorNote, Field, Input, Select, Textarea, toast } from '../ui'
 import { BANNER_PRESETS, resolveIcon } from '../../lib/banners'
 import { cn } from '../../lib/utils'
+import { uploadImageToR2 } from '../../services/uploadService'
 
 export const TIME_PRESETS = [
   { seconds: 60, label: '1 minute' },
@@ -14,7 +15,7 @@ export const TIME_PRESETS = [
   { seconds: 900, label: '15 minutes' },
 ]
 
-const MAX_BANNER_BYTES = 1.5 * 1024 * 1024
+const MAX_BANNER_BYTES = 10 * 1024 * 1024
 
 export function RoundForm({
   initial,
@@ -53,20 +54,29 @@ export function RoundForm({
   const [bannerGradient, setBannerGradient] = useState(initial?.bannerGradient ?? 'aurora')
   const [bannerIcon, setBannerIcon] = useState(initial?.bannerIcon ?? 'Zap')
   const [bannerUrl, setBannerUrl] = useState<string | null>(initial?.bannerUrl ?? null)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const timeLimitSeconds = timePreset === 'custom' ? Number(customTime) || 0 : Number(timePreset)
 
-  const handleBannerFile = (file: File | undefined) => {
+  const handleBannerFile = async (file: File | undefined) => {
     if (!file) return
     if (!file.type.startsWith('image/')) return setError('Only image files are allowed')
     if (file.size > MAX_BANNER_BYTES)
-      return setError('Image is too large — keep it under 1.5 MB in the demo')
-    const reader = new FileReader()
-    reader.onload = () => setBannerUrl(reader.result as string)
-    reader.onerror = () => setError('Could not read the image file')
-    reader.readAsDataURL(file)
+      return setError('Image is too large — max 10 MB')
+
+    try {
+      setUploading(true)
+      setError(null)
+      const res = await uploadImageToR2(file)
+      setBannerUrl(res.url)
+      toast('Picture uploaded to Cloudflare R2!', 'success')
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload image to R2')
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -190,13 +200,14 @@ export function RoundForm({
               })}
             </div>
           </Field>
-          <Field label="Upload a banner image" hint="Optional — used for cards, details and social previews. Max 1.5 MB in the demo.">
+          <Field label="Upload a banner image" hint="Optional — saved to Cloudflare R2. Max 10 MB.">
             <label className="focus-ring flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-4 py-6 text-sm text-ink-300 transition-colors hover:border-violet-400/40 hover:bg-violet-500/5">
               <ImagePlus className="h-6 w-6" />
-              {bannerUrl ? 'Replace image' : 'Click to upload'}
+              {uploading ? 'Uploading to R2...' : bannerUrl ? 'Replace image (R2)' : 'Click to upload to R2'}
               <input
                 type="file"
                 accept="image/*"
+                disabled={uploading}
                 className="hidden"
                 onChange={(e) => handleBannerFile(e.target.files?.[0])}
               />
