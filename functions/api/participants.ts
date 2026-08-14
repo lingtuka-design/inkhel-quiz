@@ -7,6 +7,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const url = new URL(request.url)
     const id = url.searchParams.get('id')
     const googleId = url.searchParams.get('googleId')
+    const list = url.searchParams.get('list') === 'true' || (!id && !googleId)
 
     if (id) {
       const participant = await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(id).first()
@@ -20,7 +21,33 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       return json(toCamelCase(participant))
     }
 
-    return err('id or googleId parameter required')
+    if (list) {
+      const { results: participants } = await env.DB.prepare(
+        `SELECT 
+            p.*,
+            COUNT(DISTINCT a.id) as rounds_played,
+            COALESCE(SUM(a.final_score), 0) as total_points,
+            COALESCE(MAX(a.final_score), 0) as best_score,
+            MAX(a.completed_at) as last_played_at
+         FROM participants p
+         LEFT JOIN attempts a ON p.id = a.participant_id AND (a.status = 'completed' OR a.status = 'expired')
+         GROUP BY p.id
+         ORDER BY p.created_at DESC`
+      ).all<any>()
+
+      const total = participants.length
+      const googleCount = participants.filter((p) => p.provider === 'google').length
+      const guestCount = participants.filter((p) => p.provider === 'guest').length
+
+      return json({
+        total,
+        googleCount,
+        guestCount,
+        participants: toCamelCase(participants),
+      })
+    }
+
+    return err('id, googleId or list parameter required')
   } catch (e: any) {
     return err(e.message || 'Server error', 500)
   }

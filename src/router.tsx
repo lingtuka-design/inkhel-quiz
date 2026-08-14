@@ -20,6 +20,7 @@ import { SeasonsPage } from './routes/seasons'
 
 import { AdminLoginPage } from './routes/admin/login'
 import { AdminDashboardPage } from './routes/admin/dashboard'
+import { AdminUsersPage } from './routes/admin/users'
 import { AdminSeasonsPage } from './routes/admin/seasons'
 import { SeasonFormPage } from './routes/admin/seasonForm'
 import { SeasonDetailPage } from './routes/admin/seasonDetail'
@@ -111,6 +112,12 @@ const adminDashboardRoute = createRoute({
   component: AdminDashboardPage,
 })
 
+const adminUsersRoute = createRoute({
+  getParentRoute: () => adminLayout,
+  path: '/admin/users',
+  component: AdminUsersPage,
+})
+
 const adminSeasonsRoute = createRoute({
   getParentRoute: () => adminLayout,
   path: '/admin/seasons',
@@ -193,6 +200,7 @@ const routeTree = rootRoute.addChildren([
   ]),
   adminLayout.addChildren([
     adminDashboardRoute,
+    adminUsersRoute,
     adminSeasonsRoute,
     adminSeasonNewRoute,
     adminSeasonEditRoute,

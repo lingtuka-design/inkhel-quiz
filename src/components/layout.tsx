@@ -9,6 +9,7 @@ import {
   Menu,
   Trophy,
   UserCheck,
+  Users,
   X,
   Zap,
 } from 'lucide-react'
@@ -270,6 +271,7 @@ export function AdminLayout() {
 
   const items = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/admin/users', label: 'Users', icon: Users },
     { to: '/admin/seasons', label: 'Seasons', icon: Calendar },
     { to: '/admin/rounds', label: 'Rounds', icon: Clapperboard },
   ]
