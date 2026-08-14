@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   Calendar,
@@ -30,19 +30,26 @@ import { GoogleIcon } from '../../components/layout'
 export function AdminDashboardPage() {
   useEffect(() => setPageTitle('Dashboard'), [])
 
-  const { data: rounds } = useQuery({
-    queryKey: ['rounds'],
-    queryFn: listRounds,
+  const { data: rounds = [] } = useQuery<any[]>({
+    queryKey: ['adminDashboardRounds'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/rounds')
+        if (res.ok) return await res.json()
+      } catch {}
+      return listRounds()
+    },
   })
 
-  const { data: seasons } = useQuery({
-    queryKey: ['seasons'],
-    queryFn: listSeasons,
-  })
-
-  const { data: months } = useQuery({
-    queryKey: ['months'],
-    queryFn: listAllMonths,
+  const { data: seasons = [] } = useQuery<any[]>({
+    queryKey: ['adminDashboardSeasons'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/seasons')
+        if (res.ok) return await res.json()
+      } catch {}
+      return listSeasons()
+    },
   })
 
   const { data: usersData } = useQuery({
@@ -56,31 +63,48 @@ export function AdminDashboardPage() {
     },
   })
 
+  const months = useMemo(() => {
+    const allM: any[] = []
+    for (const s of seasons) {
+      if (Array.isArray(s.months)) allM.push(...s.months)
+    }
+    return allM.length > 0 ? allM : listAllMonths()
+  }, [seasons])
+
+  const activeSeason = useMemo(() => {
+    return seasons.find((s: any) => s.status === 'active') ?? getActiveSeason()
+  }, [seasons])
+
+  const currentMonth = useMemo(() => {
+    if (!months || months.length === 0) return getCurrentMonth()
+    const now = Date.now()
+    const open = months.filter((m: any) => {
+      const start = new Date(m.startDate).getTime()
+      const end = new Date(m.endDate).getTime()
+      return now >= start && now <= end
+    })
+    return open.sort((a: any, b: any) => a.startDate.localeCompare(b.startDate))[0] ?? months[0] ?? null
+  }, [months])
+
   const { data: stats } = useQuery({
-    queryKey: ['adminStats'],
+    queryKey: ['adminStats', rounds.length],
     queryFn: () => {
-      const db = getDb()
-      const valid = db.attempts.filter((a) => a.status !== 'abandoned' && !a.isTestAttempt)
-      const completed = valid.filter((a) => a.status === 'completed' || a.status === 'expired')
-      const avg = completed.length
-        ? Math.round(completed.reduce((s, a) => s + a.finalScore, 0) / completed.length)
-        : 0
-      const popular = [...db.rounds]
-        .map((r) => ({ r, count: countRoundAttempts(r.id) }))
-        .sort((a, b) => b.count - a.count)[0]
+      const total = rounds.length
+      const published = rounds.filter((r) => r.status === 'published').length
+      const drafts = rounds.filter((r) => r.status === 'draft').length
+      const totalQuestions = rounds.reduce((acc, r: any) => acc + (r.questionCount || 0), 0)
+      const totalParticipants = rounds.reduce((acc, r: any) => acc + (r.participantCount || 0), 0)
       return {
-        total: db.rounds.length,
-        published: db.rounds.filter((r) => r.status === 'published').length,
-        drafts: db.rounds.filter((r) => r.status === 'draft').length,
-        attempts: valid.length,
-        avg,
-        popular,
+        total,
+        published,
+        drafts,
+        attempts: totalParticipants,
+        avg: 0,
+        popular: rounds[0] ? { r: rounds[0], count: rounds[0].participantCount || 0 } : null,
       }
     },
   })
 
-  const activeSeason = getActiveSeason()
-  const currentMonth = getCurrentMonth()
   const participantsList = usersData?.participants ?? []
 
   return (
@@ -264,9 +288,13 @@ export function AdminDashboardPage() {
                     <tr key={round.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.03]">
                       <td className="px-4 py-3 font-semibold text-white">{round.title}</td>
                       <td className="px-4 py-3 text-ink-200">{month?.name ?? '—'}</td>
-                      <td className="px-4 py-3 text-center text-ink-200">{countQuestions(round.id)}</td>
+                      <td className="px-4 py-3 text-center text-ink-200">
+                        <span className="font-semibold text-white">{round.questionCount || 0}</span>
+                      </td>
                       <td className="px-4 py-3 text-center text-ink-200">{Math.round(round.timeLimitSeconds / 60)}m</td>
-                      <td className="px-4 py-3 text-center text-ink-200">{countParticipants(round.id)}</td>
+                      <td className="px-4 py-3 text-center text-ink-200">
+                        <span className="font-semibold text-white">{round.participantCount || 0}</span>
+                      </td>
                       <td className="px-4 py-3">
                         <Badge tone={badge.tone}>{badge.label}</Badge>
                       </td>
