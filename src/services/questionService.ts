@@ -27,7 +27,7 @@ export function canEditQuestions(roundId: string): { ok: boolean; message: strin
   return { ok: true, message: '' }
 }
 
-export function saveQuestions(roundId: string, drafts: QuestionDraft[]): QuestionWithOptions[] {
+export async function saveQuestions(roundId: string, drafts: QuestionDraft[]): Promise<QuestionWithOptions[]> {
   const lock = canEditQuestions(roundId)
   if (!lock.ok) throw new Error(lock.message)
 
@@ -42,6 +42,21 @@ export function saveQuestions(roundId: string, drafts: QuestionDraft[]): Questio
     throw new Error(
       `A round must contain at least ${MIN_QUESTIONS_PER_ROUND} questions before publishing (currently ${cleaned.length})`,
     )
+  }
+
+  const token = localStorage.getItem('inkhel_admin_token')
+  const res = await fetch('/api/questions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ roundId, drafts: cleaned }),
+  })
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}))
+    throw new Error(errData.error || 'Failed to save questions in database')
   }
 
   const db = getDb()
@@ -80,16 +95,6 @@ export function saveQuestions(roundId: string, drafts: QuestionDraft[]): Questio
   })
 
   saveDb()
-
-  const token = localStorage.getItem('inkhel_admin_token')
-  fetch('/api/questions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'X-Admin-Token': token } : {}),
-    },
-    body: JSON.stringify({ roundId, drafts: cleaned }),
-  }).catch(() => {})
 
   return created
 }

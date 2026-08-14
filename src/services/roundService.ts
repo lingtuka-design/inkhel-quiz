@@ -94,15 +94,35 @@ export function validateRoundForPublishing(title: string, monthId: string, timeL
   return errors
 }
 
-export function createRound(input: RoundInput): Round {
+export async function createRound(input: RoundInput): Promise<Round> {
   const errors = validateRound(input)
   if (errors.length) throw new Error(errors[0])
+
+  const token = localStorage.getItem('inkhel_admin_token')
+  const res = await fetch('/api/rounds', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ action: 'create', ...input }),
+  })
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}))
+    throw new Error(errData.error || 'Failed to create round in database')
+  }
+
+  const data = await res.json()
+  const roundId = data.id || newId('round')
+  const slug = data.slug || uniqueSlug(input.title)
+
   const db = getDb()
   const round: Round = {
-    id: newId('round'),
+    id: roundId,
     monthId: input.monthId,
     title: input.title.trim(),
-    slug: uniqueSlug(input.title),
+    slug,
     description: input.description.trim(),
     bannerGradient: input.bannerGradient,
     bannerIcon: input.bannerIcon,
@@ -113,56 +133,69 @@ export function createRound(input: RoundInput): Round {
     createdAt: nowIso(),
     updatedAt: nowIso(),
   }
+  db.rounds = db.rounds.filter((r) => r.id !== roundId)
   db.rounds.push(round)
   saveDb()
-
-  const token = localStorage.getItem('inkhel_admin_token')
-  fetch('/api/rounds', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'X-Admin-Token': token } : {}),
-    },
-    body: JSON.stringify({ action: 'create', ...input }),
-  }).catch(() => {})
 
   return round
 }
 
-export function updateRound(id: string, input: RoundInput): Round {
+export async function updateRound(id: string, input: RoundInput): Promise<Round> {
   const errors = validateRound(input)
   if (errors.length) throw new Error(errors[0])
-  const db = getDb()
-  const round = db.rounds.find((r) => r.id === id)
-  if (!round) throw new Error('Round not found')
-  round.title = input.title.trim()
-  round.description = input.description.trim()
-  round.monthId = input.monthId
-  round.timeLimitSeconds = input.timeLimitSeconds
-  round.bannerGradient = input.bannerGradient
-  round.bannerIcon = input.bannerIcon
-  round.bannerUrl = input.bannerUrl
-  if (input.status === 'published' && !round.publishedAt) round.publishedAt = nowIso()
-  if (input.status !== 'published' && round.publishedAt) round.publishedAt = null
-  round.status = input.status
-  round.slug = uniqueSlug(round.title, id)
-  round.updatedAt = nowIso()
-  saveDb()
 
   const token = localStorage.getItem('inkhel_admin_token')
-  fetch('/api/rounds', {
+  const res = await fetch('/api/rounds', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'X-Admin-Token': token } : {}),
     },
     body: JSON.stringify({ action: 'update', id, ...input }),
-  }).catch(() => {})
+  })
 
-  return round
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}))
+    throw new Error(errData.error || 'Failed to update round in database')
+  }
+
+  const db = getDb()
+  const round = db.rounds.find((r) => r.id === id)
+  if (round) {
+    round.title = input.title.trim()
+    round.description = input.description.trim()
+    round.monthId = input.monthId
+    round.timeLimitSeconds = input.timeLimitSeconds
+    round.bannerGradient = input.bannerGradient
+    round.bannerIcon = input.bannerIcon
+    round.bannerUrl = input.bannerUrl
+    if (input.status === 'published' && !round.publishedAt) round.publishedAt = nowIso()
+    if (input.status !== 'published' && round.publishedAt) round.publishedAt = null
+    round.status = input.status
+    round.slug = uniqueSlug(round.title, id)
+    round.updatedAt = nowIso()
+    saveDb()
+    return round
+  }
+
+  return {
+    id,
+    monthId: input.monthId,
+    title: input.title.trim(),
+    slug: uniqueSlug(input.title, id),
+    description: input.description.trim(),
+    bannerGradient: input.bannerGradient,
+    bannerIcon: input.bannerIcon,
+    bannerUrl: input.bannerUrl,
+    timeLimitSeconds: input.timeLimitSeconds,
+    status: input.status,
+    publishedAt: input.status === 'published' ? nowIso() : null,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  }
 }
 
-export function setRoundStatus(id: string, status: RoundStatus): Round {
+export async function setRoundStatus(id: string, status: RoundStatus): Promise<Round> {
   const db = getDb()
   const round = db.rounds.find((r) => r.id === id)
   if (!round) throw new Error('Round not found')
@@ -170,20 +203,26 @@ export function setRoundStatus(id: string, status: RoundStatus): Round {
     const contentErrors = validatePublishedContent(id)
     if (contentErrors.length) throw new Error(contentErrors[0])
   }
-  round.status = status
-  round.publishedAt = status === 'published' ? nowIso() : null
-  round.updatedAt = nowIso()
-  saveDb()
 
   const token = localStorage.getItem('inkhel_admin_token')
-  fetch('/api/rounds', {
+  const res = await fetch('/api/rounds', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { 'X-Admin-Token': token } : {}),
     },
     body: JSON.stringify({ action: 'update', id, status }),
-  }).catch(() => {})
+  })
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}))
+    throw new Error(errData.error || 'Failed to update round status in database')
+  }
+
+  round.status = status
+  round.publishedAt = status === 'published' ? nowIso() : null
+  round.updatedAt = nowIso()
+  saveDb()
 
   return round
 }
@@ -208,11 +247,23 @@ export function validatePublishedContent(roundId: string): string[] {
 }
 
 /** Deletes a round and its questions, options, attempts and answers. */
-export function deleteRound(id: string): { attempts: number } {
-  const db = getDb()
-  const round = db.rounds.find((r) => r.id === id)
-  if (!round) throw new Error('Round not found')
+export async function deleteRound(id: string): Promise<{ attempts: number }> {
+  const token = localStorage.getItem('inkhel_admin_token')
+  const res = await fetch('/api/rounds', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ action: 'delete', id }),
+  })
 
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}))
+    throw new Error(errData.error || 'Failed to delete round in database')
+  }
+
+  const db = getDb()
   const questionIds = db.questions.filter((q) => q.roundId === id).map((q) => q.id)
   const attemptIds = db.attempts.filter((a) => a.roundId === id).map((a) => a.id)
 
@@ -222,16 +273,6 @@ export function deleteRound(id: string): { attempts: number } {
   db.answers = db.answers.filter((a) => !attemptIds.includes(a.attemptId))
   db.rounds = db.rounds.filter((r) => r.id !== id)
   saveDb()
-
-  const token = localStorage.getItem('inkhel_admin_token')
-  fetch('/api/rounds', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'X-Admin-Token': token } : {}),
-    },
-    body: JSON.stringify({ action: 'delete', id }),
-  }).catch(() => {})
 
   return { attempts: attemptIds.length }
 }

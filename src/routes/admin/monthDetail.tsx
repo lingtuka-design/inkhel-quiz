@@ -54,18 +54,18 @@ export function MonthDetailPage() {
     if (month) setPageTitle(`${month.name} — Rounds`)
   }, [month])
 
-  const handleStatus = (id: string, status: 'published' | 'archived') => {
+  const handleStatus = async (id: string, status: 'published' | 'archived') => {
     try {
-      setRoundStatus(id, status)
+      await setRoundStatus(id, status)
       toast(`Round ${status === 'published' ? 'published' : 'archived'}`, 'success')
-      queryClient.invalidateQueries({ queryKey: ['rounds'] })
-      queryClient.invalidateQueries({ queryKey: ['adminStats'] })
+      await queryClient.invalidateQueries({ queryKey: ['rounds'] })
+      await queryClient.invalidateQueries({ queryKey: ['adminStats'] })
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Update failed', 'error')
     }
   }
 
-  const handleDelete = (id: string, title: string) => {
+  const handleDelete = async (id: string, title: string) => {
     if (
       !window.confirm(
         `Delete "${title}"?\n\nThis permanently removes the round, its questions, attempts and leaderboard entries. This cannot be undone.`,
@@ -73,13 +73,13 @@ export function MonthDetailPage() {
     )
       return
     try {
-      const result = deleteRound(id)
+      const result = await deleteRound(id)
       toast(
         `Round deleted (${result.attempts} attempts removed)`,
         'success',
       )
-      queryClient.invalidateQueries({ queryKey: ['rounds'] })
-      queryClient.invalidateQueries({ queryKey: ['adminStats'] })
+      await queryClient.invalidateQueries({ queryKey: ['rounds'] })
+      await queryClient.invalidateQueries({ queryKey: ['adminStats'] })
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Delete failed', 'error')
     }

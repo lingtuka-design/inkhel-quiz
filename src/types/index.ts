@@ -17,6 +17,16 @@ export interface Season {
   updatedAt: string
 }
 
+export interface SeasonInput {
+  name: string
+  description: string
+  seasonNumber: number
+  durationMonths: number
+  startDate: string
+  endDate: string
+  status: SeasonStatus
+}
+
 export interface Month {
   id: string
   seasonId: string

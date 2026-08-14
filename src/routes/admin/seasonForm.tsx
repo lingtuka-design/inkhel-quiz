@@ -21,19 +21,24 @@ export function SeasonFormPage() {
     enabled: !isNew,
   })
 
-  const handleSave = (input: Parameters<typeof createSeason>[0]) => {
-    if (isNew) {
-      createSeason(input)
-      queryClient.invalidateQueries({ queryKey: ['seasons'] })
-      queryClient.invalidateQueries({ queryKey: ['months'] })
-      toast('Season created — months generated', 'success')
-      navigate({ to: '/admin/seasons' })
-    } else {
-      updateSeason(seasonId, input)
-      queryClient.invalidateQueries({ queryKey: ['seasons'] })
-      queryClient.invalidateQueries({ queryKey: ['months'] })
-      toast('Season updated', 'success')
-      navigate({ to: `/admin/seasons/${seasonId}` })
+  const handleSave = async (input: Parameters<typeof createSeason>[0]) => {
+    try {
+      if (isNew) {
+        await createSeason(input)
+        await queryClient.invalidateQueries({ queryKey: ['seasons'] })
+        await queryClient.invalidateQueries({ queryKey: ['months'] })
+        toast('Season created — months generated', 'success')
+        navigate({ to: '/admin/seasons' })
+      } else {
+        await updateSeason(seasonId!, input)
+        await queryClient.invalidateQueries({ queryKey: ['seasons'] })
+        await queryClient.invalidateQueries({ queryKey: ['months'] })
+        toast('Season updated', 'success')
+        navigate({ to: `/admin/seasons/${seasonId}` })
+      }
+    } catch (err: any) {
+      toast(err.message || 'Failed to save season', 'error')
+      throw err
     }
   }
 

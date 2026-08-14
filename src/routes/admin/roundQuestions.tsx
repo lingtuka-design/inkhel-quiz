@@ -39,16 +39,21 @@ export function AdminRoundQuestionsPage() {
     correctKey: q.options.find((o) => o.isCorrect)?.optionKey ?? 'A',
   }))
 
-  const handleSave = (drafts: QuestionDraft[]) => {
-    saveQuestions(roundId, drafts)
-    queryClient.invalidateQueries({ queryKey: ['questions', roundId] })
-    queryClient.invalidateQueries({ queryKey: ['rounds'] })
+  const handleSave = async (drafts: QuestionDraft[]) => {
+    try {
+      await saveQuestions(roundId, drafts)
+      await queryClient.invalidateQueries({ queryKey: ['questions', roundId] })
+      await queryClient.invalidateQueries({ queryKey: ['rounds'] })
+      toast('Questions saved', 'success')
+    } catch (err: any) {
+      toast(err.message || 'Failed to save questions', 'error')
+    }
   }
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     try {
-      setRoundStatus(roundId, 'published')
-      queryClient.invalidateQueries({ queryKey: ['rounds'] })
+      await setRoundStatus(roundId, 'published')
+      await queryClient.invalidateQueries({ queryKey: ['rounds'] })
       toast('Round published — it is now live for players', 'success')
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Publish failed', 'error')

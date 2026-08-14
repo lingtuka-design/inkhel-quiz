@@ -27,17 +27,17 @@ export function AdminSeasonsPage() {
     queryFn: listSeasons,
   })
 
-  const handleStatus = (id: string, status: 'active' | 'completed' | 'archived') => {
+  const handleStatus = async (id: string, status: 'active' | 'completed' | 'archived') => {
     try {
-      setSeasonStatus(id, status)
+      await setSeasonStatus(id, status)
       toast(`Season ${status}`, 'success')
-      queryClient.invalidateQueries({ queryKey: ['seasons'] })
+      await queryClient.invalidateQueries({ queryKey: ['seasons'] })
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Update failed', 'error')
     }
   }
 
-  const handleDelete = (id: string, name: string, roundsCount: number) => {
+  const handleDelete = async (id: string, name: string, roundsCount: number) => {
     if (
       !window.confirm(
         `Delete "${name}"?\n\nThis permanently removes the season, its ${roundsCount} rounds, questions, attempts and leaderboard entries. This cannot be undone.`,
@@ -45,15 +45,15 @@ export function AdminSeasonsPage() {
     )
       return
     try {
-      const result = deleteSeason(id)
+      const result = await deleteSeason(id)
       toast(
         `Season deleted (${result.rounds} rounds, ${result.attempts} attempts removed)`,
         'success',
       )
-      queryClient.invalidateQueries({ queryKey: ['seasons'] })
-      queryClient.invalidateQueries({ queryKey: ['months'] })
-      queryClient.invalidateQueries({ queryKey: ['rounds'] })
-      queryClient.invalidateQueries({ queryKey: ['adminStats'] })
+      await queryClient.invalidateQueries({ queryKey: ['seasons'] })
+      await queryClient.invalidateQueries({ queryKey: ['months'] })
+      await queryClient.invalidateQueries({ queryKey: ['rounds'] })
+      await queryClient.invalidateQueries({ queryKey: ['adminStats'] })
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Delete failed', 'error')
     }

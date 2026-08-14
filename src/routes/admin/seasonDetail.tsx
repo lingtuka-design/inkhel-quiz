@@ -32,13 +32,19 @@ export function SeasonDetailPage() {
     if (season) setPageTitle(`${season.name} — Months`)
   }, [season])
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (!season) return
-    updateSeason(seasonId, { ...season, status: 'completed' })
-    window.location.reload()
+    try {
+      await updateSeason(seasonId!, { ...season, status: 'completed' })
+      await queryClient.invalidateQueries({ queryKey: ['season', seasonId] })
+      await queryClient.invalidateQueries({ queryKey: ['seasons'] })
+      toast('Season marked completed', 'success')
+    } catch (err: any) {
+      toast(err.message || 'Failed to update season', 'error')
+    }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!season) return
     const roundsCount = (months ?? []).reduce(
       (s, m) => s + listRoundsByMonth(m.id).length,
@@ -51,11 +57,11 @@ export function SeasonDetailPage() {
     )
       return
     try {
-      const result = deleteSeason(seasonId)
+      const result = await deleteSeason(seasonId!)
       toast(`Season deleted (${result.rounds} rounds, ${result.attempts} attempts removed)`, 'success')
-      queryClient.invalidateQueries({ queryKey: ['seasons'] })
-      queryClient.invalidateQueries({ queryKey: ['months'] })
-      queryClient.invalidateQueries({ queryKey: ['rounds'] })
+      await queryClient.invalidateQueries({ queryKey: ['seasons'] })
+      await queryClient.invalidateQueries({ queryKey: ['months'] })
+      await queryClient.invalidateQueries({ queryKey: ['rounds'] })
       navigate({ to: '/admin/seasons' })
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Delete failed', 'error')

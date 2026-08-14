@@ -41,16 +41,21 @@ export function RoundFormPage() {
 
   const defaultMonthId = search.monthId ?? round?.monthId ?? months.find((m) => m.open)?.id ?? months[0]?.id ?? ''
 
-  const handleSave = (input: Parameters<typeof createRound>[0]) => {
-    if (isNew) {
-      const created = createRound(input)
-      queryClient.invalidateQueries({ queryKey: ['rounds'] })
-      toast('Round created', 'success')
-      navigate({ to: `/admin/rounds/${created.id}/questions` })
-    } else {
-      updateRound(roundId, input)
-      queryClient.invalidateQueries({ queryKey: ['rounds'] })
-      toast('Round updated', 'success')
+  const handleSave = async (input: Parameters<typeof createRound>[0]) => {
+    try {
+      if (isNew) {
+        const created = await createRound(input)
+        await queryClient.invalidateQueries({ queryKey: ['rounds'] })
+        toast('Round created', 'success')
+        navigate({ to: `/admin/rounds/${created.id}/questions` })
+      } else {
+        await updateRound(roundId!, input)
+        await queryClient.invalidateQueries({ queryKey: ['rounds'] })
+        toast('Round updated', 'success')
+      }
+    } catch (err: any) {
+      toast(err.message || 'Failed to save round', 'error')
+      throw err
     }
   }
 
