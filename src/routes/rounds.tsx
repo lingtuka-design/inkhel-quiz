@@ -19,15 +19,40 @@ export function RoundsPage() {
 
   const { data: rounds } = useQuery({
     queryKey: ['rounds'],
-    queryFn: () =>
-      listRounds()
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/rounds')
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data)) {
+            return data
+              .filter((r: any) => r.status !== 'draft')
+              .map((r: any) => ({ round: r, participants: r.participantCount || 0 }))
+          }
+        }
+      } catch {}
+      return listRounds()
         .filter((r) => r.status !== 'draft')
-        .map((r) => ({ round: r, participants: countParticipants(r.id) })),
+        .map((r) => ({ round: r, participants: countParticipants(r.id) }))
+    },
   })
 
   const { data: months } = useQuery({
     queryKey: ['months'],
-    queryFn: listAllMonths,
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/seasons')
+        if (res.ok) {
+          const data = await res.json()
+          const allM: any[] = []
+          for (const s of data) {
+            if (Array.isArray(s.months)) allM.push(...s.months)
+          }
+          if (allM.length > 0) return allM
+        }
+      } catch {}
+      return listAllMonths()
+    },
   })
 
   const filtered = useMemo(() => {

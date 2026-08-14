@@ -20,26 +20,60 @@ export function RoundDetailPage() {
 
   const { data: round } = useQuery({
     queryKey: ['round', roundId],
-    queryFn: () => getRound(roundId),
+    queryFn: async () => {
+      try {
+        const res = await fetch(`/api/rounds?id=${encodeURIComponent(roundId)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data && data.id) return data
+        }
+      } catch {}
+      return getRound(roundId)
+    },
   })
 
   const { data: month } = useQuery({
     queryKey: ['month', round?.monthId],
-    queryFn: () => (round ? getMonth(round.monthId) : null),
+    queryFn: async () => {
+      if (!round?.monthId) return null
+      try {
+        const res = await fetch('/api/seasons')
+        if (res.ok) {
+          const data = await res.json()
+          for (const s of data) {
+            if (Array.isArray(s.months)) {
+              const m = s.months.find((x: any) => x.id === round.monthId)
+              if (m) return m
+            }
+          }
+        }
+      } catch {}
+      return getMonth(round.monthId)
+    },
     enabled: !!round,
   })
 
   const { data: season } = useQuery({
     queryKey: ['season', month?.seasonId],
-    queryFn: () => (month ? getSeason(month.seasonId) : null),
+    queryFn: async () => {
+      if (!month?.seasonId) return null
+      try {
+        const res = await fetch(`/api/seasons?id=${encodeURIComponent(month.seasonId)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data && data.id) return data
+        }
+      } catch {}
+      return getSeason(month.seasonId)
+    },
     enabled: !!month,
   })
 
   const { data: stats } = useQuery({
-    queryKey: ['roundStats', roundId],
+    queryKey: ['roundStats', roundId, round?.questionCount],
     queryFn: () => ({
-      participants: countParticipants(roundId),
-      questions: countQuestions(roundId),
+      participants: (round as any)?.participantCount ?? countParticipants(roundId),
+      questions: (round as any)?.questionCount ?? countQuestions(roundId),
     }),
     enabled: !!round,
   })

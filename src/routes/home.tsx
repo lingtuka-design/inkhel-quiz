@@ -15,7 +15,7 @@ import { getSeasonRanking } from '../services/leaderboardService'
 import { getParticipant } from '../services/authService'
 import { setPageTitle } from '../services/shareService'
 import { formatDate } from '../lib/utils'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 
 export function HomePage() {
   const participant = getParticipant()
@@ -27,31 +27,75 @@ export function HomePage() {
 
   const { data: rounds } = useQuery({
     queryKey: ['rounds', 'playable'],
-    queryFn: () =>
-      listAllPlayableRounds().map((r) => ({
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/rounds')
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data)) {
+            return data
+              .filter((r: any) => r.status === 'published')
+              .map((r: any) => ({
+                round: r,
+                participants: r.participantCount || 0,
+                questions: r.questionCount || 0,
+              }))
+          }
+        }
+      } catch {}
+      return listAllPlayableRounds().map((r) => ({
         round: r,
         participants: countParticipants(r.id),
         questions: countQuestions(r.id),
-      })),
+      }))
+    },
   })
 
   const { data: season } = useQuery({
     queryKey: ['activeSeason'],
-    queryFn: () => {
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/seasons?status=active')
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) {
+            return data[0]
+          }
+        }
+      } catch {}
       const s = getActiveSeason()
       return s ?? listSeasons().at(-1) ?? null
     },
   })
 
-  const { data: currentMonth } = useQuery({
-    queryKey: ['currentMonth'],
-    queryFn: getCurrentMonth,
-  })
-
   const { data: months } = useQuery({
     queryKey: ['months'],
-    queryFn: listAllMonths,
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/seasons')
+        if (res.ok) {
+          const data = await res.json()
+          const allM: any[] = []
+          for (const s of data) {
+            if (Array.isArray(s.months)) allM.push(...s.months)
+          }
+          if (allM.length > 0) return allM
+        }
+      } catch {}
+      return listAllMonths()
+    },
   })
+
+  const currentMonth = useMemo(() => {
+    if (!months || months.length === 0) return getCurrentMonth()
+    const now = Date.now()
+    const open = months.filter((m: any) => {
+      const start = new Date(m.startDate).getTime()
+      const end = new Date(m.endDate).getTime()
+      return now >= start && now <= end
+    })
+    return open.sort((a: any, b: any) => a.startDate.localeCompare(b.startDate))[0] ?? months[0] ?? null
+  }, [months])
 
   const { data: ranking } = useQuery({
     queryKey: ['ranking', 'season', season?.id],
