@@ -68,6 +68,8 @@ export interface Participant {
   id: string
   displayName: string
   email: string | null
+  photoUrl?: string | null
+  googleId?: string | null
   avatarGradient: string
   provider: 'guest' | 'google'
   createdAt: string

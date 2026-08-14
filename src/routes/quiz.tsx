@@ -7,7 +7,8 @@ import { QuestionCard, QuizTimer, useCountdown } from '../components/quiz'
 import { Button, Card, ErrorNote, Input, Modal, toast } from '../components/ui'
 import { getRound } from '../services/roundService'
 import { getQuizQuestions } from '../services/questionService'
-import { getParticipant, saveParticipant } from '../services/authService'
+import { getParticipant, saveParticipant, loginWithGoogle } from '../services/authService'
+import { GoogleIcon } from '../components/layout'
 import {
   getAttempt,
   resumeAttempt,
@@ -306,40 +307,79 @@ export function PlayerNameModal({
   onSubmit: (name: string) => void
 }) {
   const [name, setName] = useState('')
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handle = () => {
+  const handleGuest = () => {
     setError(null)
     try {
-      saveParticipant(name)
-      onSubmit(name)
+      const p = saveParticipant(name)
+      onSubmit(p.displayName)
       setName('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Enter a name')
     }
   }
 
+  const handleGoogle = async () => {
+    setError(null)
+    try {
+      setGoogleLoading(true)
+      const p = await loginWithGoogle()
+      onSubmit(p.displayName)
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed')
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
   return (
-    <Modal open={open} onClose={onClose} title="Who's playing?">
-      <p className="mb-4 text-sm text-ink-300">
-        Enter your player name — it's how you'll appear on the leaderboards.
-      </p>
-      <Input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="e.g. Quiz Master"
-        maxLength={40}
-        onKeyDown={(e) => e.key === 'Enter' && handle()}
-        autoFocus
-      />
-      <ErrorNote message={error} />
-      <div className="mt-5 flex justify-end gap-2">
-        <Button variant="ghost" onClick={onClose}>
-          Cancel
+    <Modal open={open} onClose={onClose} title="Sign in to Play">
+      <div className="space-y-4">
+        <p className="text-sm text-ink-300">
+          Sign in with your Google account to record your official score, claim your spot on the leaderboard, and preserve your ranking.
+        </p>
+
+        <Button
+          onClick={handleGoogle}
+          loading={googleLoading}
+          variant="outline"
+          className="w-full gap-2.5 border-white/20 bg-white/5 py-3 hover:bg-white/10"
+        >
+          <GoogleIcon className="h-5 w-5" />
+          Continue with Google
         </Button>
-        <Button onClick={handle} disabled={!name.trim()}>
-          Let's Go
-        </Button>
+
+        <div className="relative my-4 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/10" />
+          </div>
+          <span className="relative bg-ink-850 px-3 text-xs uppercase tracking-wider text-ink-300">
+            or play as guest
+          </span>
+        </div>
+
+        <div>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter player nickname"
+            maxLength={40}
+            onKeyDown={(e) => e.key === 'Enter' && handleGuest()}
+          />
+        </div>
+
+        <ErrorNote message={error} />
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleGuest} disabled={!name.trim()}>
+            Play as Guest
+          </Button>
+        </div>
       </div>
     </Modal>
   )

@@ -2,10 +2,13 @@ import { getDb, saveDb, newId } from '../db/database'
 import { hashPassword } from '../lib/crypto'
 import { avatarGradient } from '../lib/banners'
 import { nowIso } from '../lib/utils'
+import { auth, googleProvider } from '../lib/firebase'
+import { signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged } from 'firebase/auth'
 import type { AdminUser, Participant } from '../types'
 
 const TOKEN_KEY = 'inkhel_admin_token'
 const PARTICIPANT_KEY = 'inkhel_participant_id'
+const PARTICIPANT_CACHE_KEY = 'inkhel_participant_cache'
 
 export async function loginAdmin(username: string, password: string): Promise<AdminUser> {
   const db = getDb()
@@ -48,9 +51,81 @@ export function isAdminLoggedIn(): boolean {
 }
 
 export function getParticipant(): Participant | null {
+  const raw = localStorage.getItem(PARTICIPANT_CACHE_KEY)
+  if (raw) {
+    try {
+      return JSON.parse(raw) as Participant
+    } catch {
+      // ignore
+    }
+  }
   const id = localStorage.getItem(PARTICIPANT_KEY)
   if (!id) return null
   return getDb().participants.find((p) => p.id === id) ?? null
+}
+
+export async function loginWithGoogle(): Promise<Participant> {
+  const result = await signInWithPopup(auth, googleProvider)
+  const user = result.user
+  const displayName = user.displayName || user.email?.split('@')[0] || 'Quiz Player'
+  const email = user.email || null
+  const photoUrl = user.photoURL || null
+  const googleId = user.uid
+
+  let participant: Participant
+
+  try {
+    const res = await fetch('/api/participants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        displayName,
+        email,
+        photoUrl,
+        googleId,
+        avatarGradient: avatarGradient(displayName),
+      }),
+    })
+
+    if (res.ok) {
+      participant = await res.json()
+    } else {
+      throw new Error('Failed to register participant on server')
+    }
+  } catch {
+    // Local / offline fallback
+    participant = {
+      id: `part_${googleId.slice(0, 10)}`,
+      displayName,
+      email,
+      photoUrl,
+      googleId,
+      avatarGradient: avatarGradient(displayName),
+      provider: 'google',
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    }
+  }
+
+  // Update local DB cache
+  const db = getDb()
+  const idx = db.participants.findIndex((p) => p.id === participant.id || p.email === email)
+  if (idx >= 0) {
+    db.participants[idx] = participant
+  } else {
+    db.participants.push(participant)
+  }
+  saveDb()
+
+  localStorage.setItem(PARTICIPANT_KEY, participant.id)
+  localStorage.setItem(PARTICIPANT_CACHE_KEY, JSON.stringify(participant))
+  return participant
+}
+
+export async function logoutParticipant(): Promise<void> {
+  await firebaseSignOut(auth).catch(() => {})
+  localStorage.removeItem(PARTICIPANT_KEY)
+  localStorage.removeItem(PARTICIPANT_CACHE_KEY)
 }
 
 export function saveParticipant(displayName: string): Participant {
@@ -75,5 +150,6 @@ export function saveParticipant(displayName: string): Participant {
   }
   saveDb()
   localStorage.setItem(PARTICIPANT_KEY, existing.id)
+  localStorage.setItem(PARTICIPANT_CACHE_KEY, JSON.stringify(existing))
   return existing
 }

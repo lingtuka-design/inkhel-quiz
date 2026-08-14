@@ -8,13 +8,37 @@ import {
   LogOut,
   Menu,
   Trophy,
+  UserCheck,
   X,
   Zap,
 } from 'lucide-react'
-import { Avatar, Button } from './ui'
-import { getParticipant, logoutAdmin } from '../services/authService'
+import { Avatar, Button, toast } from './ui'
+import { getParticipant, loginWithGoogle, logoutParticipant, logoutAdmin } from '../services/authService'
 import { cn } from '../lib/utils'
 import type { Participant } from '../types'
+
+export function GoogleIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24">
+      <path
+        fill="#EA4335"
+        d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
+      />
+      <path
+        fill="#4285F4"
+        d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"
+      />
+    </svg>
+  )
+}
 
 export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const sizes = {
@@ -49,6 +73,7 @@ export function PublicLayout() {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [participant, setParticipant] = useState<Participant | null>(() => getParticipant())
+  const [loggingIn, setLoggingIn] = useState(false)
 
   useEffect(() => {
     setMenuOpen(false)
@@ -58,6 +83,25 @@ export function PublicLayout() {
   useEffect(() => {
     setParticipant(getParticipant())
   }, [location.pathname])
+
+  const handleGoogleLogin = async () => {
+    try {
+      setLoggingIn(true)
+      const p = await loginWithGoogle()
+      setParticipant(p)
+      toast(`Signed in as ${p.displayName}`, 'success')
+    } catch (err: any) {
+      toast(err.message || 'Google sign in failed', 'error')
+    } finally {
+      setLoggingIn(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await logoutParticipant()
+    setParticipant(null)
+    toast('Signed out', 'info')
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -86,11 +130,36 @@ export function PublicLayout() {
 
           <div className="hidden items-center gap-3 md:flex">
             {participant ? (
-              <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/5 py-1.5 pl-1.5 pr-4">
-                <Avatar name={participant.displayName} gradient={participant.avatarGradient} size="sm" />
-                <span className="text-sm font-semibold text-white">{participant.displayName}</span>
+              <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/5 py-1.5 pl-1.5 pr-2">
+                <Avatar
+                  name={participant.displayName}
+                  gradient={participant.avatarGradient}
+                  photoUrl={participant.photoUrl}
+                  size="sm"
+                />
+                <span className="max-w-[140px] truncate text-xs font-semibold text-white">
+                  {participant.displayName}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="focus-ring ml-1 rounded-full p-1 text-ink-300 hover:bg-white/10 hover:text-red-300"
+                  title="Sign out"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                </button>
               </div>
-            ) : null}
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                loading={loggingIn}
+                onClick={handleGoogleLogin}
+                className="gap-2 border-white/20 bg-white/5 hover:bg-white/10"
+              >
+                <GoogleIcon className="h-4 w-4" />
+                Sign in with Google
+              </Button>
+            )}
             <Button variant="secondary" size="sm" onClick={() => navigate({ to: '/rounds' })}>
               Play Quiz
             </Button>
@@ -117,7 +186,34 @@ export function PublicLayout() {
                   {item.label}
                 </Link>
               ))}
-              <div className="pt-2">
+              <div className="space-y-2 pt-2">
+                {participant ? (
+                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar
+                        name={participant.displayName}
+                        gradient={participant.avatarGradient}
+                        photoUrl={participant.photoUrl}
+                        size="sm"
+                      />
+                      <span className="text-sm font-semibold text-white">{participant.displayName}</span>
+                    </div>
+                    <button onClick={handleLogout} className="text-xs text-red-400 hover:underline">
+                      Sign out
+                    </button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    loading={loggingIn}
+                    onClick={handleGoogleLogin}
+                    className="w-full gap-2 border-white/20 bg-white/5"
+                  >
+                    <GoogleIcon className="h-4 w-4" />
+                    Sign in with Google
+                  </Button>
+                )}
                 <Button variant="secondary" size="sm" className="w-full" onClick={() => navigate({ to: '/rounds' })}>
                   Play Quiz
                 </Button>

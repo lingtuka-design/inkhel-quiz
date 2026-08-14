@@ -161,15 +161,18 @@ export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
 export function Avatar({
   name,
   gradient,
+  photoUrl,
   size = 'md',
   className,
 }: {
   name: string
-  gradient: string
+  gradient?: string
+  photoUrl?: string | null
   size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }) {
-  const initials = name
+  const [imgError, setImgError] = useState(false)
+  const initials = (name || 'P')
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
@@ -181,11 +184,27 @@ export function Avatar({
     lg: 'h-12 w-12 text-base',
     xl: 'h-16 w-16 text-xl',
   }
-  const realGradient = gradient.startsWith('from-')
+  const realGradient = (gradient && gradient.startsWith('from-'))
     ? gradient
     : ['from-pink-500 to-rose-500', 'from-cyan-500 to-blue-500', 'from-emerald-500 to-teal-500', 'from-violet-500 to-purple-500'][
-        name.length % 4
+        (name || '').length % 4
       ]!
+
+  if (photoUrl && !imgError) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name}
+        onError={() => setImgError(true)}
+        className={cn(
+          'shrink-0 rounded-full object-cover shadow-inner ring-1 ring-white/20',
+          sizes[size],
+          className,
+        )}
+      />
+    )
+  }
+
   return (
     <div
       className={cn(

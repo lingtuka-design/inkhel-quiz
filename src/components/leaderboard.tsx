@@ -56,7 +56,12 @@ export function Podium({ rows }: { rows: LeaderboardRow[] }) {
               isFirst ? 'pb-8 pt-6 border-white/20' : 'pb-5 pt-4 opacity-90',
             )}
           >
-            <Avatar name={row.participant.displayName} gradient={row.participant.avatarGradient} size={isFirst ? 'xl' : 'lg'} />
+            <Avatar
+              name={row.participant.displayName}
+              gradient={row.participant.avatarGradient}
+              photoUrl={row.participant.photoUrl}
+              size={isFirst ? 'xl' : 'lg'}
+            />
             <div className="min-w-0">
               <p className={cn('truncate font-semibold text-white', isFirst ? 'text-base' : 'text-sm')}>
                 {row.participant.displayName}
@@ -109,7 +114,12 @@ export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
-                    <Avatar name={row.participant.displayName} gradient={row.participant.avatarGradient} size="sm" />
+                    <Avatar
+                      name={row.participant.displayName}
+                      gradient={row.participant.avatarGradient}
+                      photoUrl={row.participant.photoUrl}
+                      size="sm"
+                    />
                     <span className="font-semibold text-white">
                       {row.participant.displayName}
                       {row.isCurrentUser && (
@@ -176,7 +186,12 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2.5">
-                    <Avatar name={row.participant.displayName} gradient={row.participant.avatarGradient} size="sm" />
+                    <Avatar
+                      name={row.participant.displayName}
+                      gradient={row.participant.avatarGradient}
+                      photoUrl={row.participant.photoUrl}
+                      size="sm"
+                    />
                     <span className="font-semibold text-white">
                       {row.participant.displayName}
                       {row.isCurrentUser && (
