@@ -130,7 +130,7 @@ export function PublicLayout() {
           </nav>
 
           <div className="hidden items-center gap-3 md:flex">
-            {participant ? (
+            {participant && participant.provider === 'google' ? (
               <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/5 py-1.5 pl-1.5 pr-2">
                 <Avatar
                   name={participant.displayName}
@@ -188,7 +188,7 @@ export function PublicLayout() {
                 </Link>
               ))}
               <div className="space-y-2 pt-2">
-                {participant ? (
+                {participant && participant.provider === 'google' ? (
                   <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                     <div className="flex items-center gap-2.5">
                       <Avatar
@@ -199,7 +199,10 @@ export function PublicLayout() {
                       />
                       <span className="text-sm font-semibold text-white">{participant.displayName}</span>
                     </div>
-                    <button onClick={handleLogout} className="text-xs text-red-400 hover:underline">
+                    <button
+                      onClick={handleLogout}
+                      className="focus-ring rounded-lg p-1.5 text-xs text-ink-300 hover:bg-white/10 hover:text-red-300"
+                    >
                       Sign out
                     </button>
                   </div>

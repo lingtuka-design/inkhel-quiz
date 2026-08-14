@@ -79,7 +79,7 @@ export function QuizPage() {
       setPhase('done')
       return
     }
-    if (!participant) {
+    if (!participant || participant.provider !== 'google') {
       setNamePromptOpen(true)
       setPhase('instructions')
       return
@@ -109,7 +109,7 @@ export function QuizPage() {
 
   const start = async () => {
     const participant = getParticipant()
-    if (!participant) {
+    if (!participant || participant.provider !== 'google') {
       setNamePromptOpen(true)
       return
     }
@@ -364,20 +364,8 @@ export function PlayerNameModal({
   onClose: () => void
   onSubmit: (name: string) => void
 }) {
-  const [name, setName] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const handleGuest = () => {
-    setError(null)
-    try {
-      const p = saveParticipant(name)
-      onSubmit(p.displayName)
-      setName('')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Enter a name')
-    }
-  }
 
   const handleGoogle = async () => {
     setError(null)
@@ -393,49 +381,27 @@ export function PlayerNameModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Sign in to Play">
-      <div className="space-y-4">
-        <p className="text-sm text-ink-300">
-          Sign in with your Google account to record your official score, claim your spot on the leaderboard, and preserve your ranking.
+    <Modal open={open} onClose={onClose} title="Sign in with Google to Play">
+      <div className="space-y-5 py-2">
+        <p className="text-sm leading-relaxed text-ink-300">
+          Quiz khelh nan leh official season leaderboard-a i hming leh score vawnthat a nih theih nan <strong>Google Account</strong> hmanga luh phawt a ngai e.
         </p>
 
         <Button
           onClick={handleGoogle}
           loading={googleLoading}
           variant="outline"
-          className="w-full gap-2.5 border-white/20 bg-white/5 py-3 hover:bg-white/10"
+          className="w-full gap-3 border-white/20 bg-white/5 py-4 text-base font-semibold text-white hover:bg-white/10 hover:border-white/40 shadow-lg shadow-black/40"
         >
           <GoogleIcon className="h-5 w-5" />
           Continue with Google
         </Button>
 
-        <div className="relative my-4 flex items-center justify-center">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/10" />
-          </div>
-          <span className="relative bg-ink-850 px-3 text-xs uppercase tracking-wider text-ink-300">
-            or play as guest
-          </span>
-        </div>
-
-        <div>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter player nickname"
-            maxLength={40}
-            onKeyDown={(e) => e.key === 'Enter' && handleGuest()}
-          />
-        </div>
-
         <ErrorNote message={error} />
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex justify-end pt-2">
           <Button variant="ghost" onClick={onClose}>
             Cancel
-          </Button>
-          <Button onClick={handleGuest} disabled={!name.trim()}>
-            Play as Guest
           </Button>
         </div>
       </div>

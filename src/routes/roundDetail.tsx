@@ -1,22 +1,25 @@
-import { useEffect } from 'react'
-import { Link, useParams } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ArrowLeft, Calendar, CalendarClock, Clock, Lock, Play, ShieldAlert, Trophy, Users, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { RoundBanner, ShareButtons, roundStatusBadge } from '../components/rounds'
 import { Podium, LeaderboardTable } from '../components/leaderboard'
-import { Badge, Button, Card, SectionHeading } from '../components/ui'
+import { Badge, Button, Card, SectionHeading, toast } from '../components/ui'
 import { getRound, countParticipants, countQuestions, roundAvailability } from '../services/roundService'
 import { getMonth } from '../services/monthService'
 import { getSeason } from '../services/seasonService'
 import { getRoundLeaderboard } from '../services/leaderboardService'
 import { hasCompletedRound } from '../services/attemptService'
-import { getParticipant } from '../services/authService'
+import { getParticipant, loginWithGoogle } from '../services/authService'
+import { GoogleIcon } from '../components/layout'
 import { setPageTitle, setMetaDescription } from '../services/shareService'
 import { formatDate, formatTime } from '../lib/utils'
 
 export function RoundDetailPage() {
   const { roundId } = useParams({ strict: false })
-  const participant = getParticipant()
+  const navigate = useNavigate()
+  const [participant, setParticipant] = useState(() => getParticipant())
+  const [signingIn, setSigningIn] = useState(false)
 
   const { data: round } = useQuery({
     queryKey: ['round', roundId],
@@ -118,6 +121,22 @@ export function RoundDetailPage() {
   const monthWindow =
     month && open ? `Closes ${formatDate(month.endDate)}` : month ? `${formatDate(month.startDate)} — ${formatDate(month.endDate)}` : ''
 
+  const isGoogleUser = participant?.provider === 'google'
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setSigningIn(true)
+      const p = await loginWithGoogle()
+      setParticipant(p)
+      toast(`Welcome, ${p.displayName}! You can now play.`, 'success')
+      navigate({ to: `/rounds/${round.id}/quiz` })
+    } catch (err: any) {
+      toast(err.message || 'Google sign-in failed', 'error')
+    } finally {
+      setSigningIn(false)
+    }
+  }
+
   return (
     <div>
       <div className="relative">
@@ -169,6 +188,15 @@ export function RoundDetailPage() {
                 alreadyPlayed ? (
                   <Button variant="secondary" icon={Trophy} disabled>
                     You've played this round
+                  </Button>
+                ) : !isGoogleUser ? (
+                  <Button
+                    className="w-full sm:w-auto"
+                    size="lg"
+                    onClick={handleGoogleSignIn}
+                    loading={signingIn}
+                  >
+                    <GoogleIcon className="mr-2 h-5 w-5" /> Sign in with Google to Play
                   </Button>
                 ) : (
                   <Link to={`/rounds/${round.id}/quiz`} className="sm:w-auto w-full">
