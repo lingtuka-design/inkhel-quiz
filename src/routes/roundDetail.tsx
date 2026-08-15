@@ -9,7 +9,7 @@ import { getRound, countParticipants, countQuestions, roundAvailability } from '
 import { getMonth } from '../services/monthService'
 import { getSeason } from '../services/seasonService'
 import { getRoundLeaderboard } from '../services/leaderboardService'
-import { hasCompletedRound } from '../services/attemptService'
+import { checkParticipantAttempt, hasCompletedRound } from '../services/attemptService'
 import { getParticipant, loginWithGoogle } from '../services/authService'
 import { GoogleIcon } from '../components/layout'
 import { setPageTitle, setMetaDescription } from '../services/shareService'
@@ -90,11 +90,13 @@ export function RoundDetailPage() {
     enabled: !!round,
   })
 
-  const { data: alreadyPlayed } = useQuery({
-    queryKey: ['played', roundId, participant?.id],
-    queryFn: () => (participant ? hasCompletedRound(participant.id, roundId) : false),
+  const { data: userAttempt } = useQuery({
+    queryKey: ['userRoundAttempt', roundId, participant?.id],
+    queryFn: () => (participant ? checkParticipantAttempt(participant.id, roundId) : null),
     enabled: !!round && !!participant,
   })
+
+  const alreadyPlayed = userAttempt ? (userAttempt.status === 'completed' || userAttempt.status === 'expired') : false
 
   useEffect(() => {
     if (round) {
@@ -205,10 +207,16 @@ export function RoundDetailPage() {
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
               {open ? (
-                alreadyPlayed ? (
-                  <Button variant="secondary" icon={Trophy} disabled>
-                    You've played this round
-                  </Button>
+                alreadyPlayed && userAttempt ? (
+                  <Link to={`/rounds/${round.id}/result?attemptId=${userAttempt.id}`} className="sm:w-auto w-full">
+                    <Button
+                      className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold shadow-lg shadow-emerald-950/40"
+                      size="lg"
+                      icon={Trophy}
+                    >
+                      View Your Result ({userAttempt.finalScore} pts) →
+                    </Button>
+                  </Link>
                 ) : !isGoogleUser ? (
                   <Button
                     className="w-full sm:w-auto"

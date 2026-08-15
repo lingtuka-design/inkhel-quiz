@@ -84,6 +84,16 @@ export function QuizPage() {
       setPhase('instructions')
       return
     }
+    if (participant && participant.provider === 'google') {
+      const db = getDb()
+      const existing = db.attempts.find(
+        (a) => a.participantId === participant.id && a.roundId === roundId && (a.status === 'completed' || a.status === 'expired'),
+      )
+      if (existing) {
+        goToResult(existing.id)
+        return
+      }
+    }
     const resume = resumeAttempt(participant.id, roundId)
     if (!resume) {
       setPhase('instructions')
@@ -170,6 +180,10 @@ export function QuizPage() {
       }
 
       const att = await startAttempt(participant.id, roundId)
+      if (att.status === 'completed' || att.status === 'expired') {
+        goToResult(att.id)
+        return
+      }
       setAttempt(att)
       setQuestions(qs)
       setIndex(0)

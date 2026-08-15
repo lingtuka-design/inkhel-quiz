@@ -1,27 +1,33 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearch } from '@tanstack/react-router'
 import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
   Clock,
+  Download,
   Gauge,
   Home,
+  Link2,
   ListChecks,
   Medal,
+  MessageCircle,
+  Share2,
+  Sparkles,
   Trophy,
   XCircle,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ShareButtons } from '../components/rounds'
 import { AnswerOption } from '../components/quiz'
-import { Badge, Button, Card, SectionHeading, Spinner } from '../components/ui'
+import { Badge, Button, Card, SectionHeading, Spinner, toast } from '../components/ui'
 import { getAttemptReview } from '../services/attemptService'
 import { getRound } from '../services/roundService'
 import { getMonth } from '../services/monthService'
 import { getSeason } from '../services/seasonService'
 import { getParticipant } from '../services/authService'
-import { setPageTitle } from '../services/shareService'
+import { copyToClipboard, setPageTitle } from '../services/shareService'
+import { generateScoreCardBlob } from '../lib/scoreCardGenerator'
 import { formatTime } from '../lib/utils'
 import { cn } from '../lib/utils'
 import type { RoundReviewQuestion } from '../types'
@@ -30,6 +36,7 @@ export function ResultPage() {
   const { roundId } = useParams({ strict: false })
   const { attemptId } = useSearch({ strict: false }) as { attemptId?: string }
   const participant = getParticipant()
+  const [generatingImage, setGeneratingImage] = useState(false)
 
   const { data: review } = useQuery({
     queryKey: ['attemptReview', attemptId],
@@ -199,12 +206,100 @@ export function ResultPage() {
           </div>
         </div>
 
-        <div className="relative mt-6 flex flex-col gap-3 border-t border-white/5 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-ink-300">
-            {summary!.correct} × 10 = {attempt.baseScore} + speed bonus +{attempt.speedBonus} ={' '}
-            <span className="font-bold text-white">{attempt.finalScore} total</span>
-          </p>
-          <ShareButtons round={round} />
+        {/* Dynamic Social & WhatsApp Share Section */}
+        <div className="relative mt-8 rounded-2xl border border-white/10 bg-gradient-to-r from-violet-900/30 via-indigo-900/20 to-fuchsia-900/20 p-5 sm:p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="flex items-center gap-2 font-display text-base font-bold text-white">
+                <Sparkles className="h-4 w-4 text-yellow-400" />
+                Share your score & challenge friends
+              </p>
+              <p className="mt-1 text-xs text-ink-300">
+                Send your official score card image or challenge link directly to WhatsApp & social media.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Button
+                onClick={() => {
+                  const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: *${attempt.finalScore} Points* (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n🔥 Khawi min rawn khum ve chhin teh le!\n👉 https://quiz.inkhel.com/rounds/${round.id}`
+                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank')
+                }}
+                className="bg-[#25D366] text-black hover:bg-[#20bd5a] font-semibold border-none shadow-lg shadow-green-950/40"
+                size="sm"
+                icon={MessageCircle}
+              >
+                WhatsApp
+              </Button>
+
+              <Button
+                onClick={async () => {
+                  try {
+                    setGeneratingImage(true)
+                    const blob = await generateScoreCardBlob({
+                      roundTitle: round.title,
+                      monthName: month?.name || 'Quiz Round',
+                      seasonName: season?.name || 'Season',
+                      playerName: participant?.displayName || 'Player',
+                      score: attempt.finalScore,
+                      rank: rank || 1,
+                      correct: summary!.correct,
+                      totalQuestions: questions.length,
+                      wrong: summary!.wrong,
+                      timeTaken: formatTime(attempt.timeTakenSeconds ?? 0),
+                    })
+
+                    const file = new File([blob], `inkhel-result-${round.id}.png`, { type: 'image/png' })
+                    const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: ${attempt.finalScore} Points (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n👉 https://quiz.inkhel.com/rounds/${round.id}`
+
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                      await navigator.share({
+                        files: [file],
+                        title: `My result on ${round.title}`,
+                        text: shareText,
+                      })
+                      toast('Score card shared!', 'success')
+                    } else {
+                      const downloadUrl = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = downloadUrl
+                      a.download = `inkhel-${round.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-scorecard.png`
+                      a.click()
+                      URL.revokeObjectURL(downloadUrl)
+                      await copyToClipboard(shareText)
+                      toast('Score card image downloaded & link copied!', 'success')
+                    }
+                  } catch (e: any) {
+                    if (e.name !== 'AbortError') {
+                      toast('Could not generate score card image', 'error')
+                    }
+                  } finally {
+                    setGeneratingImage(false)
+                  }
+                }}
+                loading={generatingImage}
+                variant="outline"
+                size="sm"
+                icon={Download}
+                className="border-white/20 bg-white/5 hover:bg-white/10"
+              >
+                Save Score Card (Image)
+              </Button>
+
+              <Button
+                onClick={async () => {
+                  const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Score: ${attempt.finalScore} pts (Rank #${rank > 0 ? rank : '—'})\n👉 https://quiz.inkhel.com/rounds/${round.id}`
+                  await copyToClipboard(shareText)
+                  toast('Challenge link copied to clipboard!', 'success')
+                }}
+                variant="ghost"
+                size="sm"
+                icon={Link2}
+              >
+                Copy Link
+              </Button>
+            </div>
+          </div>
         </div>
       </Card>
 

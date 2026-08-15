@@ -169,11 +169,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
             await env.DB.prepare("UPDATE attempts SET status = 'expired', completed_at = ? WHERE id = ?")
               .bind(new Date(startedAt + round.time_limit_seconds * 1000).toISOString(), existing.id)
               .run()
-            return err('Attempt time has expired', 400)
+            existing.status = 'expired'
+            return json({ attempt: toCamelCase(existing), alreadyCompleted: true })
           }
           return json({ attempt: toCamelCase(existing) })
         }
-        return err('You have already attempted this round', 400)
+        return json({ attempt: toCamelCase(existing), alreadyCompleted: true })
       }
 
       const attemptId = `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
