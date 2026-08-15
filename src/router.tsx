@@ -17,6 +17,8 @@ import { QuizPage } from './routes/quiz'
 import { ResultPage } from './routes/result'
 import { LeaderboardPage } from './routes/leaderboard'
 import { SeasonsPage } from './routes/seasons'
+import { PrivacyPolicyPage } from './routes/privacy'
+import { TermsOfServicePage } from './routes/terms'
 
 import { AdminLoginPage } from './routes/admin/login'
 import { AdminDashboardPage } from './routes/admin/dashboard'
@@ -88,6 +90,18 @@ const seasonsRoute = createRoute({
   getParentRoute: () => publicLayout,
   path: '/seasons',
   component: SeasonsPage,
+})
+
+const privacyRoute = createRoute({
+  getParentRoute: () => publicLayout,
+  path: '/privacy',
+  component: PrivacyPolicyPage,
+})
+
+const termsRoute = createRoute({
+  getParentRoute: () => publicLayout,
+  path: '/terms',
+  component: TermsOfServicePage,
 })
 
 const adminLoginRoute = createRoute({
@@ -204,6 +218,8 @@ const routeTree = rootRoute.addChildren([
     resultRoute,
     leaderboardRoute,
     seasonsRoute,
+    privacyRoute,
+    termsRoute,
   ]),
   adminLayout.addChildren([
     adminDashboardRoute,

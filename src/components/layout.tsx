@@ -239,20 +239,26 @@ export function PublicLayout() {
           <p className="text-sm text-ink-300">
             Beat the clock. Own the leaderboard. Every second counts.
           </p>
-          <div className="flex items-center gap-4 text-sm text-ink-300">
-            <Link to="/rounds" className="hover:text-white">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-ink-300">
+            <Link to="/rounds" className="transition-colors hover:text-white">
               Rounds
             </Link>
-            <Link to="/leaderboard" className="hover:text-white">
+            <Link to="/leaderboard" className="transition-colors hover:text-white">
               Leaderboard
             </Link>
-            <Link to="/seasons" className="hover:text-white">
+            <Link to="/seasons" className="transition-colors hover:text-white">
               Seasons
+            </Link>
+            <Link to="/privacy" className="transition-colors hover:text-white">
+              Privacy Policy
+            </Link>
+            <Link to="/terms" className="transition-colors hover:text-white">
+              Terms of Service
             </Link>
           </div>
         </div>
         <div className="border-t border-white/5 py-4 text-center text-xs text-ink-300/70">
-          © {new Date().getFullYear()} Inkhel — Competitive Quiz Platform
+          © {new Date().getFullYear()} Inkhel — Competitive Quiz Platform · All rights reserved.
         </div>
       </footer>
     </div>
