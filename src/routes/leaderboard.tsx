@@ -24,23 +24,58 @@ export function LeaderboardPage() {
   const [tab, setTab] = useState<Tab>('month')
 
   const { data: currentMonth } = useQuery({ queryKey: ['currentMonth'], queryFn: getCurrentMonth })
-  const { data: months } = useQuery({ queryKey: ['months'], queryFn: listAllMonths })
+  const { data: months } = useQuery({
+    queryKey: ['months'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/seasons')
+        if (res.ok) {
+          const data = await res.json()
+          const ms: any[] = []
+          for (const s of data) {
+            if (Array.isArray(s.months)) ms.push(...s.months)
+          }
+          if (ms.length > 0) return ms.sort((a: any, b: any) => a.startDate.localeCompare(b.startDate))
+        }
+      } catch {}
+      return listAllMonths().sort((a, b) => a.startDate.localeCompare(b.startDate))
+    },
+  })
   const { data: seasons } = useQuery({ queryKey: ['seasons'], queryFn: listSeasons })
   const { data: rounds } = useQuery({
     queryKey: ['rounds'],
     queryFn: () => listRounds().filter((r) => r.status !== 'draft'),
   })
 
-  const defaultMonthId = months?.find((m) => m.seasonId === (seasons?.find((s) => s.status === 'active')?.id ?? seasons?.[0]?.id ?? ''))?.id
+  const defaultMonthId = useMemo(() => {
+    if (currentMonth?.id) return currentMonth.id
+    const now = Date.now()
+    const openMonth = months?.find((m) => {
+      const start = new Date(m.startDate).getTime()
+      const end = new Date(m.endDate).getTime()
+      return now >= start && now <= end
+    })
+    if (openMonth) return openMonth.id
+
+    const activeSeason = seasons?.find((s) => s.status === 'active') ?? seasons?.[0]
+    const seasonMonths = months?.filter((m) => m.seasonId === activeSeason?.id) ?? []
+    return seasonMonths[0]?.id ?? months?.[0]?.id ?? ''
+  }, [currentMonth, months, seasons])
+
   const [monthId, setMonthId] = useState<string>('')
   const [seasonId, setSeasonId] = useState<string>('')
   const [roundId, setRoundId] = useState<string>('')
 
   useEffect(() => {
-    if (!monthId && defaultMonthId) setMonthId(defaultMonthId)
-    if (!seasonId && seasons?.[0]) setSeasonId(seasons[0].id)
+    if (defaultMonthId && (!monthId || monthId === 'season_1786731482471_m10')) {
+      setMonthId(defaultMonthId)
+    }
+  }, [defaultMonthId, monthId])
+
+  useEffect(() => {
+    if (!seasonId && seasons?.[0]) setSeasonId(seasons.find((s) => s.status === 'active')?.id ?? seasons[0].id)
     if (!roundId && rounds?.[0]) setRoundId(rounds[0].id)
-  }, [defaultMonthId, months, seasons, rounds, monthId, seasonId, roundId])
+  }, [seasons, rounds, seasonId, roundId])
 
   const { data: monthRanking } = useQuery({
     queryKey: ['ranking', 'month', monthId],
