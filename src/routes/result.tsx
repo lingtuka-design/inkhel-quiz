@@ -206,32 +206,20 @@ export function ResultPage() {
           </div>
         </div>
 
-        {/* Dynamic Social & WhatsApp Share Section */}
-        <div className="relative mt-8 rounded-2xl border border-white/10 bg-gradient-to-r from-violet-900/30 via-indigo-900/20 to-fuchsia-900/20 p-5 sm:p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        {/* WhatsApp Score Card Share Section */}
+        <div className="relative mt-8 rounded-2xl border border-emerald-500/20 bg-gradient-to-r from-emerald-950/30 via-ink-900/40 to-violet-950/20 p-5 sm:p-6 shadow-xl shadow-black/50">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="flex items-center gap-2 font-display text-base font-bold text-white">
-                <Sparkles className="h-4 w-4 text-yellow-400" />
-                Share your score & challenge friends
+                <Sparkles className="h-4 w-4 text-emerald-400" />
+                Share your score on WhatsApp
               </p>
               <p className="mt-1 text-xs text-ink-300">
-                Send your official score card image or challenge link directly to WhatsApp & social media.
+                Share your official score card image & challenge your friends directly on WhatsApp.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
-              <Button
-                onClick={() => {
-                  const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: *${attempt.finalScore} Points* (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n🔥 Khawi min rawn khum ve chhin teh le!\n👉 https://quiz.inkhel.com/rounds/${round.id}`
-                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank')
-                }}
-                className="bg-[#25D366] text-black hover:bg-[#20bd5a] font-semibold border-none shadow-lg shadow-green-950/40"
-                size="sm"
-                icon={MessageCircle}
-              >
-                WhatsApp
-              </Button>
-
+            <div>
               <Button
                 onClick={async () => {
                   try {
@@ -249,54 +237,42 @@ export function ResultPage() {
                       timeTaken: formatTime(attempt.timeTakenSeconds ?? 0),
                     })
 
-                    const file = new File([blob], `inkhel-result-${round.id}.png`, { type: 'image/png' })
-                    const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: ${attempt.finalScore} Points (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n👉 https://quiz.inkhel.com/rounds/${round.id}`
+                    const file = new File([blob], `inkhel-${round.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-result.png`, { type: 'image/png' })
+                    const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: *${attempt.finalScore} Points* (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n🔥 Khawi min rawn khum ve chhin teh le!\n👉 https://quiz.inkhel.com/rounds/${round.id}`
 
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                       await navigator.share({
                         files: [file],
-                        title: `My result on ${round.title}`,
+                        title: `My score on ${round.title}`,
                         text: shareText,
                       })
-                      toast('Score card shared!', 'success')
+                      toast('Score card shared to WhatsApp!', 'success')
                     } else {
+                      // Desktop fallback: Download image & open WhatsApp web
                       const downloadUrl = URL.createObjectURL(blob)
                       const a = document.createElement('a')
                       a.href = downloadUrl
-                      a.download = `inkhel-${round.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-scorecard.png`
+                      a.download = `inkhel-scorecard.png`
                       a.click()
                       URL.revokeObjectURL(downloadUrl)
-                      await copyToClipboard(shareText)
-                      toast('Score card image downloaded & link copied!', 'success')
+                      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank')
+                      toast('Score card saved & WhatsApp opened!', 'success')
                     }
                   } catch (e: any) {
                     if (e.name !== 'AbortError') {
-                      toast('Could not generate score card image', 'error')
+                      // Direct text share fallback
+                      const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: *${attempt.finalScore} Points* (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n🔥 Khawi min rawn khum ve chhin teh le!\n👉 https://quiz.inkhel.com/rounds/${round.id}`
+                      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank')
                     }
                   } finally {
                     setGeneratingImage(false)
                   }
                 }}
                 loading={generatingImage}
-                variant="outline"
-                size="sm"
-                icon={Download}
-                className="border-white/20 bg-white/5 hover:bg-white/10"
+                className="w-full sm:w-auto bg-[#25D366] text-black hover:bg-[#20bd5a] font-bold text-sm px-6 py-3 border-none shadow-lg shadow-emerald-950/60 transition-all hover:scale-[1.02]"
+                icon={MessageCircle}
               >
-                Save Score Card (Image)
-              </Button>
-
-              <Button
-                onClick={async () => {
-                  const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Score: ${attempt.finalScore} pts (Rank #${rank > 0 ? rank : '—'})\n👉 https://quiz.inkhel.com/rounds/${round.id}`
-                  await copyToClipboard(shareText)
-                  toast('Challenge link copied to clipboard!', 'success')
-                }}
-                variant="ghost"
-                size="sm"
-                icon={Link2}
-              >
-                Copy Link
+                {generatingImage ? 'Generating Score Card…' : 'Share on WhatsApp'}
               </Button>
             </div>
           </div>
