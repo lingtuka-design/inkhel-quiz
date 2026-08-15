@@ -238,7 +238,7 @@ export function ResultPage() {
                     })
 
                     const file = new File([blob], `inkhel-${round.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-result.png`, { type: 'image/png' })
-                    const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: *${attempt.finalScore} Points* (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n🔥 Khawi min rawn khum ve chhin teh le!\n👉 https://quiz.inkhel.com/rounds/${round.id}`
+                    const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: *${attempt.finalScore} Points* (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n🔥 Min khum thei in awm em? Han tum teh le!\n👉 https://quiz.inkhel.com/rounds/${round.id}`
 
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                       await navigator.share({
@@ -261,7 +261,7 @@ export function ResultPage() {
                   } catch (e: any) {
                     if (e.name !== 'AbortError') {
                       // Direct text share fallback
-                      const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: *${attempt.finalScore} Points* (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n🔥 Khawi min rawn khum ve chhin teh le!\n👉 https://quiz.inkhel.com/rounds/${round.id}`
+                      const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: *${attempt.finalScore} Points* (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n🔥 Min khum thei in awm em? Han tum teh le!\n👉 https://quiz.inkhel.com/rounds/${round.id}`
                       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank')
                     }
                   } finally {

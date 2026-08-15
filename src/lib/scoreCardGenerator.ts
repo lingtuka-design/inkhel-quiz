@@ -177,7 +177,7 @@ export async function generateScoreCardBlob({
   // 8. Footer Call to Action
   ctx.font = 'bold 28px Inter, sans-serif'
   ctx.fillStyle = '#ffffff'
-  ctx.fillText('Khawi min rawn khum ve chhin teh le! 🔥', 110, 890)
+  ctx.fillText('Min khum thei in awm em? Han tum teh le! 🔥', 110, 890)
 
   ctx.font = '500 22px Inter, sans-serif'
   ctx.fillStyle = '#9333ea'
