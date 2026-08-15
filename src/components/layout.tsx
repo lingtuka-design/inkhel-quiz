@@ -14,7 +14,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { Avatar, Button, toast } from './ui'
-import { getParticipant, loginWithGoogle, logoutParticipant, logoutAdmin } from '../services/authService'
+import { getParticipant, loginWithGoogle, logoutParticipant, logoutAdmin, subscribeToAuth } from '../services/authService'
 import { cn } from '../lib/utils'
 import type { Participant } from '../types'
 
@@ -82,8 +82,10 @@ export function PublicLayout() {
   }, [location.pathname])
 
   useEffect(() => {
-    setParticipant(getParticipant())
-  }, [location.pathname])
+    return subscribeToAuth((p) => {
+      setParticipant(p)
+    })
+  }, [])
 
   const handleGoogleLogin = async () => {
     try {

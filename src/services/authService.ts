@@ -111,6 +111,24 @@ export function isAdminLoggedIn(): boolean {
   return !!localStorage.getItem(TOKEN_KEY)
 }
 
+let authSubscribers: ((p: Participant | null) => void)[] = []
+
+export function subscribeToAuth(callback: (p: Participant | null) => void): () => void {
+  authSubscribers.push(callback)
+  callback(getParticipant())
+  return () => {
+    authSubscribers = authSubscribers.filter((cb) => cb !== callback)
+  }
+}
+
+function notifyAuthSubscribers(p: Participant | null) {
+  authSubscribers.forEach((cb) => {
+    try {
+      cb(p)
+    } catch {}
+  })
+}
+
 export function getParticipant(): Participant | null {
   const raw = localStorage.getItem(PARTICIPANT_CACHE_KEY)
   if (raw) {
@@ -124,6 +142,62 @@ export function getParticipant(): Participant | null {
   if (!id) return null
   return getDb().participants.find((p) => p.id === id) ?? null
 }
+
+// Global Firebase auth state listener: ensures users on mobile / web remain permanently logged in
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    const existing = getParticipant()
+    if (!existing || existing.provider !== 'google' || existing.email !== user.email) {
+      const displayName = user.displayName || user.email?.split('@')[0] || 'Quiz Player'
+      const email = user.email || null
+      const photoUrl = user.photoURL || null
+      const googleId = user.uid
+
+      const participant: Participant = {
+        id: `part_${googleId.slice(0, 10)}`,
+        displayName,
+        email,
+        photoUrl,
+        googleId,
+        avatarGradient: avatarGradient(displayName),
+        provider: 'google',
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      }
+
+      try {
+        const res = await fetch('/api/participants', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            displayName,
+            email,
+            photoUrl,
+            googleId,
+            avatarGradient: participant.avatarGradient,
+          }),
+        })
+        if (res.ok) {
+          const serverP = await res.json()
+          Object.assign(participant, serverP)
+        }
+      } catch {}
+
+      const db = getDb()
+      const idx = db.participants.findIndex((p) => p.id === participant.id || p.email === email)
+      if (idx >= 0) {
+        db.participants[idx] = participant
+      } else {
+        db.participants.push(participant)
+      }
+      saveDb()
+
+      localStorage.setItem(PARTICIPANT_KEY, participant.id)
+      localStorage.setItem(PARTICIPANT_CACHE_KEY, JSON.stringify(participant))
+      notifyAuthSubscribers(participant)
+    }
+  }
+})
 
 export async function loginWithGoogle(): Promise<Participant> {
   const result = await signInWithPopup(auth, googleProvider)
@@ -180,6 +254,7 @@ export async function loginWithGoogle(): Promise<Participant> {
 
   localStorage.setItem(PARTICIPANT_KEY, participant.id)
   localStorage.setItem(PARTICIPANT_CACHE_KEY, JSON.stringify(participant))
+  notifyAuthSubscribers(participant)
   return participant
 }
 
@@ -187,6 +262,7 @@ export async function logoutParticipant(): Promise<void> {
   await firebaseSignOut(auth).catch(() => {})
   localStorage.removeItem(PARTICIPANT_KEY)
   localStorage.removeItem(PARTICIPANT_CACHE_KEY)
+  notifyAuthSubscribers(null)
 }
 
 export function saveParticipant(displayName: string): Participant {
