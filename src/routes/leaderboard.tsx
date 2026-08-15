@@ -70,24 +70,6 @@ export function LeaderboardPage() {
   const selectedSeason = seasons?.find((s) => s.id === seasonId)
   const selectedRound = rounds?.find((r) => r.id === roundId)
 
-  const podiumRows = useMemo(() => {
-    const source =
-      tab === 'round'
-        ? (roundLeaderboard ?? []).map((r) => ({ ...r, score: r.score }))
-        : (tab === 'month' ? monthRanking ?? [] : seasonRanking ?? []).map((r) => ({
-            rank: r.rank,
-            participant: r.participant,
-            correctAnswers: 0,
-            totalQuestions: 0,
-            timeTakenSeconds: 0,
-            score: r.points,
-            completedAt: '',
-            attemptId: `rank_${r.participant.id}`,
-            isCurrentUser: r.isCurrentUser,
-          }))
-    return source.slice(0, 3)
-  }, [tab, roundLeaderboard, monthRanking, seasonRanking])
-
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
       <SectionHeading
@@ -214,12 +196,11 @@ export function LeaderboardPage() {
       )}
 
       {(tab === 'month' ? monthRanking : tab === 'season' ? seasonRanking : roundLeaderboard)?.length ? (
-        <div className="space-y-8">
-          <Podium rows={podiumRows} />
+        <div>
           {tab === 'round' ? (
-            <LeaderboardTable rows={roundLeaderboard?.slice(0, 20) ?? []} />
+            <LeaderboardTable rows={roundLeaderboard?.slice(0, 50) ?? []} />
           ) : (
-            <RankingTable rows={(tab === 'month' ? monthRanking : seasonRanking)?.slice(0, 20) ?? []} />
+            <RankingTable rows={(tab === 'month' ? monthRanking : seasonRanking)?.slice(0, 50) ?? []} />
           )}
         </div>
       ) : (

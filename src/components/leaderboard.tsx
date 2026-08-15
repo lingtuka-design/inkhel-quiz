@@ -113,21 +113,24 @@ export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <Avatar
                       name={row.participant.displayName}
                       gradient={row.participant.avatarGradient}
                       photoUrl={row.participant.photoUrl}
                       size="sm"
                     />
-                    <span className="font-semibold text-white">
+                    <span
+                      className="truncate font-semibold text-white max-w-[130px] sm:max-w-[240px] md:max-w-none"
+                      title={row.participant.displayName}
+                    >
                       {row.participant.displayName}
-                      {row.isCurrentUser && (
-                        <span className="ml-2 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-300">
-                          You
-                        </span>
-                      )}
                     </span>
+                    {row.isCurrentUser && (
+                      <span className="shrink-0 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-300">
+                        You
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-center text-ink-200">
@@ -185,21 +188,24 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
                   <RankBadge rank={row.rank} size="sm" />
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <Avatar
                       name={row.participant.displayName}
                       gradient={row.participant.avatarGradient}
                       photoUrl={row.participant.photoUrl}
                       size="sm"
                     />
-                    <span className="font-semibold text-white">
+                    <span
+                      className="truncate font-semibold text-white max-w-[130px] sm:max-w-[240px] md:max-w-none"
+                      title={row.participant.displayName}
+                    >
                       {row.participant.displayName}
-                      {row.isCurrentUser && (
-                        <span className="ml-2 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-300">
-                          You
-                        </span>
-                      )}
                     </span>
+                    {row.isCurrentUser && (
+                      <span className="shrink-0 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-300">
+                        You
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-center text-ink-200">{row.rounds}</td>

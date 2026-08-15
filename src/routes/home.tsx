@@ -289,20 +289,7 @@ export function HomePage() {
             <div className="p-6 sm:p-8">
               {ranking && ranking.length > 0 ? (
                 <>
-                  <Podium
-                    rows={ranking.slice(0, 3).map((r) => ({
-                      rank: r.rank,
-                      participant: r.participant,
-                      correctAnswers: 0,
-                      totalQuestions: 0,
-                      timeTakenSeconds: 0,
-                      score: r.points,
-                      completedAt: '',
-                      attemptId: `rank_${r.participant.id}`,
-                      isCurrentUser: r.isCurrentUser,
-                    }))}
-                  />
-                  <div className="mt-8">
+                  <div>
                     <div className="mb-4 flex items-center justify-between">
                       <h3 className="font-display text-base font-bold text-white sm:text-lg">
                         Top 10 Season Standings

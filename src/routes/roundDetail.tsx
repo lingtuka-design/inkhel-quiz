@@ -272,9 +272,8 @@ export function RoundDetailPage() {
             subtitle={`Live results for ${round.title} — updated after every attempt.`}
           />
           {leaderboard && leaderboard.length > 0 ? (
-            <div className="space-y-6">
-              <Podium rows={leaderboard.slice(0, 3)} />
-              <LeaderboardTable rows={leaderboard.slice(0, 10)} />
+            <div>
+              <LeaderboardTable rows={leaderboard.slice(0, 20)} />
             </div>
           ) : (
             <Card className="p-10 text-center text-sm text-ink-300">
