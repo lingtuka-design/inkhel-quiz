@@ -37,7 +37,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     if (round) {
       const title = `${round.title} — Inkhel Quiz`
       const desc = round.description || 'Beat the clock, answer fast, and climb the season leaderboard on Inkhel!'
-      const image = round.banner_url || `${url.origin}/og-default.png`
+
+      // Social platforms require an ABSOLUTE og:image URL. Rounds may store a
+      // relative banner path (R2) — resolve it against the origin. When there
+      // is no banner, generate a branded card on the fly.
+      const rawBanner = round.banner_url || ''
+      const image = rawBanner.startsWith('http')
+        ? rawBanner
+        : `${url.origin}${rawBanner.startsWith('/') ? rawBanner : `/api/og?roundId=${encodeURIComponent(roundId)}`}`
       const pageUrl = `${url.origin}/rounds/${roundId}`
 
       let html = await response.text()
@@ -60,9 +67,11 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     <meta name="twitter:image" content="${escapeHtml(image)}" />
       `
 
-      // Replace existing title and description if present
+      // Remove the existing title/description AND any static og/twitter tags so
+      // the round-specific values above are the only ones crawlers see.
       html = html.replace(/<title>.*?<\/title>/i, '')
       html = html.replace(/<meta\s+name=["']description["'].*?>/i, '')
+      html = html.replace(/<meta\s+(?:property|name)=["'](?:og|twitter):[^"']*["'][^>]*>/gi, '')
       html = html.replace('</head>', `${metaTags}\n  </head>`)
 
       return new Response(html, {
