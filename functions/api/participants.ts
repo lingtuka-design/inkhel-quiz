@@ -90,18 +90,25 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         return json(toCamelCase(updated))
       }
 
-      // Create new Google participant
+      // Create or update Google participant
       const id = `part_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
       const avatar = avatarGradient || `avatar_${Math.floor(Math.random() * 8) + 1}`
 
       await env.DB.prepare(
         `INSERT INTO participants (id, display_name, email, photo_url, google_id, avatar_gradient, provider, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'google', ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, 'google', ?, ?)
+         ON CONFLICT(email) DO UPDATE SET
+           display_name = excluded.display_name,
+           photo_url = COALESCE(excluded.photo_url, participants.photo_url),
+           google_id = COALESCE(excluded.google_id, participants.google_id),
+           updated_at = excluded.updated_at`
       )
         .bind(id, name, email || null, photoUrl || null, googleId || null, avatar, now, now)
         .run()
 
-      const created = await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(id).first()
+      const created = await env.DB.prepare('SELECT * FROM participants WHERE (email = ? AND email IS NOT NULL) OR id = ?')
+        .bind(email || id, id)
+        .first()
       return json(toCamelCase(created))
     }
 
