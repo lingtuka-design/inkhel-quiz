@@ -18,18 +18,19 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { ShareButtons } from '../components/rounds'
+import { RoundCard, ShareButtons } from '../components/rounds'
 import { AnswerOption } from '../components/quiz'
 import { Badge, Button, Card, SectionHeading, Spinner, toast } from '../components/ui'
 import { getAttemptReview } from '../services/attemptService'
-import { getRound } from '../services/roundService'
-import { getMonth } from '../services/monthService'
+import { getRound, listAllPlayableRounds, countParticipants, countQuestions } from '../services/roundService'
+import { getMonth, listAllMonths } from '../services/monthService'
 import { getSeason } from '../services/seasonService'
 import { getParticipant } from '../services/authService'
 import { copyToClipboard, setPageTitle } from '../services/shareService'
 import { generateScoreCardBlob } from '../lib/scoreCardGenerator'
 import { formatTime } from '../lib/utils'
 import { cn } from '../lib/utils'
+import { getDb } from '../db/database'
 import type { RoundReviewQuestion } from '../types'
 
 export function ResultPage() {
@@ -64,6 +65,72 @@ export function ResultPage() {
     queryFn: () => (month ? getSeason(month.seasonId) : null),
     enabled: !!month,
   })
+
+  const { data: allRounds } = useQuery({
+    queryKey: ['allRounds'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/rounds')
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data)) {
+            return data
+              .filter((r: any) => r.status !== 'draft')
+              .map((r: any) => ({
+                round: r,
+                participants: r.participantCount || 0,
+                questions: r.questionCount || 10,
+              }))
+          }
+        }
+      } catch {}
+      return listAllPlayableRounds().map((r) => ({
+        round: r,
+        participants: countParticipants(r.id),
+        questions: countQuestions(r.id),
+      }))
+    },
+  })
+
+  const { data: allMonths } = useQuery({
+    queryKey: ['allMonths'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/seasons')
+        if (res.ok) {
+          const data = await res.json()
+          const ms: any[] = []
+          for (const s of data) {
+            if (Array.isArray(s.months)) ms.push(...s.months)
+          }
+          if (ms.length > 0) return ms
+        }
+      } catch {}
+      return listAllMonths()
+    },
+  })
+
+  const otherRounds = useMemo(() => {
+    if (!allRounds) return []
+    const db = getDb()
+    const playedRoundIds = new Set(
+      db.attempts
+        .filter((a) => a.participantId === participant?.id && (a.status === 'completed' || a.status === 'expired'))
+        .map((a) => a.roundId),
+    )
+    if (roundId) playedRoundIds.add(roundId)
+
+    // Unplayed playable rounds first, ordered by latest date
+    return [...allRounds]
+      .filter((r) => r.round.id !== roundId)
+      .sort((a, b) => {
+        const aPlayed = playedRoundIds.has(a.round.id) ? 1 : 0
+        const bPlayed = playedRoundIds.has(b.round.id) ? 1 : 0
+        if (aPlayed !== bPlayed) return aPlayed - bPlayed
+        return new Date(b.round.createdAt || 0).getTime() - new Date(a.round.createdAt || 0).getTime()
+      })
+      .slice(0, 6)
+  }, [allRounds, roundId, participant])
 
   useEffect(() => {
     if (round) setPageTitle(`Result — ${round.title}`)
@@ -307,10 +374,42 @@ export function ResultPage() {
         </Link>
         <Link to="/rounds">
           <Button variant="ghost" icon={Home}>
-            More Rounds
+            All Rounds
           </Button>
         </Link>
       </div>
+
+      {otherRounds.length > 0 && (
+        <section className="mt-16 border-t border-white/10 pt-12">
+          <SectionHeading
+            eyebrow="Keep playing"
+            title="More rounds to play"
+            subtitle="I la khelh loh leh round thar awmte chhang chhunzawm nghal rawh le."
+            action={
+              <Link
+                to="/rounds"
+                className="focus-ring inline-flex items-center gap-1.5 text-sm font-semibold text-violet-400 hover:text-violet-300"
+              >
+                All rounds <ArrowRight className="h-4 w-4" />
+              </Link>
+            }
+          />
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {otherRounds.map(({ round: r, participants: pCount, questions: qCount }) => {
+              const m = allMonths?.find((x) => x.id === r.monthId)
+              return (
+                <RoundCard
+                  key={r.id}
+                  round={r}
+                  month={m}
+                  participantCount={pCount}
+                  questionCount={qCount}
+                />
+              )
+            })}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
