@@ -238,9 +238,10 @@ export function QuizPage() {
     const minutes = Math.round(round.timeLimitSeconds / 60)
     return (
       <>
-        <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-16">
-          <Card className="animate-fade-up overflow-hidden">
-            <RoundBanner round={round} className="h-40 sm:h-52" iconSize="h-16 w-16" />
+        <div className="relative mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-16">
+          <div className="pointer-events-none absolute -top-10 left-1/2 h-64 w-96 -translate-x-1/2 rounded-full bg-violet-600/25 blur-3xl" />
+          <Card className="animate-fade-up relative overflow-hidden border-white/15 shadow-2xl">
+            <RoundBanner round={round} className="aspect-[16/9] sm:aspect-[21/9] max-h-56 w-full" iconSize="h-16 w-16" />
             <div className="space-y-6 p-6 sm:p-10">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-violet-400">

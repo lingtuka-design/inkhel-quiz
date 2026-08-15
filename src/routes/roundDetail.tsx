@@ -138,22 +138,42 @@ export function RoundDetailPage() {
   }
 
   return (
-    <div>
-      <div className="relative">
-        <RoundBanner round={round} className="h-56 sm:h-72" iconSize="h-24 w-24" />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/40 to-transparent" />
+    <div className="relative overflow-hidden">
+      {/* Cinematic Blurred Ambient Backdrop */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] overflow-hidden">
+        {round.bannerUrl ? (
+          <img
+            src={round.bannerUrl}
+            alt=""
+            className="h-full w-full object-cover blur-3xl scale-125 opacity-30"
+          />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-b from-violet-600/20 via-indigo-600/10 to-transparent blur-3xl" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-ink-950/40 via-ink-950/80 to-ink-950" />
       </div>
 
-      <div className="mx-auto -mt-24 max-w-5xl px-4 sm:px-6">
-        <div className="relative">
-          <Link
-            to="/rounds"
-            className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-ink-300 hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" /> All rounds
-          </Link>
+      <div className="relative mx-auto max-w-5xl px-4 pt-6 pb-12 sm:px-6">
+        <Link
+          to="/rounds"
+          className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-ink-300 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> All rounds
+        </Link>
 
-          <Card className="p-6 sm:p-8">
+        {/* Focused Hero 16:9 Banner Card */}
+        <div className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-violet-950/40">
+          <RoundBanner
+            round={round}
+            className="aspect-[16/9] sm:aspect-[21/9] max-h-[380px] w-full"
+            iconSize="h-24 w-24"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink-950/90 via-ink-950/20 to-transparent" />
+        </div>
+
+        {/* Floating Detail Card */}
+        <div className="relative -mt-12 sm:-mt-16 mx-2 sm:mx-6">
+          <Card className="p-6 sm:p-8 backdrop-blur-xl border-white/15 shadow-2xl shadow-black/80">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={badge.tone}>{badge.label}</Badge>
               <Badge tone="violet">
@@ -166,7 +186,7 @@ export function RoundDetailPage() {
             <h1 className="mt-4 font-display text-3xl font-bold text-white sm:text-4xl">
               {round.title}
             </h1>
-            <p className="mt-3 max-w-2xl text-ink-300">{round.description}</p>
+            <p className="mt-3 max-w-2xl text-ink-300 leading-relaxed">{round.description}</p>
 
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
