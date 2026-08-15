@@ -268,8 +268,8 @@ export function QuestionEditor({ roundId, initial, onSave }: QuestionEditorProps
               </div>
 
               {d.imageUrl && (
-                <div className="relative inline-block overflow-hidden rounded-xl border border-white/10 bg-black/40">
-                  <img src={d.imageUrl} alt="Question asset" className="h-28 max-w-full rounded-xl object-contain" />
+                <div className="relative inline-block overflow-hidden rounded-xl border border-white/10 bg-ink-900 shadow-md">
+                  <img src={d.imageUrl} alt="Question asset" className="aspect-[4/3] h-28 rounded-xl object-cover object-center" />
                   <button
                     type="button"
                     onClick={() => update(i, { imageUrl: null })}

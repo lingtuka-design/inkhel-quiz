@@ -146,11 +146,11 @@ export function QuestionCard({
     <div className="animate-fade-up space-y-6">
       <QuizProgress current={index + 1} total={total} percent={percent} />
       {question.imageUrl && (
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-ink-900/60 shadow-xl shadow-black/50">
           <img
             src={question.imageUrl}
             alt="Question clue"
-            className="max-h-64 w-full object-contain p-2"
+            className="aspect-[4/3] max-h-72 w-full object-cover object-center"
           />
         </div>
       )}

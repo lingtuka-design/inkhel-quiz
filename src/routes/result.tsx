@@ -333,8 +333,8 @@ function ReviewCard({ question }: { question: RoundReviewQuestion }) {
         )}
       </div>
       {question.imageUrl && (
-        <div className="mb-4 overflow-hidden rounded-xl border border-white/10 bg-black/40">
-          <img src={question.imageUrl} alt="Question clue" className="max-h-52 w-full object-contain p-2" />
+        <div className="mb-4 overflow-hidden rounded-xl border border-white/10 bg-ink-900/60 shadow-md">
+          <img src={question.imageUrl} alt="Question clue" className="aspect-[4/3] max-h-56 w-full object-cover object-center" />
         </div>
       )}
       <div className="grid gap-2.5">
