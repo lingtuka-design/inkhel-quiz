@@ -23,6 +23,23 @@ import type { Attempt, OptionKey, QuizQuestion } from '../types'
 
 type Phase = 'boot' | 'instructions' | 'playing' | 'done'
 
+function shuffleList<T>(array: T[]): T[] {
+  const arr = [...array]
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+function randomizeQuestionsForAttempt(rawQuestions: QuizQuestion[]): QuizQuestion[] {
+  return shuffleList(rawQuestions).map((q, idx) => ({
+    ...q,
+    order: idx + 1,
+    options: shuffleList(q.options),
+  }))
+}
+
 export function QuizPage() {
   const { roundId } = useParams({ strict: false })
   const navigate = useNavigate()
@@ -100,7 +117,20 @@ export function QuizPage() {
       return
     }
     if (resume.status === 'active') {
-      const qs = getQuizQuestions(roundId)
+      let qs: QuizQuestion[] = []
+      try {
+        const cached = sessionStorage.getItem(`quiz_qs_${resume.attempt.id}`)
+        if (cached) qs = JSON.parse(cached)
+      } catch {}
+
+      if (qs.length === 0) {
+        const baseQs = getQuizQuestions(roundId)
+        qs = randomizeQuestionsForAttempt(baseQs)
+        try {
+          sessionStorage.setItem(`quiz_qs_${resume.attempt.id}`, JSON.stringify(qs))
+        } catch {}
+      }
+
       if (qs.length === 0) {
         setError('This round has no questions yet')
         setPhase('done')
@@ -184,8 +214,15 @@ export function QuizPage() {
         goToResult(att.id)
         return
       }
+
+      // Randomize question sequence and option order for this unique attempt
+      const randomized = randomizeQuestionsForAttempt(qs)
+      try {
+        sessionStorage.setItem(`quiz_qs_${att.id}`, JSON.stringify(randomized))
+      } catch {}
+
       setAttempt(att)
-      setQuestions(qs)
+      setQuestions(randomized)
       setIndex(0)
       setDeadline(new Date(att.startedAt).getTime() + (round?.timeLimitSeconds ?? 0) * 1000)
       setPhase('playing')
