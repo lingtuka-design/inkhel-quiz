@@ -168,7 +168,7 @@ export function HomePage() {
                 </div>
               </div>
               <h1 className="font-display text-4xl font-extrabold tracking-tight text-white sm:text-6xl sm:leading-none">
-                Mizo Quiz <span className="text-gradient">Tournament</span>
+                Inkhel Quiz <span className="text-gradient">Competition</span>
               </h1>
               <p className="mt-6 max-w-lg text-base text-ink-200 sm:text-lg leading-relaxed">
                 Football, Sports, Music, Movies leh Mizoram chanchin thlengin! Hunbi chhungin zawhna 10 chhang la, <b>September thla atangin thla tin lawmman ₹2,000 kan tan dawn e!</b> Tun thla (August) chu Trial Period a ni e.
