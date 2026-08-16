@@ -6,19 +6,21 @@ import {
   CheckCircle2,
   Clock,
   Download,
+  Flame,
   Gauge,
   Home,
   Link2,
   ListChecks,
   Medal,
   MessageCircle,
+  Play,
   Share2,
   Sparkles,
   Trophy,
   XCircle,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { RoundCard, ShareButtons } from '../components/rounds'
+import { CategoryBadge, RoundCard, ShareButtons } from '../components/rounds'
 import { AnswerOption } from '../components/quiz'
 import { Badge, Button, Card, SectionHeading, Spinner, toast } from '../components/ui'
 import { getAttemptReview } from '../services/attemptService'
@@ -38,6 +40,28 @@ export function ResultPage() {
   const { attemptId } = useSearch({ strict: false }) as { attemptId?: string }
   const participant = getParticipant()
   const [generatingImage, setGeneratingImage] = useState(false)
+
+  const { data: userAttemptsMap } = useQuery({
+    queryKey: ['userAttemptsMap', participant?.id],
+    queryFn: async () => {
+      if (!participant?.id) return {}
+      try {
+        const res = await fetch(`/api/attempts?participantId=${encodeURIComponent(participant.id)}`)
+        if (res.ok) {
+          const data = await res.json()
+          const map: Record<string, any> = {}
+          if (Array.isArray(data.attempts)) {
+            for (const a of data.attempts) {
+              map[a.roundId] = a
+            }
+          }
+          return map
+        }
+      } catch {}
+      return {}
+    },
+    enabled: !!participant?.id,
+  })
 
   const { data: review } = useQuery({
     queryKey: ['attemptReview', attemptId],
@@ -110,17 +134,29 @@ export function ResultPage() {
     },
   })
 
+  const liveRounds = useMemo(() => {
+    return (allRounds ?? []).filter((r) => r.round.status === 'published')
+  }, [allRounds])
+
+  const playedRoundIds = useMemo(() => {
+    const s = new Set<string>()
+    if (userAttemptsMap) {
+      for (const k of Object.keys(userAttemptsMap)) s.add(k)
+    }
+    if (roundId) s.add(roundId)
+    return s
+  }, [userAttemptsMap, roundId])
+
+  const nextUnplayedRound = useMemo(() => {
+    const unplayed = liveRounds.filter((r) => !playedRoundIds.has(r.round.id))
+    return unplayed[0] || null
+  }, [liveRounds, playedRoundIds])
+
+  const playedCount = playedRoundIds.size
+  const totalRoundsCount = Math.max(liveRounds.length, 1)
+
   const otherRounds = useMemo(() => {
     if (!allRounds) return []
-    const db = getDb()
-    const playedRoundIds = new Set(
-      db.attempts
-        .filter((a) => a.participantId === participant?.id && (a.status === 'completed' || a.status === 'expired'))
-        .map((a) => a.roundId),
-    )
-    if (roundId) playedRoundIds.add(roundId)
-
-    // Unplayed playable rounds first, ordered by latest date
     return [...allRounds]
       .filter((r) => r.round.id !== roundId)
       .sort((a, b) => {
@@ -130,7 +166,7 @@ export function ResultPage() {
         return new Date(b.round.createdAt || 0).getTime() - new Date(a.round.createdAt || 0).getTime()
       })
       .slice(0, 6)
-  }, [allRounds, roundId, participant])
+  }, [allRounds, roundId, playedRoundIds])
 
   useEffect(() => {
     if (round) setPageTitle(`Result — ${round.title}`)
@@ -316,18 +352,11 @@ export function ResultPage() {
                       toast('Score card shared to WhatsApp!', 'success')
                     } else {
                       // Desktop fallback: Download image & open WhatsApp web
-                      const downloadUrl = URL.createObjectURL(blob)
-                      const a = document.createElement('a')
-                      a.href = downloadUrl
-                      a.download = `inkhel-scorecard.png`
-                      a.click()
-                      URL.revokeObjectURL(downloadUrl)
+                      const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: *${attempt.finalScore} Points* (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n🔥 Min khum thei in awm em? Han tum teh le!\n👉 https://quiz.inkhel.com/rounds/${round.id}`
                       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank')
-                      toast('Score card saved & WhatsApp opened!', 'success')
                     }
-                  } catch (e: any) {
-                    if (e.name !== 'AbortError') {
-                      // Direct text share fallback
+                  } catch (err: any) {
+                    if (err.name !== 'AbortError') {
                       const shareText = `⚡ Inkhel Quiz — ${round.title}\n🏆 Ka Score: *${attempt.finalScore} Points* (Rank #${rank > 0 ? rank : '—'})\n🎯 Correct: ${summary!.correct}/${questions.length} | ⏱️ Time: ${formatTime(attempt.timeTakenSeconds ?? 0)}\n🔥 Min khum thei in awm em? Han tum teh le!\n👉 https://quiz.inkhel.com/rounds/${round.id}`
                       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank')
                     }
@@ -345,6 +374,62 @@ export function ResultPage() {
           </div>
         </div>
       </Card>
+
+      {/* Up Next: Next Challenge Hero Banner (Video Game Flow) */}
+      {nextUnplayedRound && (
+        <div className="mt-8 animate-fade-up">
+          <div className="relative overflow-hidden rounded-3xl border border-violet-500/40 bg-gradient-to-r from-violet-950/90 via-indigo-950/80 to-purple-950/90 p-6 sm:p-8 shadow-2xl shadow-violet-950/60 ring-1 ring-violet-500/30">
+            <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-violet-500/20 blur-3xl" />
+            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-3 py-1 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-orange-950/50 animate-pulse">
+                    <Flame className="h-3.5 w-3.5" /> Next Challenge
+                  </span>
+                  <CategoryBadge category={nextUnplayedRound.round.category} />
+                  <span className="text-xs font-semibold text-violet-300">
+                    {playedCount} of {totalRoundsCount} Rounds Completed
+                  </span>
+                </div>
+
+                <h3 className="font-display text-2xl font-black text-white sm:text-3xl">
+                  {nextUnplayedRound.round.title}
+                </h3>
+                <p className="max-w-xl text-sm text-ink-200 leading-relaxed">
+                  {nextUnplayedRound.round.description ||
+                    'Khelh loh round i la nei e! Chhang chhunzawm la, Points hlawh belhin Leaderboard-ah i rank ti sang sauh rawh!'}
+                </p>
+
+                <div className="pt-2 flex items-center gap-3">
+                  <div className="h-2.5 w-48 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-400 via-teal-400 to-violet-400 transition-all duration-500"
+                      style={{
+                        width: `${Math.min(100, Math.round((playedCount / totalRoundsCount) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs font-mono font-bold text-emerald-400">
+                    {Math.round((playedCount / totalRoundsCount) * 100)}% Campaign Done
+                  </span>
+                </div>
+              </div>
+
+              <div className="shrink-0">
+                <Link to={`/rounds/${nextUnplayedRound.round.id}`}>
+                  <Button
+                    size="lg"
+                    className="w-full sm:w-auto font-black text-base px-8 py-4 bg-gradient-to-r from-violet-600 via-indigo-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-xl shadow-violet-950/80 hover:scale-105 transition-all"
+                    icon={Play}
+                  >
+                    Play Next Round ➔
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {summary!.wrong + summary!.unanswered > 0 && (
         <section className="mt-12">
@@ -404,6 +489,7 @@ export function ResultPage() {
                   month={m}
                   participantCount={pCount}
                   questionCount={qCount}
+                  userAttempt={userAttemptsMap?.[r.id]}
                 />
               )
             })}

@@ -101,6 +101,18 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       })
     }
 
+    if (participantId && !roundId) {
+      const { results: attempts } = await env.DB.prepare(
+        `SELECT id, round_id, participant_id, status, final_score, correct_answers, total_questions, time_taken_seconds, completed_at
+         FROM attempts
+         WHERE participant_id = ? AND status IN ('completed', 'expired')`
+      )
+        .bind(participantId)
+        .all()
+
+      return json({ attempts: toCamelCase(attempts) })
+    }
+
     if (roundId && participantId) {
       const attempt = await env.DB.prepare(
         'SELECT * FROM attempts WHERE round_id = ? AND participant_id = ? ORDER BY created_at DESC'

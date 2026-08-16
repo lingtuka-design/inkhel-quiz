@@ -124,6 +124,28 @@ export function HomePage() {
     },
     enabled: !!season,
   })
+  const { data: userAttemptsMap } = useQuery({
+    queryKey: ['userAttemptsMap', participant?.id],
+    queryFn: async () => {
+      if (!participant?.id) return {}
+      try {
+        const res = await fetch(`/api/attempts?participantId=${encodeURIComponent(participant.id)}`)
+        if (res.ok) {
+          const data = await res.json()
+          const map: Record<string, any> = {}
+          if (Array.isArray(data.attempts)) {
+            for (const a of data.attempts) {
+              map[a.roundId] = a
+            }
+          }
+          return map
+        }
+      } catch {}
+      return {}
+    },
+    enabled: !!participant?.id,
+  })
+
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
   const live = rounds ?? []
@@ -146,6 +168,8 @@ export function HomePage() {
     if (categoryFilter === 'all') return true
     return (round.category || 'football').toLowerCase() === categoryFilter.toLowerCase()
   })
+
+  const playedCount = Object.keys(userAttemptsMap ?? {}).length
 
   return (
     <div>
@@ -247,7 +271,7 @@ export function HomePage() {
                         </span>
                       </div>
                       <Link to={`/rounds/${featured.round.id}`} className="mt-6 block">
-                        <Button className="w-full" icon={Play}>
+                        <Button className="w-full font-bold" icon={Play}>
                           Start Playing
                         </Button>
                       </Link>
@@ -271,6 +295,45 @@ export function HomePage() {
             </Link>
           }
         />
+
+        {/* Campaign Progression Bar for Logged in Players */}
+        {participant && live.length > 0 && (
+          <div className="mb-8 rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-950/40 via-indigo-950/30 to-black/40 p-4 sm:p-5 shadow-lg">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-violet-300">
+                    🎮 Your Campaign Progress
+                  </span>
+                  <span className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-bold text-emerald-400">
+                    {playedCount} / {live.length} Rounds Done
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-ink-300">
+                  {playedCount === live.length
+                    ? '🎉 Ro-pui lutuk! Round awm zawng zawng i khel kim vek e!'
+                    : `Round ${live.length - playedCount} i la khel lo — Khel kim la, Leaderboard-ah i rank ti sang sauh rawh!`}
+                </p>
+              </div>
+              <div className="w-full sm:w-56 space-y-1">
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-400 via-teal-400 to-violet-500 transition-all duration-500"
+                    style={{
+                      width: `${Math.min(100, Math.round((playedCount / Math.max(1, live.length)) * 100))}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] font-mono text-ink-400">
+                  <span>Progress</span>
+                  <span className="font-bold text-emerald-400">
+                    {Math.round((playedCount / Math.max(1, live.length)) * 100)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Category Pills Bar on Home */}
         <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -314,6 +377,7 @@ export function HomePage() {
               month={currentMonth ?? undefined}
               participantCount={participants}
               questionCount={questions}
+              userAttempt={userAttemptsMap?.[round.id]}
             />
           ))}
         </div>

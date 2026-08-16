@@ -10,14 +10,39 @@ import { setPageTitle } from '../services/shareService'
 import { cn } from '../lib/utils'
 import { useEffect } from 'react'
 
+import { getParticipant } from '../services/authService'
+
 type Filter = 'all' | 'live' | 'closed'
 
 export function RoundsPage() {
   useEffect(() => setPageTitle('Rounds'), [])
+  const participant = getParticipant()
   const [filter, setFilter] = useState<Filter>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [monthFilter, setMonthFilter] = useState('all')
   const [search, setSearch] = useState('')
+
+  const { data: userAttemptsMap } = useQuery({
+    queryKey: ['userAttemptsMap', participant?.id],
+    queryFn: async () => {
+      if (!participant?.id) return {}
+      try {
+        const res = await fetch(`/api/attempts?participantId=${encodeURIComponent(participant.id)}`)
+        if (res.ok) {
+          const data = await res.json()
+          const map: Record<string, any> = {}
+          if (Array.isArray(data.attempts)) {
+            for (const a of data.attempts) {
+              map[a.roundId] = a
+            }
+          }
+          return map
+        }
+      } catch {}
+      return {}
+    },
+    enabled: !!participant?.id,
+  })
 
   const { data: rounds } = useQuery({
     queryKey: ['rounds'],
@@ -172,6 +197,7 @@ export function RoundsPage() {
               month={months?.find((m) => m.id === round.monthId)}
               participantCount={participants}
               questionCount={(round as any).questionCount}
+              userAttempt={userAttemptsMap?.[round.id]}
             />
           ))}
         </div>

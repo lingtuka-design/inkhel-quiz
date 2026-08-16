@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Calendar, Clock, Copy, Link2, Lock, MessageCircle, Play, Share2, Twitter, Users, Zap } from 'lucide-react'
+import { Calendar, CheckCircle2, Clock, Copy, Link2, Lock, MessageCircle, Play, Share2, Twitter, Users, Zap } from 'lucide-react'
 import type { Month, Round } from '../types'
 import { getBannerPreset, resolveIcon } from '../lib/banners'
 import { formatTime, pluralize } from '../lib/utils'
@@ -87,38 +87,70 @@ export function RoundCard({
   month,
   participantCount,
   questionCount,
+  userAttempt,
 }: {
   round: Round
   month?: Month
   participantCount?: number
   questionCount?: number
+  userAttempt?: { id?: string; finalScore?: number; status?: string } | null
 }) {
+  const isPlayed = userAttempt?.status === 'completed' || userAttempt?.status === 'expired'
   const badge = roundStatusBadge(round)
   const availability = roundAvailability(round)
-  const href = `/rounds/${round.id}`
+  const href = isPlayed ? `/rounds/${round.id}/result?attemptId=${userAttempt.id}` : `/rounds/${round.id}`
   const players = participantCount ?? (round as any).participantCount ?? 0
   const qCount = questionCount ?? (round as any).questionCount ?? countQuestionsOf(round.id) ?? 10
+
   return (
-    <Card className="group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-2xl hover:shadow-violet-500/10">
+    <Card
+      className={cn(
+        'group relative overflow-hidden transition-all duration-300',
+        isPlayed
+          ? 'border-white/5 bg-white/[0.02] opacity-75 hover:opacity-100 hover:border-white/15'
+          : availability.open
+            ? 'border-violet-500/40 bg-gradient-to-b from-white/[0.04] to-transparent shadow-lg shadow-violet-950/40 hover:-translate-y-1.5 hover:border-violet-400 hover:shadow-2xl hover:shadow-violet-600/25 ring-1 ring-violet-500/20'
+            : 'hover:-translate-y-1 hover:border-white/20',
+      )}
+    >
       <div className="relative">
-        <RoundBanner round={round} className="h-40" />
+        <RoundBanner round={round} className={cn('h-40', isPlayed && 'grayscale-[20%]')} />
+        
+        {/* Left Status Badge */}
         <div className="absolute left-3 top-3">
-          <Badge tone={badge.tone}>{badge.label}</Badge>
+          {isPlayed ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/50 bg-emerald-950/80 px-2.5 py-0.5 text-xs font-bold text-emerald-300 shadow-md backdrop-blur-md">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Khelh Tawh ({userAttempt.finalScore ?? 0} pts)
+            </span>
+          ) : availability.open ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-2.5 py-0.5 text-xs font-extrabold text-white shadow-lg shadow-orange-950/50 animate-pulse">
+              🔥 UNPLAYED
+            </span>
+          ) : (
+            <Badge tone={badge.tone}>{badge.label}</Badge>
+          )}
         </div>
+
+        {/* Right Category Badge */}
         <div className="absolute right-3 top-3">
           <CategoryBadge category={round.category} />
         </div>
+
         {availability.open && (
           <Link
             to={href}
-            className="focus-ring absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/30 group-hover:opacity-100"
-            aria-label={`Play ${round.title}`}
+            className="focus-ring absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100"
+            aria-label={isPlayed ? `View results for ${round.title}` : `Play ${round.title}`}
           >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-ink-900 shadow-2xl">
+            <span className={cn(
+              'flex h-14 w-14 items-center justify-center rounded-full shadow-2xl transition transform group-hover:scale-110',
+              isPlayed ? 'bg-white/80 text-ink-900' : 'bg-gradient-to-tr from-violet-600 to-indigo-500 text-white shadow-violet-500/50'
+            )}>
               <Play className="h-6 w-6 translate-x-0.5 fill-current" />
             </span>
           </Link>
         )}
+
         {!availability.open && round.status === 'published' && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
             <span className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white">
@@ -127,11 +159,17 @@ export function RoundCard({
           </div>
         )}
       </div>
+
       <div className="p-5">
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-violet-400">
             <Calendar className="h-3.5 w-3.5" /> {month?.name ?? 'Round'}
           </p>
+          {isPlayed && (
+            <span className="text-[11px] font-bold text-emerald-400">
+              Completed ✨
+            </span>
+          )}
         </div>
         <h3 className="font-display text-lg font-bold leading-snug text-white">{round.title}</h3>
         <p className="mt-1.5 line-clamp-2 text-sm text-ink-300">{round.description}</p>
@@ -146,16 +184,21 @@ export function RoundCard({
             <Zap className="h-3.5 w-3.5" /> {qCount} questions
           </span>
         </div>
+
         <Link to={href} className="mt-4 block">
-          <Button className="w-full" size="sm" variant={availability.open ? 'secondary' : 'ghost'}>
-            {availability.open ? (
-              <>
-                <Play className="h-4 w-4" /> Play Round
-              </>
-            ) : (
-              'View Round'
-            )}
-          </Button>
+          {isPlayed ? (
+            <Button className="w-full text-xs font-semibold" size="sm" variant="outline">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> View Result & Score ({userAttempt.finalScore ?? 0} pts)
+            </Button>
+          ) : (
+            <Button
+              className="w-full text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md shadow-violet-950/50"
+              size="sm"
+              variant="primary"
+            >
+              <Play className="h-3.5 w-3.5 fill-current" /> Play Round Now
+            </Button>
+          )}
         </Link>
       </div>
     </Card>
