@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { getDb, saveDb, newId } from '../db/database'
 import { hashPassword } from '../lib/crypto'
 import { avatarGradient } from '../lib/banners'
@@ -127,6 +128,18 @@ function notifyAuthSubscribers(p: Participant | null) {
       cb(p)
     } catch {}
   })
+}
+
+export function useCurrentUser(): Participant | null {
+  const [participant, setParticipant] = useState<Participant | null>(() => getParticipant())
+
+  useEffect(() => {
+    return subscribeToAuth((p) => {
+      setParticipant(p)
+    })
+  }, [])
+
+  return participant
 }
 
 export function getParticipant(): Participant | null {

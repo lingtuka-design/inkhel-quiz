@@ -10,13 +10,13 @@ import { setPageTitle } from '../services/shareService'
 import { cn } from '../lib/utils'
 import { useEffect } from 'react'
 
-import { getParticipant } from '../services/authService'
+import { getParticipant, useCurrentUser } from '../services/authService'
 
 type Filter = 'all' | 'live' | 'closed'
 
 export function RoundsPage() {
   useEffect(() => setPageTitle('Rounds'), [])
-  const participant = getParticipant()
+  const participant = useCurrentUser()
   const [filter, setFilter] = useState<Filter>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [monthFilter, setMonthFilter] = useState('all')

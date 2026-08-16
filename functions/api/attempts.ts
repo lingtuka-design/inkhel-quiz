@@ -110,7 +110,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       const gid = googleId || pid
 
       const { results: attempts } = await env.DB.prepare(
-        `SELECT a.id, a.round_id, a.participant_id, a.status, a.final_score, a.correct_answers, a.total_questions, a.time_taken_seconds, a.completed_at
+        `SELECT a.id, a.round_id, a.participant_id, a.status, a.final_score, a.correct_answers, (a.correct_answers + a.incorrect_answers + a.unanswered_questions) as total_questions, a.time_taken_seconds, a.completed_at
          FROM attempts a
          JOIN participants p ON a.participant_id = p.id
          WHERE (p.id = ? OR p.google_id = ? OR p.email = ? OR a.participant_id = ?)

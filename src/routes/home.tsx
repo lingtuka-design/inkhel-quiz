@@ -12,13 +12,13 @@ import {
 import { getActiveSeason, listSeasons } from '../services/seasonService'
 import { getCurrentMonth, listAllMonths } from '../services/monthService'
 import { getSeasonRanking } from '../services/leaderboardService'
-import { getParticipant } from '../services/authService'
+import { getParticipant, useCurrentUser } from '../services/authService'
 import { setPageTitle } from '../services/shareService'
 import { formatDate, cn } from '../lib/utils'
 import { useEffect, useMemo, useState } from 'react'
 
 export function HomePage() {
-  const participant = getParticipant()
+  const participant = useCurrentUser()
 
   useEffect(() => {
     document.title = 'Inkhel — Competitive Quiz Platform'

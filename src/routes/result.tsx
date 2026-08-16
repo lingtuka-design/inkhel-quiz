@@ -27,7 +27,7 @@ import { getAttemptReview } from '../services/attemptService'
 import { getRound, listAllPlayableRounds, countParticipants, countQuestions } from '../services/roundService'
 import { getMonth, listAllMonths } from '../services/monthService'
 import { getSeason } from '../services/seasonService'
-import { getParticipant } from '../services/authService'
+import { getParticipant, useCurrentUser } from '../services/authService'
 import { copyToClipboard, setPageTitle } from '../services/shareService'
 import { generateScoreCardBlob } from '../lib/scoreCardGenerator'
 import { formatTime } from '../lib/utils'
@@ -38,7 +38,7 @@ import type { RoundReviewQuestion } from '../types'
 export function ResultPage() {
   const { roundId } = useParams({ strict: false })
   const { attemptId } = useSearch({ strict: false }) as { attemptId?: string }
-  const participant = getParticipant()
+  const participant = useCurrentUser()
   const [generatingImage, setGeneratingImage] = useState(false)
 
   const { data: userAttemptsMap } = useQuery({
