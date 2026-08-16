@@ -208,23 +208,29 @@ export function ProfilePage() {
       {/* Quick Gameplay Summary */}
       <Card className="p-6">
         <h3 className="font-display text-base font-bold text-white mb-4">Your Quiz Performance</h3>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center">
             <p className="text-xs text-ink-300">Total Points</p>
             <p className="mt-1 font-display text-2xl font-bold text-emerald-400">
-              {profileStats?.totalPoints || 0}
+              {profileStats?.totalPoints ?? 0}
             </p>
           </div>
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center">
             <p className="text-xs text-ink-300">Rounds Played</p>
             <p className="mt-1 font-display text-2xl font-bold text-violet-400">
-              {profileStats?.roundsPlayed || 0}
+              {profileStats?.roundsPlayed ?? 0}
             </p>
           </div>
-          <div className="col-span-2 sm:col-span-1 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center">
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center">
             <p className="text-xs text-ink-300">Best Score</p>
             <p className="mt-1 font-display text-2xl font-bold text-amber-400">
-              {profileStats?.bestScore || 0} pts
+              {profileStats?.bestScore ?? 0} pts
+            </p>
+          </div>
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center">
+            <p className="text-xs text-ink-300">Current Rank</p>
+            <p className="mt-1 font-display text-2xl font-bold text-sky-400">
+              #{profileStats?.rank ?? '—'}
             </p>
           </div>
         </div>

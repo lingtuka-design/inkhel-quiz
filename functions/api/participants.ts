@@ -9,16 +9,46 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const googleId = url.searchParams.get('googleId')
     const list = url.searchParams.get('list') === 'true' || (!id && !googleId)
 
-    if (id) {
-      const participant = await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(id).first()
-      if (!participant) return err('Participant not found', 404)
-      return json(toCamelCase(participant))
-    }
+    if (id || googleId) {
+      const participant = await env.DB.prepare(
+        `SELECT 
+            p.*,
+            COUNT(DISTINCT a.id) as rounds_played,
+            COALESCE(SUM(a.final_score), 0) as total_points,
+            COALESCE(MAX(a.final_score), 0) as best_score,
+            COALESCE(SUM(a.correct_answers), 0) as total_correct,
+            MAX(a.completed_at) as last_played_at
+         FROM participants p
+         LEFT JOIN attempts a ON p.id = a.participant_id AND (a.status = 'completed' OR a.status = 'expired')
+         WHERE p.id = ? OR p.google_id = ?
+         GROUP BY p.id`
+      )
+        .bind(id || '', googleId || '')
+        .first<any>()
 
-    if (googleId) {
-      const participant = await env.DB.prepare('SELECT * FROM participants WHERE google_id = ?').bind(googleId).first()
-      if (!participant) return json({ participant: null })
-      return json(toCamelCase(participant))
+      if (!participant) return err('Participant not found', 404)
+
+      // Calculate global rank
+      let rank = 1
+      if (participant.total_points > 0) {
+        const rankRow = await env.DB.prepare(
+          `SELECT COUNT(*) + 1 as rank FROM (
+             SELECT p.id, SUM(a.final_score) as pts
+             FROM participants p
+             JOIN attempts a ON p.id = a.participant_id AND a.status = 'completed'
+             GROUP BY p.id
+             HAVING pts > ?
+           )`
+        )
+          .bind(participant.total_points)
+          .first<{ rank: number }>()
+        if (rankRow) rank = rankRow.rank
+      }
+
+      return json({
+        ...toCamelCase(participant),
+        rank,
+      })
     }
 
     if (list) {
