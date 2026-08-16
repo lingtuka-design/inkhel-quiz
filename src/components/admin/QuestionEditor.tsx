@@ -9,13 +9,16 @@ import {
   Lock,
   Plus,
   Save,
+  Sparkles,
   Trash2,
+  Wand2,
   X,
 } from 'lucide-react'
 import type { OptionKey, QuestionDraft } from '../../types'
 import { Button, ErrorNote, Input, toast } from '../ui'
 import { canEditQuestions } from '../../services/questionService'
 import { uploadImageToR2 } from '../../services/uploadService'
+import { generateQuizQuestionsWithGemini } from '../../services/geminiService'
 import { cn } from '../../lib/utils'
 
 const LETTERS: OptionKey[] = ['A', 'B', 'C', 'D']
@@ -33,6 +36,14 @@ export function QuestionEditor({ roundId, initial, onSave }: QuestionEditorProps
   const [saving, setSaving] = useState(false)
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // AI Generator state
+  const [showAiModal, setShowAiModal] = useState(false)
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [aiCount, setAiCount] = useState(10)
+  const [aiMode, setAiMode] = useState<'replace' | 'append'>('replace')
+  const [generatingAi, setGeneratingAi] = useState(false)
+
   const lock = canEditQuestions(roundId)
 
   useEffect(() => {
@@ -162,6 +173,39 @@ export function QuestionEditor({ roundId, initial, onSave }: QuestionEditorProps
     }
   }
 
+  const handleGenerateWithAi = async () => {
+    if (!aiPrompt.trim()) {
+      setError('Please provide a topic, theme, or football news text for Gemini')
+      return
+    }
+
+    setGeneratingAi(true)
+    setError(null)
+    try {
+      const generated = await generateQuizQuestionsWithGemini(aiPrompt, aiCount)
+      if (!generated || generated.length === 0) {
+        throw new Error('No questions were generated. Please try a different prompt.')
+      }
+
+      if (aiMode === 'replace') {
+        setDrafts(generated)
+      } else {
+        const nextOrderStart = drafts.length + 1
+        const reindexed = generated.map((q, idx) => ({ ...q, order: nextOrderStart + idx }))
+        setDrafts((prev) => [...prev, ...reindexed])
+      }
+
+      setDirty(true)
+      setShowAiModal(false)
+      setAiPrompt('')
+      toast(`Successfully generated ${generated.length} questions with Gemini! Review & edit them below.`, 'success')
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate questions with Gemini')
+    } finally {
+      setGeneratingAi(false)
+    }
+  }
+
   if (!lock.ok) {
     return (
       <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-300">
@@ -176,17 +220,162 @@ export function QuestionEditor({ roundId, initial, onSave }: QuestionEditorProps
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-300">
           {drafts.length} question{drafts.length === 1 ? '' : 's'} ·{' '}
           <span className={dirty ? 'font-semibold text-amber-300' : 'text-ink-300'}>
             {dirty ? 'Unsaved changes' : 'All changes saved'}
           </span>
         </p>
-        <Button size="sm" variant="secondary" icon={Plus} onClick={addQuestion}>
-          Add Question
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            icon={Sparkles}
+            onClick={() => setShowAiModal((v) => !v)}
+            className="border-violet-500/40 bg-gradient-to-r from-violet-600/20 via-indigo-600/20 to-fuchsia-600/20 text-violet-200 hover:border-violet-400 hover:text-white shadow-md shadow-violet-950/40"
+          >
+            Generate with Gemini ✨
+          </Button>
+          <Button size="sm" variant="secondary" icon={Plus} onClick={addQuestion}>
+            Add Question
+          </Button>
+        </div>
       </div>
+
+      {showAiModal && (
+        <div className="animate-fade-up rounded-2xl border border-violet-500/30 bg-gradient-to-b from-indigo-950/50 via-ink-900 to-ink-950 p-5 sm:p-6 shadow-2xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/25">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-display text-base font-bold text-white sm:text-lg">
+                  Generate Questions with Gemini AI ✨
+                </h3>
+                <p className="text-xs text-ink-300">
+                  Topic emaw football news dah la, Gemini-in zawhna leh chhanna dik automatic-in a siam ang.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAiModal(false)}
+              className="rounded-lg p-1.5 text-ink-300 hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="mt-5 space-y-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-violet-300">
+                Topic / News Article Text (Mizo / English)
+              </label>
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Entirnan: 'Manchester United 2008 UCL Final thawnthu leh stats' emaw, football chanchin bu / article i copy kha paste tawp rawh..."
+                rows={4}
+                className="w-full rounded-xl border border-white/10 bg-ink-950/70 p-3.5 text-sm text-white placeholder-ink-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-ink-400">Quick suggestions:</span>
+              {[
+                'Manchester United 1999 Treble',
+                'Cristiano Ronaldo career stats & records',
+                'Lionel Messi World Cup 2022 campaign',
+                'Premier League Records & Legends',
+                'Mizoram Football & MPL History',
+              ].map((sample) => (
+                <button
+                  key={sample}
+                  type="button"
+                  onClick={() => setAiPrompt(sample)}
+                  className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-ink-300 hover:border-violet-500/40 hover:bg-violet-500/10 hover:text-violet-200"
+                >
+                  {sample}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-300">
+                  Question Count
+                </label>
+                <div className="flex items-center gap-2">
+                  {[5, 10, 15].map((count) => (
+                    <button
+                      key={count}
+                      type="button"
+                      onClick={() => setAiCount(count)}
+                      className={cn(
+                        'flex-1 rounded-xl border py-2 text-xs font-bold transition-all',
+                        aiCount === count
+                          ? 'border-violet-500 bg-violet-500/20 text-white'
+                          : 'border-white/10 bg-white/5 text-ink-300 hover:border-white/20 hover:text-white',
+                      )}
+                    >
+                      {count} Questions {count === 10 && '⭐'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-300">
+                  Generation Mode
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAiMode('replace')}
+                    className={cn(
+                      'flex-1 rounded-xl border py-2 text-xs font-bold transition-all',
+                      aiMode === 'replace'
+                        ? 'border-violet-500 bg-violet-500/20 text-white'
+                        : 'border-white/10 bg-white/5 text-ink-300 hover:border-white/20 hover:text-white',
+                    )}
+                  >
+                    Replace All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAiMode('append')}
+                    className={cn(
+                      'flex-1 rounded-xl border py-2 text-xs font-bold transition-all',
+                      aiMode === 'append'
+                        ? 'border-violet-500 bg-violet-500/20 text-white'
+                        : 'border-white/10 bg-white/5 text-ink-300 hover:border-white/20 hover:text-white',
+                    )}
+                  >
+                    Add to Existing
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button variant="ghost" size="sm" onClick={() => setShowAiModal(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={Sparkles}
+                loading={generatingAi}
+                onClick={handleGenerateWithAi}
+                className="bg-gradient-to-r from-violet-600 to-indigo-600 shadow-lg shadow-violet-950/60"
+              >
+                {generatingAi ? 'Generating Mizo Quiz with Gemini…' : `Generate ${aiCount} Questions ✨`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ErrorNote message={error} />
 
