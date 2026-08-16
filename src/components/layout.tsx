@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import {
+  BarChart3,
   Calendar,
   ChevronDown,
   Clapperboard,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Avatar, Button, toast } from './ui'
 import { getParticipant, loginWithGoogle, logoutParticipant, logoutAdmin, subscribeToAuth } from '../services/authService'
+import { trackPageView } from '../lib/analyticsTracker'
 import { cn } from '../lib/utils'
 import type { Participant } from '../types'
 
@@ -79,6 +81,7 @@ export function PublicLayout() {
   useEffect(() => {
     setMenuOpen(false)
     window.scrollTo({ top: 0 })
+    trackPageView(location.pathname)
   }, [location.pathname])
 
   useEffect(() => {
@@ -283,6 +286,7 @@ export function AdminLayout() {
   const items = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/admin/users', label: 'Users', icon: Users },
+    { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { to: '/admin/seasons', label: 'Seasons', icon: Calendar },
     { to: '/admin/rounds', label: 'Rounds', icon: Clapperboard },
   ]
