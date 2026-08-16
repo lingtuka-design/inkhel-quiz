@@ -20,7 +20,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { Avatar, Badge, Button, Card, Input, SectionHeading, StatCard } from '../../components/ui'
 import { setPageTitle } from '../../services/shareService'
-import { formatDate } from '../../lib/utils'
+import { formatDate, cn } from '../../lib/utils'
 
 const PAGE_SIZE = 50
 
@@ -215,61 +215,84 @@ export function AdminUsersPage() {
               </table>
             </div>
 
-            {/* Pagination Controls */}
+            {/* High-Contrast Visible Pagination Controls */}
             {totalPages > 1 && (
-              <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-4 sm:flex-row">
-                <div className="text-xs text-ink-300">
-                  Showing <span className="font-semibold text-white">{startIndex}</span> to{' '}
-                  <span className="font-semibold text-white">{endIndex}</span> of{' '}
-                  <span className="font-semibold text-white">{filtered.length}</span> players
+              <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-white/15 bg-white/[0.02] -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 rounded-b-2xl sm:flex-row">
+                <div className="text-xs text-ink-200 font-medium">
+                  Showing <span className="font-bold text-emerald-400">{startIndex}</span> to{' '}
+                  <span className="font-bold text-emerald-400">{endIndex}</span> of{' '}
+                  <span className="font-bold text-white">{filtered.length}</span> players
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
                     onClick={() => setCurrentPage(1)}
                     disabled={validPage <= 1}
-                    className="h-8 w-8 p-0"
+                    className="flex items-center gap-1 rounded-xl border border-white/20 bg-ink-800 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-ink-700 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed"
                     title="First Page"
                   >
                     <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                    <span className="hidden sm:inline">First</span>
+                  </button>
+
+                  <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={validPage <= 1}
-                    className="h-8 w-8 p-0"
+                    className="flex items-center gap-1 rounded-xl border border-white/20 bg-ink-800 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-ink-700 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed"
                     title="Previous Page"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                  </Button>
+                    <span>Prev</span>
+                  </button>
 
-                  <span className="px-3 text-xs font-semibold text-white">
-                    Page <span className="text-violet-400">{validPage}</span> of {totalPages}
-                  </span>
+                  {/* Page indicator pill */}
+                  <div className="flex items-center gap-1 px-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pNum = i + 1
+                      if (totalPages > 5) {
+                        if (validPage > 3 && validPage < totalPages - 1) {
+                          pNum = validPage - 2 + i
+                        } else if (validPage >= totalPages - 1) {
+                          pNum = totalPages - 4 + i
+                        }
+                      }
+                      const isActive = pNum === validPage
+                      return (
+                        <button
+                          key={pNum}
+                          onClick={() => setCurrentPage(pNum)}
+                          className={cn(
+                            'h-8 min-w-8 rounded-xl px-2.5 text-xs font-bold transition shadow-sm',
+                            isActive
+                              ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-950/60 ring-2 ring-violet-400/50'
+                              : 'border border-white/15 bg-ink-800 text-ink-200 hover:bg-ink-700 hover:text-white',
+                          )}
+                        >
+                          {pNum}
+                        </button>
+                      )
+                    })}
+                  </div>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                     disabled={validPage >= totalPages}
-                    className="h-8 w-8 p-0"
+                    className="flex items-center gap-1 rounded-xl border border-violet-500/40 bg-gradient-to-r from-violet-600 to-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-md shadow-violet-950/50 transition hover:from-violet-500 hover:to-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed"
                     title="Next Page"
                   >
+                    <span>Next</span>
                     <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  </button>
+
+                  <button
                     onClick={() => setCurrentPage(totalPages)}
                     disabled={validPage >= totalPages}
-                    className="h-8 w-8 p-0"
+                    className="flex items-center gap-1 rounded-xl border border-white/20 bg-ink-800 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-ink-700 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed"
                     title="Last Page"
                   >
+                    <span className="hidden sm:inline">Last</span>
                     <ChevronsRight className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
               </div>
             )}
