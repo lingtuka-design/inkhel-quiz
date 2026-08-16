@@ -101,23 +101,41 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       })
     }
 
-    if (participantId && !roundId) {
+    const email = url.searchParams.get('email')
+    const googleId = url.searchParams.get('googleId')
+
+    if ((participantId || email || googleId) && !roundId) {
+      const pid = participantId || ''
+      const em = email || pid
+      const gid = googleId || pid
+
       const { results: attempts } = await env.DB.prepare(
-        `SELECT id, round_id, participant_id, status, final_score, correct_answers, total_questions, time_taken_seconds, completed_at
-         FROM attempts
-         WHERE participant_id = ? AND status IN ('completed', 'expired')`
+        `SELECT a.id, a.round_id, a.participant_id, a.status, a.final_score, a.correct_answers, a.total_questions, a.time_taken_seconds, a.completed_at
+         FROM attempts a
+         JOIN participants p ON a.participant_id = p.id
+         WHERE (p.id = ? OR p.google_id = ? OR p.email = ? OR a.participant_id = ?)
+           AND a.status IN ('completed', 'expired')`
       )
-        .bind(participantId)
+        .bind(pid, gid, em, pid)
         .all()
 
       return json({ attempts: toCamelCase(attempts) })
     }
 
-    if (roundId && participantId) {
+    if (roundId && (participantId || email || googleId)) {
+      const pid = participantId || ''
+      const em = email || pid
+      const gid = googleId || pid
+
       const attempt = await env.DB.prepare(
-        'SELECT * FROM attempts WHERE round_id = ? AND participant_id = ? ORDER BY created_at DESC'
+        `SELECT a.*
+         FROM attempts a
+         JOIN participants p ON a.participant_id = p.id
+         WHERE a.round_id = ?
+           AND (p.id = ? OR p.google_id = ? OR p.email = ? OR a.participant_id = ?)
+         ORDER BY a.created_at DESC`
       )
-        .bind(roundId, participantId)
+        .bind(roundId, pid, gid, em, pid)
         .first()
 
       if (!attempt) return json({ attempt: null })

@@ -42,11 +42,16 @@ export function ResultPage() {
   const [generatingImage, setGeneratingImage] = useState(false)
 
   const { data: userAttemptsMap } = useQuery({
-    queryKey: ['userAttemptsMap', participant?.id],
+    queryKey: ['userAttemptsMap', participant?.id, participant?.email, participant?.googleId],
     queryFn: async () => {
-      if (!participant?.id) return {}
+      if (!participant?.id && !participant?.email) return {}
       try {
-        const res = await fetch(`/api/attempts?participantId=${encodeURIComponent(participant.id)}`)
+        const params = new URLSearchParams()
+        if (participant?.id) params.set('participantId', participant.id)
+        if (participant?.email) params.set('email', participant.email)
+        if (participant?.googleId) params.set('googleId', participant.googleId)
+
+        const res = await fetch(`/api/attempts?${params.toString()}`)
         if (res.ok) {
           const data = await res.json()
           const map: Record<string, any> = {}
@@ -60,7 +65,7 @@ export function ResultPage() {
       } catch {}
       return {}
     },
-    enabled: !!participant?.id,
+    enabled: !!(participant?.id || participant?.email),
   })
 
   const { data: review } = useQuery({
