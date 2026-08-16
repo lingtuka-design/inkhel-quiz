@@ -46,7 +46,16 @@ export function QuizPage() {
 
   const { data: round } = useQuery({
     queryKey: ['round', roundId],
-    queryFn: () => getRound(roundId),
+    queryFn: async () => {
+      try {
+        const res = await fetch(`/api/rounds?id=${encodeURIComponent(roundId)}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data && data.id) return data
+        }
+      } catch {}
+      return getRound(roundId)
+    },
   })
 
   const [phase, setPhase] = useState<Phase>('boot')
@@ -110,6 +119,19 @@ export function QuizPage() {
         goToResult(existing.id)
         return
       }
+
+      // Check server attempt
+      const params = new URLSearchParams({ roundId, participantId: participant.id })
+      if (participant.email) params.set('email', participant.email)
+      if (participant.googleId) params.set('googleId', participant.googleId)
+      fetch(`/api/attempts?${params.toString()}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.attempt?.id && (data.attempt.status === 'completed' || data.attempt.status === 'expired')) {
+            goToResult(data.attempt.id)
+          }
+        })
+        .catch(() => {})
     }
     const resume = resumeAttempt(participant.id, roundId)
     if (!resume) {
