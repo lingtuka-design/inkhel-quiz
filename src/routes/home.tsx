@@ -154,19 +154,24 @@ export function HomePage() {
         <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pt-20 lg:pb-24">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div className="animate-fade-up">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-violet-300">
-                <Flame className="h-3.5 w-3.5" />
-                {currentMonth
-                  ? `${currentMonth.name} — rounds close ${formatDate(currentMonth.endDate)}`
-                  : season
-                    ? `Season ${season.seasonNumber} is live`
-                    : 'Season starting soon'}
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-violet-300">
+                  <Flame className="h-3.5 w-3.5" />
+                  {currentMonth
+                    ? `${currentMonth.name} — Trial Period`
+                    : season
+                      ? `Season ${season.seasonNumber} is live`
+                      : 'Season starting soon'}
+                </div>
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+                  🎁 Prize ₹2,000 starts September
+                </div>
               </div>
               <h1 className="font-display text-4xl font-extrabold tracking-tight text-white sm:text-6xl sm:leading-none">
                 Mizo Quiz <span className="text-gradient">Tournament</span>
               </h1>
-              <p className="mt-6 max-w-lg text-base text-ink-200 sm:text-lg">
-                Football, Sports, Music, Movies leh Mizoram chanchin thlengin! Hunbi chhungin zawhna 10 chhang la, Thla tin lawmman <b>₹2,000</b> leh Leaderboard chuh rawh le.
+              <p className="mt-6 max-w-lg text-base text-ink-200 sm:text-lg leading-relaxed">
+                Football, Sports, Music, Movies leh Mizoram chanchin thlengin! Hunbi chhungin zawhna 10 chhang la, <b>September thla atangin thla tin lawmman ₹2,000 kan tan dawn e!</b> Tun thla (August) chu Trial Period a ni e.
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
