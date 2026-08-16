@@ -81,6 +81,16 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const ua = context.request.headers.get('User-Agent') ?? ''
   const accept = context.request.headers.get('Accept') ?? ''
 
+  // ---------- 0. Serve ads.txt directly ----------
+  if (url.pathname === '/ads.txt') {
+    return new Response('google.com, pub-2343866392435128, DIRECT, f08c47fec0942fa0\n', {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    })
+  }
+
   // ---------- 1. Facebook / Instagram Android in-app browser escape ----------
   const isAndroidIab =
     context.request.method === 'GET' &&
