@@ -70,7 +70,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const now = new Date().toISOString()
 
     if (action === 'create') {
-      const { monthId, title, description, bannerGradient, bannerIcon, bannerUrl, timeLimitSeconds = 300 } = body
+      const { monthId, title, description, category = 'football', bannerGradient, bannerIcon, bannerUrl, timeLimitSeconds = 300 } = body
       if (!monthId || !title) return err('monthId and title are required')
 
       const roundId = `round_${Date.now()}`
@@ -82,8 +82,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       if (existing) slug = `${slug}-${Date.now().toString(36).slice(-4)}`
 
       await env.DB.prepare(
-        `INSERT INTO rounds (id, month_id, title, slug, description, banner_gradient, banner_icon, banner_url, time_limit_seconds, status, published_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', NULL, ?, ?)`
+        `INSERT INTO rounds (id, month_id, title, slug, description, category, banner_gradient, banner_icon, banner_url, time_limit_seconds, status, published_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', NULL, ?, ?)`
       )
         .bind(
           roundId,
@@ -91,6 +91,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           title,
           slug,
           description || '',
+          category || 'football',
           bannerGradient || 'aurora',
           bannerIcon || 'Zap',
           bannerUrl || null,
@@ -104,7 +105,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }
 
     if (action === 'update') {
-      const { id, title, description, bannerGradient, bannerIcon, bannerUrl, timeLimitSeconds, status } = body
+      const { id, title, description, category, bannerGradient, bannerIcon, bannerUrl, timeLimitSeconds, status } = body
       if (!id) return err('Round ID is required')
 
       const publishedAt = status === 'published' ? now : null
@@ -113,6 +114,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         `UPDATE rounds SET
           title = COALESCE(?, title),
           description = COALESCE(?, description),
+          category = COALESCE(?, category),
           banner_gradient = COALESCE(?, banner_gradient),
           banner_icon = COALESCE(?, banner_icon),
           banner_url = COALESCE(?, banner_url),
@@ -125,6 +127,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         .bind(
           title ?? null,
           description ?? null,
+          category ?? null,
           bannerGradient ?? null,
           bannerIcon ?? null,
           bannerUrl !== undefined ? bannerUrl : null,

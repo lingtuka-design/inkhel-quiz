@@ -61,6 +61,27 @@ export function roundStatusBadge(
   return { tone: 'amber', label: 'Scheduled' }
 }
 
+export const CATEGORY_INFO: Record<string, { label: string; icon: string; tone: string }> = {
+  football: { label: 'Football', icon: '⚽', tone: 'bg-emerald-500/25 text-emerald-300 border-emerald-500/40' },
+  sports: { label: 'Sports', icon: '🏆', tone: 'bg-blue-500/25 text-blue-300 border-blue-500/40' },
+  music: { label: 'Music', icon: '🎵', tone: 'bg-pink-500/25 text-pink-300 border-pink-500/40' },
+  movies: { label: 'Movies', icon: '🎬', tone: 'bg-amber-500/25 text-amber-300 border-amber-500/40' },
+  mizoram: { label: 'Mizoram', icon: '🏔️', tone: 'bg-teal-500/25 text-teal-300 border-teal-500/40' },
+  gk: { label: 'GK', icon: '🧠', tone: 'bg-violet-500/25 text-violet-300 border-violet-500/40' },
+  pop_culture: { label: 'Pop Culture', icon: '🎮', tone: 'bg-indigo-500/25 text-indigo-300 border-indigo-500/40' },
+}
+
+export function CategoryBadge({ category }: { category?: string }) {
+  const cat = (category || 'football').toLowerCase()
+  const info = CATEGORY_INFO[cat] || { label: cat, icon: '✨', tone: 'bg-white/10 text-ink-200 border-white/15' }
+  return (
+    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold backdrop-blur-md shadow-sm', info.tone)}>
+      <span>{info.icon}</span>
+      <span>{info.label}</span>
+    </span>
+  )
+}
+
 export function RoundCard({
   round,
   month,
@@ -83,6 +104,9 @@ export function RoundCard({
         <RoundBanner round={round} className="h-40" />
         <div className="absolute left-3 top-3">
           <Badge tone={badge.tone}>{badge.label}</Badge>
+        </div>
+        <div className="absolute right-3 top-3">
+          <CategoryBadge category={round.category} />
         </div>
         {availability.open && (
           <Link

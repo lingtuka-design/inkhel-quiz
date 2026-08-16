@@ -14,8 +14,8 @@ import { getCurrentMonth, listAllMonths } from '../services/monthService'
 import { getSeasonRanking } from '../services/leaderboardService'
 import { getParticipant } from '../services/authService'
 import { setPageTitle } from '../services/shareService'
-import { formatDate } from '../lib/utils'
-import { useEffect, useMemo } from 'react'
+import { formatDate, cn } from '../lib/utils'
+import { useEffect, useMemo, useState } from 'react'
 
 export function HomePage() {
   const participant = getParticipant()
@@ -124,11 +124,28 @@ export function HomePage() {
     },
     enabled: !!season,
   })
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
   const live = rounds ?? []
   const featured = live[0]
   const totalPlayers = live.reduce((s, e) => s + e.participants, 0)
   const totalQuestions = live.reduce((s, e) => s + e.questions, 0)
+
+  const categories = [
+    { id: 'all', label: 'All', icon: '✨' },
+    { id: 'football', label: 'Football', icon: '⚽' },
+    { id: 'sports', label: 'Sports', icon: '🏆' },
+    { id: 'music', label: 'Music', icon: '🎵' },
+    { id: 'movies', label: 'Movies', icon: '🎬' },
+    { id: 'mizoram', label: 'Mizoram', icon: '🏔️' },
+    { id: 'gk', label: 'GK', icon: '🧠' },
+    { id: 'pop_culture', label: 'Pop Culture', icon: '🎮' },
+  ]
+
+  const filteredLive = live.filter(({ round }) => {
+    if (categoryFilter === 'all') return true
+    return (round.category || 'football').toLowerCase() === categoryFilter.toLowerCase()
+  })
 
   return (
     <div>
@@ -143,40 +160,47 @@ export function HomePage() {
                   ? `${currentMonth.name} — rounds close ${formatDate(currentMonth.endDate)}`
                   : season
                     ? `Season ${season.seasonNumber} is live`
-                    : 'New rounds every month'}
+                    : 'Season starting soon'}
               </div>
-              <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
-                Beat the clock.
-                <br />
-                <span className="text-gradient">Own the leaderboard.</span>
+              <h1 className="font-display text-4xl font-extrabold tracking-tight text-white sm:text-6xl sm:leading-none">
+                Mizo Quiz <span className="text-gradient">Tournament</span>
               </h1>
-              <p className="mt-5 max-w-lg text-base text-ink-300 sm:text-lg">
-                Every month brings a fresh set of rounds. Play them before the month ends — then
-                battle it out on the monthly and season rankings.
+              <p className="mt-6 max-w-lg text-base text-ink-200 sm:text-lg">
+                Football, Sports, Music, Movies leh Mizoram chanchin thlengin! Hunbi chhungin zawhna 10 chhang la, Thla tin lawmman <b>₹2,000</b> leh Leaderboard chuh rawh le.
               </p>
+
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link to={featured ? `/rounds/${featured.round.id}` : '/rounds'}>
-                  <Button size="lg" icon={Play}>
-                    Play a Round
+                <Link to="/rounds">
+                  <Button size="lg" icon={Play} className="font-bold bg-gradient-to-r from-violet-600 to-indigo-600 shadow-xl shadow-violet-950/50">
+                    Play Quiz Now
                   </Button>
                 </Link>
                 <Link to="/leaderboard">
-                  <Button size="lg" variant="outline" icon={Trophy}>
+                  <Button size="lg" variant="secondary" icon={Trophy}>
                     View Leaderboard
                   </Button>
                 </Link>
               </div>
-              <div className="mt-10 flex flex-wrap gap-8">
-                {[
-                  { icon: Zap, label: `${live.length} rounds live` },
-                  { icon: Users, label: `${totalPlayers} players` },
-                  { icon: Sparkles, label: `${totalQuestions} questions` },
-                ].map((s) => (
-                  <div key={s.label} className="flex items-center gap-2 text-sm text-ink-300">
-                    <s.icon className="h-4 w-4 text-violet-400" />
-                    <span className="font-semibold text-white">{s.label}</span>
-                  </div>
-                ))}
+
+              <div className="mt-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-8 sm:gap-6">
+                <div>
+                  <p className="font-display text-2xl font-bold text-white sm:text-3xl">
+                    {totalPlayers}
+                  </p>
+                  <p className="text-xs text-ink-300">players</p>
+                </div>
+                <div>
+                  <p className="font-display text-2xl font-bold text-white sm:text-3xl">
+                    {totalQuestions}
+                  </p>
+                  <p className="text-xs text-ink-300">questions</p>
+                </div>
+                <div>
+                  <p className="font-display text-2xl font-bold text-gradient sm:text-3xl">
+                    {live.length}
+                  </p>
+                  <p className="text-xs text-ink-300">active rounds</p>
+                </div>
               </div>
             </div>
 
@@ -242,8 +266,43 @@ export function HomePage() {
             </Link>
           }
         />
+
+        {/* Category Pills Bar on Home */}
+        <div className="mb-6 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {categories.map((c) => {
+            const count = live.filter(({ round }) =>
+              c.id === 'all' ? true : (round.category || 'football').toLowerCase() === c.id.toLowerCase(),
+            ).length
+            const active = categoryFilter === c.id
+
+            return (
+              <button
+                key={c.id}
+                onClick={() => setCategoryFilter(c.id)}
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all',
+                  active
+                    ? 'border-violet-500 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-950/40'
+                    : 'border-white/10 bg-white/5 text-ink-300 hover:border-white/20 hover:text-white',
+                )}
+              >
+                <span>{c.icon}</span>
+                <span>{c.label}</span>
+                <span
+                  className={cn(
+                    'ml-0.5 rounded-full px-1.5 py-0.2 text-[10px]',
+                    active ? 'bg-black/30 text-white' : 'bg-white/10 text-ink-300',
+                  )}
+                >
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {live.slice(0, 3).map(({ round, participants, questions }) => (
+          {filteredLive.map(({ round, participants, questions }) => (
             <RoundCard
               key={round.id}
               round={round}

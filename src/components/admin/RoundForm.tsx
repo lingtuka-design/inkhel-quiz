@@ -30,6 +30,7 @@ export function RoundForm({
   onSave: (input: {
     title: string
     description: string
+    category?: string
     monthId: string
     timeLimitSeconds: number
     status: RoundStatus
@@ -41,6 +42,7 @@ export function RoundForm({
 }) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
+  const [category, setCategory] = useState(initial?.category ?? 'football')
   const [monthId, setMonthId] = useState(initial?.monthId ?? defaultMonthId ?? months[0]?.id ?? '')
   const [timePreset, setTimePreset] = useState(() =>
     TIME_PRESETS.some((t) => t.seconds === initial?.timeLimitSeconds) ? String(initial?.timeLimitSeconds) : '300',
@@ -90,6 +92,7 @@ export function RoundForm({
       onSave({
         title,
         description,
+        category,
         monthId,
         timeLimitSeconds,
         status,
@@ -116,6 +119,17 @@ export function RoundForm({
           </Field>
           <Field label="Short description">
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What will players face?" />
+          </Field>
+          <Field label="Category" hint="Select the category topic for this round">
+            <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="football" className="bg-ink-800">⚽ Football</option>
+              <option value="sports" className="bg-ink-800">🏆 Sports (NBA, Cricket, Tennis, etc.)</option>
+              <option value="music" className="bg-ink-800">🎵 Music & Hla (Lengzem, Pop, Rock, K-Pop)</option>
+              <option value="movies" className="bg-ink-800">🎬 Movies & Cinema (Hollywood, Marvel, Series)</option>
+              <option value="mizoram" className="bg-ink-800">🏔️ Mizoram (History, Geography, Culture)</option>
+              <option value="gk" className="bg-ink-800">🧠 General Knowledge (Science, World, Trivia)</option>
+              <option value="pop_culture" className="bg-ink-800">🎮 Pop Culture & Gaming</option>
+            </Select>
           </Field>
           <Field label="Month" hint="Rounds stay playable until this month ends, then close automatically.">
             <Select value={monthId} onChange={(e) => setMonthId(e.target.value)} required>

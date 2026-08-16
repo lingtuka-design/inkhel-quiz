@@ -38,12 +38,22 @@ export interface Month {
   updatedAt: string
 }
 
+export type RoundCategory =
+  | 'football'
+  | 'sports'
+  | 'music'
+  | 'movies'
+  | 'mizoram'
+  | 'gk'
+  | 'pop_culture'
+
 export interface Round {
   id: string
   monthId: string
   title: string
   slug: string
   description: string
+  category?: RoundCategory | string
   bannerGradient: string
   bannerIcon: string
   bannerUrl: string | null

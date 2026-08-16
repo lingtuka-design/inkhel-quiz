@@ -8,6 +8,7 @@ export const MIN_QUESTIONS_PER_ROUND = 10
 export interface RoundInput {
   title: string
   description: string
+  category?: string
   monthId: string
   timeLimitSeconds: number
   status: RoundStatus
@@ -124,6 +125,7 @@ export async function createRound(input: RoundInput): Promise<Round> {
     title: input.title.trim(),
     slug,
     description: input.description.trim(),
+    category: input.category || 'football',
     bannerGradient: input.bannerGradient,
     bannerIcon: input.bannerIcon,
     bannerUrl: input.bannerUrl,
@@ -164,6 +166,7 @@ export async function updateRound(id: string, input: RoundInput): Promise<Round>
   if (round) {
     round.title = input.title.trim()
     round.description = input.description.trim()
+    round.category = input.category || 'football'
     round.monthId = input.monthId
     round.timeLimitSeconds = input.timeLimitSeconds
     round.bannerGradient = input.bannerGradient
