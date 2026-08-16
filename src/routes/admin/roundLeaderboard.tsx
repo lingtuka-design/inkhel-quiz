@@ -54,7 +54,7 @@ export function AdminRoundLeaderboardPage() {
           time.
         </p>
       </div>
-      <LeaderboardTable rows={rows ?? []} />
+      <LeaderboardTable rows={rows ?? []} showPhone={true} />
       <Card className="p-5 text-sm text-ink-300">
         <p className="font-semibold text-white">Tie-breaking rules</p>
         <p className="mt-1">

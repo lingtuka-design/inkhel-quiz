@@ -1,4 +1,4 @@
-import { Crown, Medal, Timer, Trophy } from 'lucide-react'
+import { Crown, Medal, MessageCircle, Phone, Timer, Trophy } from 'lucide-react'
 import type { LeaderboardRow, RankingRow } from '../types'
 import { Avatar, Card } from './ui'
 import { formatTime } from '../lib/utils'
@@ -76,7 +76,7 @@ export function Podium({ rows }: { rows: LeaderboardRow[] }) {
   )
 }
 
-export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
+export function LeaderboardTable({ rows, showPhone = false }: { rows: LeaderboardRow[]; showPhone?: boolean }) {
   if (rows.length === 0) {
     return (
       <Card className="p-10 text-center text-sm text-ink-300">
@@ -92,60 +92,89 @@ export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-ink-300">
               <th className="px-4 py-3 font-semibold">Rank</th>
               <th className="px-4 py-3 font-semibold">Player</th>
+              {showPhone && <th className="px-4 py-3 font-semibold">Phone / WhatsApp</th>}
               <th className="px-4 py-3 text-center font-semibold">Correct</th>
               <th className="px-4 py-3 text-center font-semibold">Time</th>
               <th className="px-4 py-3 text-right font-semibold">Score</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.attemptId}
-                className={cn(
-                  'border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.03]',
-                  row.isCurrentUser && 'bg-gradient-to-r from-violet-500/15 to-fuchsia-500/5',
-                )}
-              >
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <RankBadge rank={row.rank} size="sm" />
-                    {row.rank === 1 && <Trophy className="h-4 w-4 text-yellow-400" />}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Avatar
-                      name={row.participant.displayName}
-                      gradient={row.participant.avatarGradient}
-                      photoUrl={row.participant.photoUrl}
-                      size="sm"
-                    />
-                    <span
-                      className="truncate font-semibold text-white max-w-[130px] sm:max-w-[240px] md:max-w-none"
-                      title={row.participant.displayName}
-                    >
-                      {row.participant.displayName}
-                    </span>
-                    {row.isCurrentUser && (
-                      <span className="shrink-0 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-300">
-                        You
+            {rows.map((row) => {
+              const phone = row.participant.phoneNumber
+              const cleanPhone = phone ? phone.replace(/\D/g, '') : ''
+              const waUrl = cleanPhone
+                ? `https://wa.me/${cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone}?text=Hi%20${encodeURIComponent(row.participant.displayName)},%20Inkhel%20Quiz%20atanga%20rawn%20be%20che%20kan%20ni%20e.`
+                : null
+
+              return (
+                <tr
+                  key={row.attemptId}
+                  className={cn(
+                    'border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.03]',
+                    row.isCurrentUser && 'bg-gradient-to-r from-violet-500/15 to-fuchsia-500/5',
+                  )}
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <RankBadge rank={row.rank} size="sm" />
+                      {row.rank === 1 && <Trophy className="h-4 w-4 text-yellow-400" />}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Avatar
+                        name={row.participant.displayName}
+                        gradient={row.participant.avatarGradient}
+                        photoUrl={row.participant.photoUrl}
+                        size="sm"
+                      />
+                      <span
+                        className="truncate font-semibold text-white max-w-[130px] sm:max-w-[240px] md:max-w-none"
+                        title={row.participant.displayName}
+                      >
+                        {row.participant.displayName}
                       </span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-center text-ink-200">
-                  {row.correctAnswers}/{row.totalQuestions}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <span className="inline-flex items-center gap-1 text-ink-200">
-                    <Timer className="h-3.5 w-3.5" /> {formatTime(row.timeTakenSeconds)}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <span className="font-display text-base font-bold text-white">{row.score}</span>
-                </td>
-              </tr>
-            ))}
+                      {row.isCurrentUser && (
+                        <span className="shrink-0 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-300">
+                          You
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  {showPhone && (
+                    <td className="px-4 py-3">
+                      {phone && waUrl ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-semibold text-emerald-400">{phone}</span>
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg bg-emerald-500/20 p-1 text-emerald-400 hover:bg-emerald-500/30 hover:text-white"
+                            title="Chat on WhatsApp"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-xs italic text-ink-300/50">—</span>
+                      )}
+                    </td>
+                  )}
+                  <td className="px-4 py-3 text-center text-ink-200">
+                    {row.correctAnswers}/{row.totalQuestions}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="inline-flex items-center gap-1 text-ink-200">
+                      <Timer className="h-3.5 w-3.5" /> {formatTime(row.timeTakenSeconds)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span className="font-display text-base font-bold text-white">{row.score}</span>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -153,7 +182,7 @@ export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
   )
 }
 
-export function RankingTable({ rows }: { rows: RankingRow[] }) {
+export function RankingTable({ rows, showPhone = false }: { rows: RankingRow[]; showPhone?: boolean }) {
   if (rows.length === 0) {
     return (
       <Card className="p-10 text-center text-sm text-ink-300">
@@ -169,6 +198,7 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-ink-300">
               <th className="px-4 py-3 font-semibold">Rank</th>
               <th className="px-4 py-3 font-semibold">Player</th>
+              {showPhone && <th className="px-4 py-3 font-semibold">Phone / WhatsApp</th>}
               <th className="px-4 py-3 text-center font-semibold">Rounds</th>
               <th className="px-4 py-3 text-center font-semibold">Correct</th>
               <th className="px-4 py-3 text-center font-semibold">Avg Time</th>
@@ -176,46 +206,74 @@ export function RankingTable({ rows }: { rows: RankingRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.participant.id}
-                className={cn(
-                  'border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.03]',
-                  row.isCurrentUser && 'bg-gradient-to-r from-violet-500/15 to-fuchsia-500/5',
-                )}
-              >
-                <td className="px-4 py-3">
-                  <RankBadge rank={row.rank} size="sm" />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Avatar
-                      name={row.participant.displayName}
-                      gradient={row.participant.avatarGradient}
-                      photoUrl={row.participant.photoUrl}
-                      size="sm"
-                    />
-                    <span
-                      className="truncate font-semibold text-white max-w-[130px] sm:max-w-[240px] md:max-w-none"
-                      title={row.participant.displayName}
-                    >
-                      {row.participant.displayName}
-                    </span>
-                    {row.isCurrentUser && (
-                      <span className="shrink-0 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-300">
-                        You
+            {rows.map((row) => {
+              const phone = row.participant.phoneNumber
+              const cleanPhone = phone ? phone.replace(/\D/g, '') : ''
+              const waUrl = cleanPhone
+                ? `https://wa.me/${cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone}?text=Hi%20${encodeURIComponent(row.participant.displayName)},%20Inkhel%20Quiz%20atanga%20rawn%20be%20che%20kan%20ni%20e.`
+                : null
+
+              return (
+                <tr
+                  key={row.participant.id}
+                  className={cn(
+                    'border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.03]',
+                    row.isCurrentUser && 'bg-gradient-to-r from-violet-500/15 to-fuchsia-500/5',
+                  )}
+                >
+                  <td className="px-4 py-3">
+                    <RankBadge rank={row.rank} size="sm" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Avatar
+                        name={row.participant.displayName}
+                        gradient={row.participant.avatarGradient}
+                        photoUrl={row.participant.photoUrl}
+                        size="sm"
+                      />
+                      <span
+                        className="truncate font-semibold text-white max-w-[130px] sm:max-w-[240px] md:max-w-none"
+                        title={row.participant.displayName}
+                      >
+                        {row.participant.displayName}
                       </span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-center text-ink-200">{row.rounds}</td>
-                <td className="px-4 py-3 text-center text-ink-200">{row.totalCorrect}</td>
-                <td className="px-4 py-3 text-center text-ink-200">{formatTime(row.avgTimeSeconds)}</td>
-                <td className="px-4 py-3 text-right">
-                  <span className="font-display text-base font-bold text-white">{row.points}</span>
-                </td>
-              </tr>
-            ))}
+                      {row.isCurrentUser && (
+                        <span className="shrink-0 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-300">
+                          You
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  {showPhone && (
+                    <td className="px-4 py-3">
+                      {phone && waUrl ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-semibold text-emerald-400">{phone}</span>
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg bg-emerald-500/20 p-1 text-emerald-400 hover:bg-emerald-500/30 hover:text-white"
+                            title="Chat on WhatsApp"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-xs italic text-ink-300/50">—</span>
+                      )}
+                    </td>
+                  )}
+                  <td className="px-4 py-3 text-center text-ink-200">{row.rounds}</td>
+                  <td className="px-4 py-3 text-center text-ink-200">{row.totalCorrect}</td>
+                  <td className="px-4 py-3 text-center text-ink-200">{formatTime(row.avgTimeSeconds)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <span className="font-display text-base font-bold text-white">{row.points}</span>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

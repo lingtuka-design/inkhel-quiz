@@ -14,7 +14,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       if (!roundId) return err('roundId is required')
 
       const { results: attempts } = await env.DB.prepare(
-        `SELECT a.*, p.id as p_id, p.display_name as p_name, p.email as p_email, p.photo_url as p_photo, p.avatar_gradient as p_avatar, p.provider as p_provider
+        `SELECT a.*, p.id as p_id, p.display_name as p_name, p.email as p_email, p.phone_number as p_phone, p.photo_url as p_photo, p.avatar_gradient as p_avatar, p.provider as p_provider
          FROM attempts a
          JOIN participants p ON a.participant_id = p.id
          WHERE a.round_id = ? AND a.status = 'completed' AND a.is_test_attempt = 0
@@ -35,6 +35,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
           id: a.p_id,
           displayName: a.p_name,
           email: a.p_email,
+          phoneNumber: a.p_phone || null,
           photoUrl: a.p_photo || null,
           avatarGradient: a.p_avatar,
           provider: a.p_provider,
@@ -56,7 +57,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
       const { results: rows } = await env.DB.prepare(
         `SELECT 
-            p.id as p_id, p.display_name as p_name, p.email as p_email, p.photo_url as p_photo, p.avatar_gradient as p_avatar, p.provider as p_provider,
+            p.id as p_id, p.display_name as p_name, p.email as p_email, p.phone_number as p_phone, p.photo_url as p_photo, p.avatar_gradient as p_avatar, p.provider as p_provider,
             COUNT(DISTINCT a.id) as rounds_played,
             SUM(a.final_score) as total_points,
             SUM(a.correct_answers) as total_correct,
@@ -79,6 +80,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
           id: r.p_id,
           displayName: r.p_name,
           email: r.p_email,
+          phoneNumber: r.p_phone || null,
           photoUrl: r.p_photo || null,
           avatarGradient: r.p_avatar,
           provider: r.p_provider,
@@ -100,7 +102,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
       const { results: rows } = await env.DB.prepare(
         `SELECT 
-            p.id as p_id, p.display_name as p_name, p.email as p_email, p.photo_url as p_photo, p.avatar_gradient as p_avatar, p.provider as p_provider,
+            p.id as p_id, p.display_name as p_name, p.email as p_email, p.phone_number as p_phone, p.photo_url as p_photo, p.avatar_gradient as p_avatar, p.provider as p_provider,
             COUNT(DISTINCT a.id) as rounds_played,
             SUM(a.final_score) as total_points,
             SUM(a.correct_answers) as total_correct,
@@ -124,6 +126,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
           id: r.p_id,
           displayName: r.p_name,
           email: r.p_email,
+          phoneNumber: r.p_phone || null,
           photoUrl: r.p_photo || null,
           avatarGradient: r.p_avatar,
           provider: r.p_provider,
@@ -143,7 +146,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     // Overall ranking
     const { results: rows } = await env.DB.prepare(
       `SELECT 
-          p.id as p_id, p.display_name as p_name, p.email as p_email, p.photo_url as p_photo, p.avatar_gradient as p_avatar, p.provider as p_provider,
+          p.id as p_id, p.display_name as p_name, p.email as p_email, p.phone_number as p_phone, p.photo_url as p_photo, p.avatar_gradient as p_avatar, p.provider as p_provider,
           COUNT(DISTINCT a.id) as rounds_played,
           SUM(a.final_score) as total_points,
           SUM(a.correct_answers) as total_correct,
@@ -163,6 +166,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         id: r.p_id,
         displayName: r.p_name,
         email: r.p_email,
+        phoneNumber: r.p_phone || null,
         photoUrl: r.p_photo || null,
         avatarGradient: r.p_avatar,
         provider: r.p_provider,

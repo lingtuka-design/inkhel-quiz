@@ -305,3 +305,48 @@ export function saveParticipant(displayName: string): Participant {
 
   return existing
 }
+
+export async function updateParticipantProfile(updates: { displayName?: string; phoneNumber?: string }): Promise<Participant> {
+  const current = getParticipant()
+  if (!current) throw new Error('Not signed in')
+
+  const displayName = updates.displayName ? updates.displayName.trim() : current.displayName
+  const phoneNumber = updates.phoneNumber !== undefined ? (updates.phoneNumber ? updates.phoneNumber.trim() : null) : current.phoneNumber
+
+  const updated: Participant = {
+    ...current,
+    displayName,
+    phoneNumber,
+    updatedAt: nowIso(),
+  }
+
+  // Update localStorage & cache
+  localStorage.setItem(PARTICIPANT_CACHE_KEY, JSON.stringify(updated))
+  const db = getDb()
+  const idx = db.participants.findIndex((p) => p.id === current.id)
+  if (idx >= 0) db.participants[idx] = updated
+  saveDb()
+
+  try {
+    const res = await fetch('/api/participants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_profile',
+        id: current.id,
+        displayName,
+        phoneNumber,
+      }),
+    })
+
+    if (res.ok) {
+      const data = await res.json()
+      localStorage.setItem(PARTICIPANT_CACHE_KEY, JSON.stringify(data))
+      notifyAuthSubscribers(data)
+      return data
+    }
+  } catch {}
+
+  notifyAuthSubscribers(updated)
+  return updated
+}

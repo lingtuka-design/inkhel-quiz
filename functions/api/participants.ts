@@ -56,13 +56,32 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try {
     const body: any = await request.json()
-    const { displayName, email, photoUrl, googleId, avatarGradient } = body
-    if (!displayName || !displayName.trim()) return err('displayName is required')
-
-    const name = displayName.trim()
+    const { id: reqId, action, displayName, email, phoneNumber, photoUrl, googleId, avatarGradient } = body
     const now = new Date().toISOString()
 
-    // If Google login
+    // 1. Action: Direct Profile update (Phone number, Display Name)
+    if ((action === 'update_profile' || action === 'update') && reqId) {
+      const name = displayName ? displayName.trim() : null
+      const phone = phoneNumber !== undefined ? (phoneNumber ? phoneNumber.trim() : null) : null
+
+      await env.DB.prepare(
+        `UPDATE participants SET
+          display_name = COALESCE(?, display_name),
+          phone_number = ?,
+          updated_at = ?
+         WHERE id = ?`
+      )
+        .bind(name, phone, now, reqId)
+        .run()
+
+      const updated = await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(reqId).first()
+      return json(toCamelCase(updated))
+    }
+
+    if (!displayName || !displayName.trim()) return err('displayName is required')
+    const name = displayName.trim()
+
+    // 2. Google login / Registration
     if (googleId || email) {
       let existing = null
       if (googleId) {
@@ -79,11 +98,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
             display_name = ?,
             photo_url = COALESCE(?, photo_url),
             google_id = COALESCE(?, google_id),
+            phone_number = COALESCE(?, phone_number),
             provider = 'google',
             updated_at = ?
            WHERE id = ?`
         )
-          .bind(name, photoUrl || null, googleId || null, now, existing.id)
+          .bind(name, photoUrl || null, googleId || null, phoneNumber ? phoneNumber.trim() : null, now, existing.id)
           .run()
 
         const updated = await env.DB.prepare('SELECT * FROM participants WHERE id = ?').bind(existing.id).first()
@@ -91,19 +111,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       }
 
       // Create or update Google participant
-      const id = `part_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+      const id = reqId || `part_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
       const avatar = avatarGradient || `avatar_${Math.floor(Math.random() * 8) + 1}`
 
       await env.DB.prepare(
-        `INSERT INTO participants (id, display_name, email, photo_url, google_id, avatar_gradient, provider, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'google', ?, ?)
+        `INSERT INTO participants (id, display_name, email, phone_number, photo_url, google_id, avatar_gradient, provider, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'google', ?, ?)
          ON CONFLICT(email) DO UPDATE SET
            display_name = excluded.display_name,
            photo_url = COALESCE(excluded.photo_url, participants.photo_url),
            google_id = COALESCE(excluded.google_id, participants.google_id),
+           phone_number = COALESCE(excluded.phone_number, participants.phone_number),
            updated_at = excluded.updated_at`
       )
-        .bind(id, name, email || null, photoUrl || null, googleId || null, avatar, now, now)
+        .bind(id, name, email || null, phoneNumber ? phoneNumber.trim() : null, photoUrl || null, googleId || null, avatar, now, now)
         .run()
 
       const created = await env.DB.prepare('SELECT * FROM participants WHERE (email = ? AND email IS NOT NULL) OR id = ?')

@@ -78,6 +78,8 @@ export interface Participant {
   id: string
   displayName: string
   email: string | null
+  phoneNumber?: string | null
+  upiId?: string | null
   photoUrl?: string | null
   googleId?: string | null
   avatarGradient: string
