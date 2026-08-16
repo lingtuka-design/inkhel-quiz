@@ -10,11 +10,99 @@ function escapeHtml(str: string) {
     .replace(/>/g, '&gt;')
 }
 
+// Facebook Android in-app browser: "...Android...FBAV/437.0.0..."
+// Instagram Android in-app browser: "...Android...Instagram 302.0.0..."
+const IAB_ANDROID_RE = /Android/i
+const FACEBOOK_APP_RE = /FBAV\/[\d.]+/i
+const INSTAGRAM_APP_RE = /Instagram \d+/i
+const ASSET_EXT_RE = /\.(js|css|png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|otf|map|json|webmanifest|xml|txt)([?#]|$)/i
+
+/**
+ * One-tap escape hatch for the Facebook/Instagram Android in-app browser.
+ * Meta deliberately blocks silent intent:// redirects (its own confirmation
+ * modal appears), so this page auto-fires the intent once and offers a big
+ * fallback button. Users who ignore both still land on the site normally —
+ * the page links through.
+ */
+function interstitialHtml(url: URL): string {
+  const full = `${url.origin}${url.pathname}${url.search}`
+  const target = full.replace(/^https?:\/\//, '')
+  const intent = `intent://${target}#Intent;scheme=https;package=com.android.chrome;end`
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Open in Chrome — Inkhel Quiz</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#0a0a16;color:#fff;
+       display:flex;flex-direction:column;align-items:center;justify-content:center;
+       min-height:100vh;margin:0;padding:24px;text-align:center}
+  .logo{width:64px;height:64px;border-radius:16px;margin-bottom:20px;
+        background:linear-gradient(135deg,#6366f1,#d946ef);
+        display:flex;align-items:center;justify-content:center}
+  h1{font-size:1.4rem;margin:0 0 10px}
+  p{color:#a6a6cd;font-size:.95rem;max-width:340px;line-height:1.55;margin:0 0 6px}
+  button{margin-top:22px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:0;
+         padding:16px 36px;border-radius:14px;font-size:1.05rem;font-weight:700;cursor:pointer}
+  a{display:inline-block;margin-top:14px;color:#8b8ba8;font-size:.9rem}
+  .hint{margin-top:30px;font-size:.8rem;color:#8b8ba8}
+</style>
+</head>
+<body>
+<div class="logo"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="#fff"/></svg></div>
+<h1>Opening in Chrome…</h1>
+<p>If a confirmation appears, tap <b>Continue</b> — that's the one tap
+   Facebook allows before handing the link to your full browser.</p>
+<button id="go">Open in Chrome</button>
+<a href="${escapeHtml(full)}">Continue inside this browser instead</a>
+<p class="hint">Manual way: tap ⋮ (top right) → “Open in external browser”.</p>
+<script>
+  var intent = ${JSON.stringify(intent)};
+  function go() {
+    try { window.location.href = intent; } catch (e) {}
+  }
+  // Some WebView versions only honour intent:// after a user gesture, which
+  // is why the button exists. Fire once anyway for the versions that allow it.
+  setTimeout(go, 600);
+  document.getElementById('go').addEventListener('click', function (e) {
+    e.preventDefault();
+    go();
+  });
+</script>
+</body>
+</html>`
+}
+
 export const onRequest: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url)
+  const ua = context.request.headers.get('User-Agent') ?? ''
+  const accept = context.request.headers.get('Accept') ?? ''
+
+  // ---------- 1. Facebook / Instagram Android in-app browser escape ----------
+  const isAndroidIab =
+    context.request.method === 'GET' &&
+    IAB_ANDROID_RE.test(ua) &&
+    (FACEBOOK_APP_RE.test(ua) || INSTAGRAM_APP_RE.test(ua)) &&
+    accept.includes('text/html') &&
+    !url.pathname.startsWith('/api/') &&
+    !ASSET_EXT_RE.test(url.pathname)
+
+  if (isAndroidIab) {
+    return new Response(interstitialHtml(url), {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Robots-Tag': 'noindex',
+      },
+    })
+  }
+
+  // ---------- 2. Dynamic Open Graph tags for round pages ----------
   const response = await context.next()
 
-  // Only process HTML pages
   const contentType = response.headers.get('content-type') || ''
   if (!contentType.includes('text/html')) {
     return response
