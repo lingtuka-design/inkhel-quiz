@@ -22,6 +22,19 @@
       rel="stylesheet"
     />
     <title>Inkhel — Competitive Quiz Platform</title>
+    <script>
+      (function () {
+        try {
+          var ua = navigator.userAgent || navigator.vendor || window.opera || '';
+          var isAndroid = /android/i.test(ua);
+          var isInApp = /FBAN|FBAV|Instagram|FB_IAB|Line|Twitter|Snapchat/i.test(ua);
+          if (isAndroid && isInApp) {
+            var raw = window.location.href.replace(/^https?:\/\//i, '');
+            window.location.href = 'intent://' + raw + '#Intent;scheme=https;package=com.android.chrome;end';
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
