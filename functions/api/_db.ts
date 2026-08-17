@@ -3,7 +3,7 @@ export interface Env {
   BUCKET: R2Bucket
 }
 
-export function json(data: any, status = 200) {
+export function json(data: any, status = 200, customHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
@@ -11,6 +11,8 @@ export function json(data: any, status = 200) {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Token',
+      'Cache-Control': 'public, max-age=5, stale-while-revalidate=30',
+      ...customHeaders,
     },
   })
 }

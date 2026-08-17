@@ -49,7 +49,7 @@ export function RoundDetailPage() {
       participants: (round as any)?.participantCount ?? countParticipants(roundId),
       questions: (round as any)?.questionCount ?? countQuestions(roundId),
     }),
-    enabled: !!round,
+    enabled: !!roundId,
   })
 
   const { data: leaderboard } = useQuery({
@@ -58,7 +58,7 @@ export function RoundDetailPage() {
       getRoundLeaderboard(roundId, {
         currentParticipantId: participant?.id ?? null,
       }),
-    enabled: !!round,
+    enabled: !!roundId,
   })
 
   const { data: userAttempt } = useQuery({
@@ -79,7 +79,7 @@ export function RoundDetailPage() {
       } catch {}
       return participant ? checkParticipantAttempt(participant.id, roundId) : null
     },
-    enabled: !!round && !!(participant?.id || participant?.email),
+    enabled: !!roundId && !!(participant?.id || participant?.email),
   })
 
   const alreadyPlayed = userAttempt ? (userAttempt.status === 'completed' || userAttempt.status === 'expired') : false
