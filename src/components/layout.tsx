@@ -378,36 +378,76 @@ export function AdminLayout() {
       </aside>
 
       <div className="flex-1 lg:pl-64">
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-white/5 bg-ink-950/80 px-4 backdrop-blur-xl sm:px-6 lg:hidden">
-          <Link to="/admin" className="focus-ring rounded-xl">
-            <Logo size="sm" />
-          </Link>
-          <button
-            className="focus-ring rounded-lg p-2 text-ink-200 hover:text-white"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label="Toggle admin menu"
-          >
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </header>
-        {menuOpen && (
-          <div className="border-b border-white/5 bg-ink-900/95 px-4 py-4 backdrop-blur-xl lg:hidden">
-            <nav className="space-y-1" aria-label="Admin mobile">
-              {items.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className="block rounded-lg px-3 py-2.5 text-sm font-medium text-ink-200 hover:bg-white/5 hover:text-white"
-                >
-                  {item.label}
-                </Link>
-              ))}
+        <header className="sticky top-0 z-40 flex flex-col border-b border-white/5 bg-ink-950/90 px-4 py-2.5 backdrop-blur-xl sm:px-6 lg:hidden">
+          <div className="flex items-center justify-between">
+            <Link to="/admin" className="focus-ring rounded-xl">
+              <Logo size="sm" />
+            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/"
+                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-ink-300 hover:text-white"
+              >
+                View Site
+              </Link>
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-red-300/80 hover:bg-red-500/10"
+                className="rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300"
               >
-                <LogOut className="h-4 w-4" /> Logout
+                Logout
               </button>
+            </div>
+          </div>
+
+          {/* Hamburger / Menu button directly below Quiz logo */}
+          <div className="mt-2.5 flex items-center justify-between border-t border-white/5 pt-2">
+            <button
+              className="flex items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/15 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-500/25 active:scale-95 transition-all"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Toggle admin menu"
+            >
+              {menuOpen ? <X className="h-4 w-4 text-violet-300" /> : <Menu className="h-4 w-4 text-violet-400" />}
+              <span>Admin Menu</span>
+              <ChevronDown className={cn('h-3.5 w-3.5 text-violet-300 transition-transform duration-200', menuOpen && 'rotate-180')} />
+            </button>
+
+            <span className="text-xs font-medium text-ink-300">
+              {items.find((i) => (i.end ? location.pathname === i.to : location.pathname.startsWith(i.to)))?.label || 'Dashboard'}
+            </span>
+          </div>
+        </header>
+
+        {menuOpen && (
+          <div className="border-b border-white/5 bg-ink-900/98 px-4 py-4 shadow-2xl backdrop-blur-xl lg:hidden animate-in fade-in duration-150">
+            <nav className="space-y-1" aria-label="Admin mobile">
+              {items.map((item) => {
+                const active = item.end
+                  ? location.pathname === item.to
+                  : location.pathname.startsWith(item.to)
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={cn(
+                      'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors',
+                      active
+                        ? 'bg-gradient-to-r from-indigo-500/25 to-violet-500/15 text-white border border-violet-500/30'
+                        : 'text-ink-200 hover:bg-white/5 hover:text-white',
+                    )}
+                  >
+                    <item.icon className="h-4.5 w-4.5 text-violet-400" />
+                    {item.label}
+                  </Link>
+                )
+              })}
+              <div className="pt-2">
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-red-300 hover:bg-red-500/10"
+                >
+                  <LogOut className="h-4.5 w-4.5 text-red-400" /> Logout Admin
+                </button>
+              </div>
             </nav>
           </div>
         )}
