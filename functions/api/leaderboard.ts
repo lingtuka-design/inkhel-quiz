@@ -49,7 +49,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         isCurrentUser: false,
       }))
 
-      return json(rows)
+      return json(rows, 200, { 'Cache-Control': 'public, max-age=10, stale-while-revalidate=30' })
     }
 
     if (type === 'month') {

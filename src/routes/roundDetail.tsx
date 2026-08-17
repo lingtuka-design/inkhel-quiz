@@ -52,8 +52,9 @@ export function RoundDetailPage() {
     enabled: !!roundId,
   })
 
-  const { data: leaderboard } = useQuery({
+  const { data: leaderboard, isLoading: leaderboardLoading } = useQuery({
     queryKey: ['leaderboard', roundId],
+    staleTime: 15000,
     queryFn: () =>
       getRoundLeaderboard(roundId, {
         currentParticipantId: participant?.id ?? null,
@@ -267,7 +268,12 @@ export function RoundDetailPage() {
             title="Fastest minds, top scores"
             subtitle={`Live results for ${round.title} — updated after every attempt.`}
           />
-          {leaderboard && leaderboard.length > 0 ? (
+          {leaderboardLoading && !leaderboard ? (
+            <Card className="p-12 text-center text-sm text-ink-300">
+              <div className="mx-auto mb-3 h-7 w-7 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+              <p>Loading leaderboard scores...</p>
+            </Card>
+          ) : leaderboard && leaderboard.length > 0 ? (
             <div>
               <LeaderboardTable rows={leaderboard.slice(0, 20)} />
             </div>
