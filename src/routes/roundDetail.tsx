@@ -10,7 +10,7 @@ import { getMonth } from '../services/monthService'
 import { getSeason } from '../services/seasonService'
 import { getRoundLeaderboard } from '../services/leaderboardService'
 import { checkParticipantAttempt, hasCompletedRound } from '../services/attemptService'
-import { getParticipant, loginWithGoogle } from '../services/authService'
+import { getParticipant, useCurrentUser, loginWithGoogle } from '../services/authService'
 import { GoogleIcon } from '../components/layout'
 import { setPageTitle, setMetaDescription } from '../services/shareService'
 import { formatDate, formatTime } from '../lib/utils'
@@ -18,10 +18,10 @@ import { formatDate, formatTime } from '../lib/utils'
 export function RoundDetailPage() {
   const { roundId } = useParams({ strict: false })
   const navigate = useNavigate()
-  const [participant, setParticipant] = useState(() => getParticipant())
+  const participant = useCurrentUser()
   const [signingIn, setSigningIn] = useState(false)
 
-  const { data: round } = useQuery({
+  const { data: round, isLoading: roundLoading } = useQuery({
     queryKey: ['round', roundId],
     queryFn: async () => {
       try {
@@ -91,9 +91,24 @@ export function RoundDetailPage() {
   })
 
   const { data: userAttempt } = useQuery({
-    queryKey: ['userRoundAttempt', roundId, participant?.id],
-    queryFn: () => (participant ? checkParticipantAttempt(participant.id, roundId) : null),
-    enabled: !!round && !!participant,
+    queryKey: ['userRoundAttempt', roundId, participant?.id, participant?.email],
+    queryFn: async () => {
+      if (!participant?.id && !participant?.email) return null
+      try {
+        const params = new URLSearchParams({ roundId })
+        if (participant?.id) params.set('participantId', participant.id)
+        if (participant?.email) params.set('email', participant.email)
+        if (participant?.googleId) params.set('googleId', participant.googleId)
+
+        const res = await fetch(`/api/attempts?${params.toString()}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.attempt) return data.attempt
+        }
+      } catch {}
+      return participant ? checkParticipantAttempt(participant.id, roundId) : null
+    },
+    enabled: !!round && !!(participant?.id || participant?.email),
   })
 
   const alreadyPlayed = userAttempt ? (userAttempt.status === 'completed' || userAttempt.status === 'expired') : false
@@ -104,6 +119,15 @@ export function RoundDetailPage() {
       setMetaDescription(round.description)
     }
   }, [round])
+
+  if (roundLoading) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-28 text-center sm:px-6">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+        <p className="mt-3 text-sm text-ink-300">Loading round details...</p>
+      </div>
+    )
+  }
 
   if (!round) {
     return (
@@ -129,7 +153,6 @@ export function RoundDetailPage() {
     try {
       setSigningIn(true)
       const p = await loginWithGoogle()
-      setParticipant(p)
       toast(`Welcome, ${p.displayName}! You can now play.`, 'success')
       navigate({ to: `/rounds/${round.id}/quiz` })
     } catch (err: any) {
