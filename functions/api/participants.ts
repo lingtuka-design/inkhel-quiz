@@ -51,17 +51,43 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       })
     }
 
+    const summary = url.searchParams.get('summary') === 'true'
+    if (summary) {
+      const stats = await env.DB.prepare(
+        `SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN provider = 'google' THEN 1 ELSE 0 END) as google_count,
+            SUM(CASE WHEN provider = 'guest' THEN 1 ELSE 0 END) as guest_count
+         FROM participants`
+      ).first<any>()
+
+      return json({
+        total: stats?.total || 0,
+        googleCount: stats?.google_count || 0,
+        guestCount: stats?.guest_count || 0,
+      }, 200, { 'Cache-Control': 'public, max-age=15, stale-while-revalidate=60' })
+    }
+
     if (list) {
       const { results: participants } = await env.DB.prepare(
         `SELECT 
             p.*,
-            COUNT(DISTINCT a.id) as rounds_played,
-            COALESCE(SUM(a.final_score), 0) as total_points,
-            COALESCE(MAX(a.final_score), 0) as best_score,
-            MAX(a.completed_at) as last_played_at
+            COALESCE(a.rounds_played, 0) as rounds_played,
+            COALESCE(a.total_points, 0) as total_points,
+            COALESCE(a.best_score, 0) as best_score,
+            a.last_played_at
          FROM participants p
-         LEFT JOIN attempts a ON p.id = a.participant_id AND (a.status = 'completed' OR a.status = 'expired')
-         GROUP BY p.id
+         LEFT JOIN (
+           SELECT 
+             participant_id,
+             COUNT(*) as rounds_played,
+             SUM(final_score) as total_points,
+             MAX(final_score) as best_score,
+             MAX(completed_at) as last_played_at
+           FROM attempts
+           WHERE status IN ('completed', 'expired')
+           GROUP BY participant_id
+         ) a ON a.participant_id = p.id
          ORDER BY p.created_at DESC`
       ).all<any>()
 
@@ -74,7 +100,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         googleCount,
         guestCount,
         participants: toCamelCase(participants),
-      })
+      }, 200, { 'Cache-Control': 'public, max-age=10, stale-while-revalidate=30' })
     }
 
     return err('id, googleId or list parameter required')

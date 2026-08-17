@@ -32,6 +32,8 @@ export function AdminDashboardPage() {
 
   const { data: rounds = [] } = useQuery<any[]>({
     queryKey: ['adminDashboardRounds'],
+    initialData: () => listRounds(),
+    staleTime: 30000,
     queryFn: async () => {
       try {
         const res = await fetch('/api/rounds')
@@ -43,6 +45,8 @@ export function AdminDashboardPage() {
 
   const { data: seasons = [] } = useQuery<any[]>({
     queryKey: ['adminDashboardSeasons'],
+    initialData: () => listSeasons(),
+    staleTime: 30000,
     queryFn: async () => {
       try {
         const res = await fetch('/api/seasons')
@@ -53,13 +57,14 @@ export function AdminDashboardPage() {
   })
 
   const { data: usersData } = useQuery({
-    queryKey: ['adminUsersList'],
+    queryKey: ['adminUsersSummary'],
+    staleTime: 30000,
     queryFn: async () => {
       try {
-        const res = await fetch('/api/participants?list=true')
+        const res = await fetch('/api/participants?summary=true')
         if (res.ok) return await res.json()
       } catch {}
-      return { total: 0, googleCount: 0, guestCount: 0, participants: [] }
+      return { total: 0, googleCount: 0, guestCount: 0 }
     },
   })
 
