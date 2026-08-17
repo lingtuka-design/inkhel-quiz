@@ -68,7 +68,6 @@ export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
 const NAV = [
   { to: '/rounds', label: 'Rounds', icon: Clapperboard },
   { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-  { to: '/seasons', label: 'Seasons', icon: Calendar },
 ]
 
 export function PublicLayout() {
@@ -320,7 +319,7 @@ export function AdminLayout() {
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/admin/users', label: 'Users', icon: Users },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-    { to: '/admin/seasons', label: 'Seasons', icon: Calendar },
+    { to: '/admin/seasons', label: 'Monthly Tournaments', icon: Calendar },
     { to: '/admin/rounds', label: 'Rounds', icon: Clapperboard },
   ]
 
