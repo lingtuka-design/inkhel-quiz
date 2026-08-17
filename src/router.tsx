@@ -29,6 +29,7 @@ import { AdminSeasonsPage } from './routes/admin/seasons'
 import { SeasonFormPage } from './routes/admin/seasonForm'
 import { SeasonDetailPage } from './routes/admin/seasonDetail'
 import { MonthDetailPage } from './routes/admin/monthDetail'
+import { MonthStandingsPage } from './routes/admin/monthStandings'
 import { RoundFormPage } from './routes/admin/roundForm'
 import { AdminRoundQuestionsPage } from './routes/admin/roundQuestions'
 import { AdminRoundLeaderboardPage } from './routes/admin/roundLeaderboard'
@@ -177,6 +178,12 @@ const adminMonthDetailRoute = createRoute({
   component: MonthDetailPage,
 })
 
+const adminMonthStandingsRoute = createRoute({
+  getParentRoute: () => adminLayout,
+  path: '/admin/seasons/$seasonId/months/$monthId/standings',
+  component: MonthStandingsPage,
+})
+
 const adminRoundFormRoute = createRoute({
   getParentRoute: () => adminLayout,
   path: '/admin/rounds/$roundId',
@@ -245,6 +252,7 @@ const routeTree = rootRoute.addChildren([
     adminSeasonEditRoute,
     adminSeasonDetailRoute,
     adminMonthDetailRoute,
+    adminMonthStandingsRoute,
     adminRoundsRoute,
     adminRoundFormRoute,
     adminRoundQuestionsRoute,

@@ -121,9 +121,19 @@ export function MonthDetailPage() {
             </div>
           </div>
         </div>
-        <Button size="sm" icon={Plus} onClick={() => navigate({ to: `/admin/rounds/new?monthId=${monthId}` })}>
-          New Round
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={Trophy}
+            onClick={() => navigate({ to: `/admin/seasons/${seasonId}/months/${monthId}/standings` })}
+          >
+            {month.name} Standings
+          </Button>
+          <Button size="sm" icon={Plus} onClick={() => navigate({ to: `/admin/rounds/new?monthId=${monthId}` })}>
+            New Round
+          </Button>
+        </div>
       </div>
 
       {!rounds || rounds.length === 0 ? (
@@ -242,26 +252,6 @@ export function MonthDetailPage() {
           </div>
         </Card>
       )}
-
-      {/* Monthly Tournament Leaderboard with Phone Numbers */}
-      <section className="space-y-4 pt-6 border-t border-white/5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display text-xl font-bold text-white flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-amber-400" />
-              {month.name} Tournament Standings
-            </h2>
-            <p className="mt-1 text-sm text-ink-300">
-              Top players ranked by total points across all rounds in {month.name}. Phone / WhatsApp contact numbers are displayed for prize payouts.
-            </p>
-          </div>
-          <Badge tone="violet">
-            {monthRankings?.length ?? 0} Ranked Players
-          </Badge>
-        </div>
-
-        <RankingTable rows={monthRankings ?? []} showPhone={true} />
-      </section>
     </div>
   )
 }
