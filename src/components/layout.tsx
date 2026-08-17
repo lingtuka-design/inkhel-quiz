@@ -45,21 +45,21 @@ export function GoogleIcon({ className = 'h-4 w-4' }: { className?: string }) {
 
 export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const sizes = {
-    sm: 'h-8 w-8 rounded-lg',
-    md: 'h-10 w-10 rounded-xl',
+    sm: 'h-8 w-8 rounded-lg p-1.5',
+    md: 'h-10 w-10 rounded-xl p-2',
   }
   return (
     <span className="flex items-center gap-2.5">
       <span
         className={cn(
-          'flex shrink-0 items-center justify-center overflow-hidden bg-white/[0.06] shadow-lg shadow-black/40 ring-1 ring-white/10 backdrop-blur-sm',
+          'flex shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30 ring-1 ring-white/20',
           sizes[size],
         )}
       >
         <img
           src="/logo.svg"
           alt="Inkhel"
-          className={cn('h-full w-full object-contain', size === 'sm' ? 'p-[2px]' : 'p-[3px]')}
+          className="h-full w-full object-contain filter drop-shadow"
           width={size === 'sm' ? 32 : 40}
           height={size === 'sm' ? 32 : 40}
         />
