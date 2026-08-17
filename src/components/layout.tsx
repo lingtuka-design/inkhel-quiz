@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
-import { InkhelLogoIcon } from './InkhelLogo'
 import {
   BarChart3,
   Calendar,
@@ -44,16 +43,21 @@ export function GoogleIcon({ className = 'h-4 w-4' }: { className?: string }) {
   )
 }
 
-
-
 export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const sizes = {
-    sm: 'h-8 w-8',
-    md: 'h-10 w-10',
+    sm: 'h-8 w-8 rounded-lg',
+    md: 'h-10 w-10 rounded-xl',
   }
   return (
     <span className="flex items-center gap-2.5">
-      <InkhelLogoIcon className={cn(sizes[size], 'shadow-lg shadow-violet-500/25 drop-shadow-md')} />
+      <span
+        className={cn(
+          'flex items-center justify-center bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30',
+          sizes[size],
+        )}
+      >
+        <Zap className="h-5 w-5" fill="currentColor" />
+      </span>
       <span className="font-display text-xl font-bold tracking-tight text-white">
         Ink<span className="text-gradient">hel</span>
       </span>
