@@ -16,15 +16,15 @@ export function AdminRoundQuestionsPage() {
   const { roundId } = useParams({ strict: false })
   const [publishing, setPublishing] = useState(false)
 
-  const { data: round, refetch: refetchRound } = useQuery({
+  const { data: round, refetch: refetchRound, isLoading: loadingRound } = useQuery({
     queryKey: ['round', roundId],
+    initialData: () => getRound(roundId) || undefined,
     queryFn: async () => {
       try {
-        const res = await fetch('/api/rounds')
+        const res = await fetch(`/api/rounds?id=${encodeURIComponent(roundId)}`)
         if (res.ok) {
-          const rounds = await res.json()
-          const found = rounds.find((r: any) => r.id === roundId)
-          if (found) return found
+          const data = await res.json()
+          if (data && data.id) return data
         }
       } catch {}
       return getRound(roundId)
@@ -80,7 +80,25 @@ export function AdminRoundQuestionsPage() {
     if (round) setPageTitle(`Questions — ${round.title}`)
   }, [round])
 
-  if (!round) return null
+  if (loadingRound && !round) {
+    return (
+      <div className="mx-auto max-w-4xl py-20 text-center">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
+        <p className="mt-3 text-sm text-ink-300">Loading round...</p>
+      </div>
+    )
+  }
+
+  if (!round) {
+    return (
+      <div className="mx-auto max-w-4xl py-20 text-center">
+        <p className="text-lg font-bold text-white">Round not found</p>
+        <Link to="/admin/rounds" className="mt-4 inline-block text-violet-400">
+          Back to Rounds
+        </Link>
+      </div>
+    )
+  }
 
   const isPublished = round.status === 'published'
 

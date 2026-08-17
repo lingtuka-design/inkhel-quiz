@@ -45,11 +45,13 @@ export function RoundFormPage() {
     try {
       if (isNew) {
         const created = await createRound(input)
+        queryClient.setQueryData(['round', created.id], created)
         await queryClient.invalidateQueries({ queryKey: ['rounds'] })
         toast('Round created', 'success')
         navigate({ to: `/admin/rounds/${created.id}/questions` })
       } else {
-        await updateRound(roundId!, input)
+        const updated = await updateRound(roundId!, input)
+        queryClient.setQueryData(['round', roundId], updated)
         await queryClient.invalidateQueries({ queryKey: ['rounds'] })
         toast('Round updated', 'success')
       }
