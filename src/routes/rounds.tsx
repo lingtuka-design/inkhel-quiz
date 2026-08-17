@@ -51,12 +51,34 @@ export function RoundsPage() {
 
   const { data: rounds } = useQuery({
     queryKey: ['rounds'],
+    initialData: () =>
+      listRounds()
+        .filter((r) => r.status !== 'draft')
+        .map((r) => ({
+          round: r,
+          participants: (r as any).participantCount ?? countParticipants(r.id),
+        })),
+    staleTime: 30000,
     queryFn: async () => {
       try {
         const res = await fetch('/api/rounds')
         if (res.ok) {
           const data = await res.json()
           if (Array.isArray(data)) {
+            // Sync with local database so subsequent visits load 0ms with exact participant numbers
+            try {
+              const { getDb, saveDb } = await import('../db/database')
+              const db = getDb()
+              for (const r of data) {
+                const existing = db.rounds.find((x) => x.id === r.id)
+                if (existing) {
+                  ;(existing as any).participantCount = r.participantCount || 0
+                  ;(existing as any).questionCount = r.questionCount || 0
+                }
+              }
+              saveDb()
+            } catch {}
+
             return data
               .filter((r: any) => r.status !== 'draft')
               .map((r: any) => ({ round: r, participants: r.participantCount || 0 }))
@@ -65,7 +87,10 @@ export function RoundsPage() {
       } catch {}
       return listRounds()
         .filter((r) => r.status !== 'draft')
-        .map((r) => ({ round: r, participants: countParticipants(r.id) }))
+        .map((r) => ({
+          round: r,
+          participants: (r as any).participantCount ?? countParticipants(r.id),
+        }))
     },
   })
 

@@ -27,12 +27,32 @@ export function HomePage() {
 
   const { data: rounds } = useQuery({
     queryKey: ['rounds', 'playable'],
+    initialData: () =>
+      listAllPlayableRounds().map((r) => ({
+        round: r,
+        participants: (r as any).participantCount ?? countParticipants(r.id),
+        questions: (r as any).questionCount ?? countQuestions(r.id),
+      })),
+    staleTime: 30000,
     queryFn: async () => {
       try {
         const res = await fetch('/api/rounds')
         if (res.ok) {
           const data = await res.json()
           if (Array.isArray(data)) {
+            try {
+              const { getDb, saveDb } = await import('../db/database')
+              const db = getDb()
+              for (const r of data) {
+                const existing = db.rounds.find((x) => x.id === r.id)
+                if (existing) {
+                  ;(existing as any).participantCount = r.participantCount || 0
+                  ;(existing as any).questionCount = r.questionCount || 0
+                }
+              }
+              saveDb()
+            } catch {}
+
             return data
               .filter((r: any) => r.status === 'published')
               .map((r: any) => ({
@@ -45,8 +65,8 @@ export function HomePage() {
       } catch {}
       return listAllPlayableRounds().map((r) => ({
         round: r,
-        participants: countParticipants(r.id),
-        questions: countQuestions(r.id),
+        participants: (r as any).participantCount ?? countParticipants(r.id),
+        questions: (r as any).questionCount ?? countQuestions(r.id),
       }))
     },
   })

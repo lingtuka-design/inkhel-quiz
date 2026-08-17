@@ -33,28 +33,48 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
     if (monthId) {
       const { results: rounds } = await env.DB.prepare(
-        `SELECT r.*,
-          (SELECT COUNT(*) FROM questions q WHERE q.round_id = r.id) as question_count,
-          (SELECT COUNT(DISTINCT a.participant_id) FROM attempts a WHERE a.round_id = r.id AND a.status IN ('completed', 'expired')) as participant_count
-         FROM rounds r
-         WHERE r.month_id = ?
-         ORDER BY r.created_at ASC`
+        `SELECT 
+          r.*,
+          COALESCE(q.q_count, 0) as question_count,
+          COALESCE(a.p_count, 0) as participant_count
+        FROM rounds r
+        LEFT JOIN (
+          SELECT round_id, COUNT(*) as q_count FROM questions GROUP BY round_id
+        ) q ON q.round_id = r.id
+        LEFT JOIN (
+          SELECT round_id, COUNT(DISTINCT participant_id) as p_count 
+          FROM attempts 
+          WHERE status IN ('completed', 'expired') AND is_test_attempt = 0 
+          GROUP BY round_id
+        ) a ON a.round_id = r.id
+        WHERE r.month_id = ?
+        ORDER BY r.created_at ASC`
       )
         .bind(monthId)
         .all()
-      return json(toCamelCase(rounds))
+      return json(toCamelCase(rounds), 200, { 'Cache-Control': 'public, max-age=15, stale-while-revalidate=60' })
     }
 
-    // Default: return all rounds with question_count & participant_count
+    // Default: return all rounds with question_count & participant_count using fast JOIN
     const { results: rounds } = await env.DB.prepare(
-      `SELECT r.*,
-        (SELECT COUNT(*) FROM questions q WHERE q.round_id = r.id) as question_count,
-        (SELECT COUNT(DISTINCT a.participant_id) FROM attempts a WHERE a.round_id = r.id AND a.status IN ('completed', 'expired')) as participant_count
-       FROM rounds r
-       ORDER BY r.created_at DESC`
+      `SELECT 
+        r.*,
+        COALESCE(q.q_count, 0) as question_count,
+        COALESCE(a.p_count, 0) as participant_count
+      FROM rounds r
+      LEFT JOIN (
+        SELECT round_id, COUNT(*) as q_count FROM questions GROUP BY round_id
+      ) q ON q.round_id = r.id
+      LEFT JOIN (
+        SELECT round_id, COUNT(DISTINCT participant_id) as p_count 
+        FROM attempts 
+        WHERE status IN ('completed', 'expired') AND is_test_attempt = 0 
+        GROUP BY round_id
+      ) a ON a.round_id = r.id
+      ORDER BY r.created_at DESC`
     ).all()
 
-    return json(toCamelCase(rounds))
+    return json(toCamelCase(rounds), 200, { 'Cache-Control': 'public, max-age=15, stale-while-revalidate=60' })
   } catch (e: any) {
     return err(e.message || 'Server error', 500)
   }
