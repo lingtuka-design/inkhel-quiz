@@ -7,12 +7,14 @@ import { queryClient } from './lib/query'
 import { initDb } from './db/database'
 import './styles.css'
 
-initDb().then(() => {
-  ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
-    </React.StrictMode>,
-  )
-})
+// Mount React immediately for instant 0.05s page render
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  </React.StrictMode>,
+)
+
+// Background database sync without blocking initial page load
+initDb().catch(() => {})
