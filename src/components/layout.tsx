@@ -52,11 +52,17 @@ export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
     <span className="flex items-center gap-2.5">
       <span
         className={cn(
-          'flex items-center justify-center bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30',
+          'flex shrink-0 items-center justify-center overflow-hidden bg-white/[0.06] shadow-lg shadow-black/40 ring-1 ring-white/10 backdrop-blur-sm',
           sizes[size],
         )}
       >
-        <Zap className="h-5 w-5" fill="currentColor" />
+        <img
+          src="/logo.svg"
+          alt="Inkhel"
+          className={cn('h-full w-full object-contain', size === 'sm' ? 'p-[2px]' : 'p-[3px]')}
+          width={size === 'sm' ? 32 : 40}
+          height={size === 'sm' ? 32 : 40}
+        />
       </span>
       <span className="font-display text-xl font-bold tracking-tight text-white">
         Ink<span className="text-gradient">hel</span>

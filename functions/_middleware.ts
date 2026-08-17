@@ -43,6 +43,7 @@ function interstitialHtml(url: URL): string {
   .logo{width:64px;height:64px;border-radius:16px;margin-bottom:20px;
         background:linear-gradient(135deg,#6366f1,#d946ef);
         display:flex;align-items:center;justify-content:center}
+  .logo img{object-fit:contain}
   h1{font-size:1.4rem;margin:0 0 10px}
   p{color:#a6a6cd;font-size:.95rem;max-width:340px;line-height:1.55;margin:0 0 6px}
   button{margin-top:22px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:0;
@@ -52,7 +53,7 @@ function interstitialHtml(url: URL): string {
 </style>
 </head>
 <body>
-<div class="logo"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="#fff"/></svg></div>
+<div class="logo"><img src="/logo.svg" alt="Inkhel" width="36" height="36"></div>
 <h1>Opening in Chrome…</h1>
 <p>If a confirmation appears, tap <b>Continue</b> — that's the one tap
    Facebook allows before handing the link to your full browser.</p>
