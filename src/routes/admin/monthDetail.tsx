@@ -7,13 +7,16 @@ import {
   Eye,
   ListChecks,
   Pencil,
+  Phone,
   Play,
   Plus,
   Trash2,
+  Trophy,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { BackLink } from '../../components/layout'
-import { Badge, Button, Card, EmptyState, toast } from '../../components/ui'
+import { Badge, Button, Card, EmptyState, SectionHeading, toast } from '../../components/ui'
+import { RankingTable } from '../../components/leaderboard'
 import { getMonth } from '../../services/monthService'
 import { getSeason } from '../../services/seasonService'
 import {
@@ -24,6 +27,7 @@ import {
   setRoundStatus,
   deleteRound,
 } from '../../services/roundService'
+import { getMonthRanking } from '../../services/leaderboardService'
 import { roundStatusBadge } from '../../components/rounds'
 import { queryClient } from '../../lib/query'
 import { setPageTitle } from '../../services/shareService'
@@ -50,8 +54,15 @@ export function MonthDetailPage() {
     enabled: !!month,
   })
 
+  const { data: monthRankings } = useQuery({
+    queryKey: ['monthRankings', monthId],
+    staleTime: 15000,
+    queryFn: () => getMonthRanking(monthId!),
+    enabled: !!monthId,
+  })
+
   useEffect(() => {
-    if (month) setPageTitle(`${month.name} — Rounds`)
+    if (month) setPageTitle(`${month.name} — Rounds & Standings`)
   }, [month])
 
   const handleStatus = async (id: string, status: 'published' | 'archived') => {
@@ -231,6 +242,26 @@ export function MonthDetailPage() {
           </div>
         </Card>
       )}
+
+      {/* Monthly Tournament Leaderboard with Phone Numbers */}
+      <section className="space-y-4 pt-6 border-t border-white/5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl font-bold text-white flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-amber-400" />
+              {month.name} Tournament Standings
+            </h2>
+            <p className="mt-1 text-sm text-ink-300">
+              Top players ranked by total points across all rounds in {month.name}. Phone / WhatsApp contact numbers are displayed for prize payouts.
+            </p>
+          </div>
+          <Badge tone="violet">
+            {monthRankings?.length ?? 0} Ranked Players
+          </Badge>
+        </div>
+
+        <RankingTable rows={monthRankings ?? []} showPhone={true} />
+      </section>
     </div>
   )
 }
