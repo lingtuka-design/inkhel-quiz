@@ -16,7 +16,7 @@ import { setPageTitle } from '../services/shareService'
 import { cn } from '../lib/utils'
 import { Link } from '@tanstack/react-router'
 
-type Tab = 'round' | 'month' | 'season'
+type Tab = 'month' | 'round' | 'alltime'
 
 export function LeaderboardPage() {
   useEffect(() => setPageTitle('Leaderboard'), [])
@@ -41,7 +41,6 @@ export function LeaderboardPage() {
       return listAllMonths().sort((a, b) => a.startDate.localeCompare(b.startDate))
     },
   })
-  const { data: seasons } = useQuery({ queryKey: ['seasons'], queryFn: listSeasons })
   const { data: rounds } = useQuery({
     queryKey: ['rounds'],
     queryFn: () => listRounds().filter((r) => r.status !== 'draft'),
@@ -56,14 +55,10 @@ export function LeaderboardPage() {
       return now >= start && now <= end
     })
     if (openMonth) return openMonth.id
-
-    const activeSeason = seasons?.find((s) => s.status === 'active') ?? seasons?.[0]
-    const seasonMonths = months?.filter((m) => m.seasonId === activeSeason?.id) ?? []
-    return seasonMonths[0]?.id ?? months?.[0]?.id ?? ''
-  }, [currentMonth, months, seasons])
+    return months?.[0]?.id ?? ''
+  }, [currentMonth, months])
 
   const [monthId, setMonthId] = useState<string>('')
-  const [seasonId, setSeasonId] = useState<string>('')
   const [roundId, setRoundId] = useState<string>('')
 
   useEffect(() => {
@@ -73,9 +68,8 @@ export function LeaderboardPage() {
   }, [defaultMonthId, monthId])
 
   useEffect(() => {
-    if (!seasonId && seasons?.[0]) setSeasonId(seasons.find((s) => s.status === 'active')?.id ?? seasons[0].id)
     if (!roundId && rounds?.[0]) setRoundId(rounds[0].id)
-  }, [seasons, rounds, seasonId, roundId])
+  }, [rounds, roundId])
 
   const { data: monthRanking } = useQuery({
     queryKey: ['ranking', 'month', monthId],
@@ -83,10 +77,18 @@ export function LeaderboardPage() {
     enabled: !!monthId,
   })
 
-  const { data: seasonRanking } = useQuery({
-    queryKey: ['ranking', 'season', seasonId],
-    queryFn: () => (seasonId ? getSeasonRanking(seasonId, { currentParticipantId: participant?.id ?? null }) : []),
-    enabled: !!seasonId,
+  const { data: allTimeRanking } = useQuery({
+    queryKey: ['ranking', 'alltime'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/leaderboard?type=season')
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data)) return data
+        }
+      } catch {}
+      return []
+    },
   })
 
   const { data: roundLeaderboard } = useQuery({
@@ -96,21 +98,20 @@ export function LeaderboardPage() {
   })
 
   const tabs: { id: Tab; label: string; icon: typeof Trophy }[] = [
-    { id: 'month', label: 'Monthly', icon: CalendarRange },
-    { id: 'season', label: 'Season', icon: Trophy },
-    { id: 'round', label: 'Round', icon: Medal },
+    { id: 'month', label: 'Monthly Tournament', icon: CalendarRange },
+    { id: 'round', label: 'Round Leaderboard', icon: Medal },
+    { id: 'alltime', label: 'Overall Hall of Fame', icon: Trophy },
   ]
 
   const selectedMonth = months?.find((m) => m.id === monthId)
-  const selectedSeason = seasons?.find((s) => s.id === seasonId)
   const selectedRound = rounds?.find((r) => r.id === roundId)
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
       <SectionHeading
-        eyebrow="Hall of fame"
+        eyebrow="Competitions & Rankings"
         title="Leaderboard"
-        subtitle="Three levels of glory: round, month, season."
+        subtitle="Thla tin tournament chuh la, Leaderboard-a a chungnung ber nih tum rawh le!"
       />
 
       <div className="mb-8 flex flex-wrap items-center gap-2">
@@ -143,16 +144,7 @@ export function LeaderboardPage() {
             <Select value={monthId} onChange={(e) => setMonthId(e.target.value)} className="w-56">
               {months?.map((m) => (
                 <option key={m.id} value={m.id} className="bg-ink-800">
-                  {m.name}
-                </option>
-              ))}
-            </Select>
-          )}
-          {tab === 'season' && (
-            <Select value={seasonId} onChange={(e) => setSeasonId(e.target.value)} className="w-64">
-              {seasons?.map((s) => (
-                <option key={s.id} value={s.id} className="bg-ink-800">
-                  {s.name}
+                  {m.name} Tournament
                 </option>
               ))}
             </Select>
@@ -161,52 +153,54 @@ export function LeaderboardPage() {
       </div>
 
       {tab === 'month' && selectedMonth && (
-        <Card className="mb-8 flex flex-wrap items-center gap-4 p-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500/20 to-cyan-500/10 text-sky-300">
-            <CalendarRange className="h-6 w-6" />
+        <Card className="mb-8 flex flex-wrap items-center justify-between gap-4 p-5 border-violet-500/20 bg-gradient-to-r from-violet-950/30 to-indigo-950/20">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-indigo-500/10 text-violet-300">
+              <CalendarRange className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="font-display text-lg font-bold text-white flex items-center gap-2">
+                {selectedMonth.name} Tournament
+                {currentMonth?.id === selectedMonth.id && (
+                  <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-emerald-300">
+                    🟢 Live Now
+                  </span>
+                )}
+              </p>
+              <p className="text-sm text-ink-300">
+                {new Date(selectedMonth.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {' — '}
+                {new Date(selectedMonth.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {' · '}
+                {monthRanking?.[0] ? `Rank #1: ${monthRanking[0].participant.displayName} (${monthRanking[0].points} pts)` : 'No scores yet'}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-display text-lg font-bold text-white">
-              {selectedMonth.name}{' '}
-              {currentMonth?.id === selectedMonth.id && (
-                <span className="ml-2 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-emerald-300">
-                  In progress
-                </span>
-              )}
-            </p>
-            <p className="text-sm text-ink-300">
-              {new Date(selectedMonth.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              {' — '}
-              {new Date(selectedMonth.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              {' · '}
-              {monthRanking?.[0] ? `Leader: ${monthRanking[0].participant.displayName} (${monthRanking[0].points} pts)` : 'No scores yet'}
-            </p>
+          
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+              🎁 Monthly Prize: ₹2,000
+            </span>
+            {currentMonth?.id === selectedMonth.id && (
+              <Link to="/rounds" className="text-sm font-semibold text-violet-400 hover:text-violet-300">
+                Play Rounds →
+              </Link>
+            )}
           </div>
-          {currentMonth?.id === selectedMonth.id && (
-            <Link to="/rounds" className="ml-auto text-sm font-semibold text-violet-400 hover:text-violet-300">
-              Play this month's rounds →
-            </Link>
-          )}
         </Card>
       )}
 
-      {tab === 'season' && selectedSeason && (
+      {tab === 'alltime' && (
         <Card className="mb-8 flex items-center gap-4 p-5">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-yellow-400/20 to-amber-600/10 text-yellow-300">
             <Trophy className="h-6 w-6" />
           </div>
           <div>
             <p className="font-display text-lg font-bold text-white">
-              {selectedSeason.name}{' '}
-              <span className="text-sm font-semibold text-ink-300">
-                · Season {selectedSeason.seasonNumber} · {selectedSeason.durationMonths} months
-              </span>
+              Overall Hall of Fame
             </p>
             <p className="text-sm text-ink-300">
-              {new Date(selectedSeason.startDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-              {' — '}
-              {new Date(selectedSeason.endDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-              {seasonRanking?.[0] ? ` · Leader: ${seasonRanking[0].participant.displayName}` : ''}
+              All-time highest points scored across all quiz tournaments and rounds.
             </p>
           </div>
         </Card>
@@ -230,17 +224,17 @@ export function LeaderboardPage() {
         </Card>
       )}
 
-      {(tab === 'month' ? monthRanking : tab === 'season' ? seasonRanking : roundLeaderboard)?.length ? (
+      {(tab === 'month' ? monthRanking : tab === 'alltime' ? allTimeRanking : roundLeaderboard)?.length ? (
         <div>
           {tab === 'round' ? (
             <LeaderboardTable rows={roundLeaderboard?.slice(0, 50) ?? []} />
           ) : (
-            <RankingTable rows={(tab === 'month' ? monthRanking : seasonRanking)?.slice(0, 50) ?? []} />
+            <RankingTable rows={(tab === 'month' ? monthRanking : allTimeRanking)?.slice(0, 50) ?? []} />
           )}
         </div>
       ) : (
         <Card className="p-12 text-center text-sm text-ink-300">
-          No scores yet in this {tab}. Play a round to claim the top spot.
+          No scores yet in this {tab === 'month' ? 'month' : tab}. Play a round to claim the top spot.
         </Card>
       )}
     </div>

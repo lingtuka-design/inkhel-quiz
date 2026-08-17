@@ -388,69 +388,69 @@ export function HomePage() {
         </div>
       </section>
 
-      {season && (
-        <section className="mx-auto mt-20 max-w-6xl px-4 sm:px-6">
-          <Card className="overflow-hidden">
-            <div className="grid items-center gap-6 border-b border-white/5 bg-gradient-to-r from-indigo-500/10 via-violet-500/5 to-transparent p-6 sm:p-8 lg:grid-cols-[1fr_auto]">
+      <section className="mx-auto mt-20 max-w-6xl px-4 sm:px-6">
+        <Card className="overflow-hidden border-violet-500/20 shadow-2xl">
+          <div className="grid items-center gap-6 border-b border-white/5 bg-gradient-to-r from-violet-950/40 via-indigo-950/20 to-transparent p-6 sm:p-8 lg:grid-cols-[1fr_auto]">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-bold text-emerald-300">
+                  🎁 Lawmman: Thla tin ₹2,000 (Starts September)
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 border border-violet-500/30 px-3 py-1 text-xs font-bold text-violet-300">
+                  ⚡ {currentMonth?.name ?? 'August 2026'} Tournament
+                </span>
+              </div>
+              <h2 className="mt-1 font-display text-2xl font-bold text-white sm:text-3xl">
+                {currentMonth?.name ?? 'August 2026'} Leaderboard Standings
+              </h2>
+              <p className="mt-2 max-w-xl text-sm text-ink-300">
+                Thla tin ni 1 atanga ni tawp thlengin Quiz Round awm zawng zawng chhang la, Leaderboard-a a chungnung berin thla tin lawmman an dawng ziah ang!
+              </p>
+            </div>
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+              <Trophy className="h-8 w-8 text-yellow-400" />
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-violet-400">
-                  Current Season {season.seasonNumber} · {season.durationMonths} months
+                <p className="text-xs uppercase tracking-wider text-ink-300">Current Leader</p>
+                <p className="font-display text-lg font-bold text-white">
+                  {ranking?.[0]?.participant.displayName ?? '—'}
                 </p>
-                <h2 className="mt-1 font-display text-2xl font-bold text-white sm:text-3xl">{season.name}</h2>
-                <p className="mt-2 max-w-xl text-sm text-ink-300">{season.description}</p>
-                <p className="mt-3 flex items-center gap-2 text-sm text-ink-300">
-                  <Calendar className="h-4 w-4" />
-                  {formatDate(season.startDate)} — {formatDate(season.endDate)}
-                  <span className="hidden sm:inline">
-                    · {months?.filter((m) => m.seasonId === season.id).length ?? 0} months
-                  </span>
-                </p>
+                {ranking?.[0] && (
+                  <p className="text-xs text-emerald-400 font-bold">{ranking[0].points} pts</p>
+                )}
               </div>
-              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
-                <Trophy className="h-8 w-8 text-yellow-400" />
+            </div>
+          </div>
+          <div className="p-6 sm:p-8">
+            {ranking && ranking.length > 0 ? (
+              <>
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-ink-300">Season leader</p>
-                  <p className="font-display text-lg font-bold text-white">
-                    {ranking?.[0]?.participant.displayName ?? '—'}
-                  </p>
-                  {ranking?.[0] && (
-                    <p className="text-xs text-ink-300">{ranking[0].points} pts</p>
-                  )}
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="font-display text-base font-bold text-white sm:text-lg">
+                      Top 10 Player Dinhmun
+                    </h3>
+                    <span className="text-xs text-ink-300">
+                      {ranking.length} {ranking.length === 1 ? 'player' : 'players'} total
+                    </span>
+                  </div>
+                  <RankingTable rows={ranking.slice(0, 10)} />
                 </div>
-              </div>
-            </div>
-            <div className="p-6 sm:p-8">
-              {ranking && ranking.length > 0 ? (
-                <>
-                  <div>
-                    <div className="mb-4 flex items-center justify-between">
-                      <h3 className="font-display text-base font-bold text-white sm:text-lg">
-                        Top 10 Season Standings
-                      </h3>
-                      <span className="text-xs text-ink-300">
-                        {ranking.length} {ranking.length === 1 ? 'player' : 'players'} total
-                      </span>
-                    </div>
-                    <RankingTable rows={ranking.slice(0, 10)} />
-                  </div>
 
-                  <div className="mt-8 flex justify-center">
-                    <Link to="/leaderboard">
-                      <Button variant="outline" icon={Trophy}>
-                        View Full Leaderboard & Monthly Rankings →
-                      </Button>
-                    </Link>
-                  </div>
-                </>
-              ) : (
-                <p className="py-6 text-center text-sm text-ink-300">
-                  No rankings yet — play a round to make your mark.
-                </p>
-              )}
-            </div>
-          </Card>
-        </section>
-      )}
+                <div className="mt-8 flex justify-center">
+                  <Link to="/leaderboard">
+                    <Button variant="outline" icon={Trophy}>
+                      View Full Monthly Leaderboard & Rankings →
+                    </Button>
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <p className="py-6 text-center text-sm text-ink-300">
+                No rankings yet — play a round to make your mark.
+              </p>
+            )}
+          </div>
+        </Card>
+      </section>
     </div>
   )
 }
