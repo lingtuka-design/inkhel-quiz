@@ -30,8 +30,21 @@ export function AdminUsersPage() {
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
 
+  const { data: summaryData } = useQuery<{ total: number; googleCount: number; guestCount: number }>({
+    queryKey: ['adminUsersSummary'],
+    staleTime: 30000,
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/participants?summary=true')
+        if (res.ok) return await res.json()
+      } catch {}
+      return { total: 0, googleCount: 0, guestCount: 0 }
+    },
+  })
+
   const { data: usersData, isLoading } = useQuery({
     queryKey: ['adminUsersList'],
+    staleTime: 30000,
     queryFn: async () => {
       const res = await fetch('/api/participants?list=true')
       if (!res.ok) throw new Error('Failed to fetch participants')
@@ -40,8 +53,8 @@ export function AdminUsersPage() {
   })
 
   const participants = (usersData?.participants || []) as any[]
-  const total = usersData?.total ?? participants.length
-  const googleCount = usersData?.googleCount ?? participants.filter((p) => p.provider === 'google').length
+  const total = usersData?.total ?? summaryData?.total ?? participants.length
+  const googleCount = usersData?.googleCount ?? summaryData?.googleCount ?? participants.filter((p) => p.provider === 'google').length
 
   const filtered = useMemo(() => {
     return participants.filter((p) => {
