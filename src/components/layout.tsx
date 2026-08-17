@@ -45,8 +45,8 @@ export function GoogleIcon({ className = 'h-4 w-4' }: { className?: string }) {
 
 export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const sizes = {
-    sm: 'h-8 w-8 rounded-lg p-1.5',
-    md: 'h-10 w-10 rounded-xl p-2',
+    sm: 'h-8 w-8 rounded-lg p-0.5',
+    md: 'h-10 w-10 rounded-xl p-1',
   }
   return (
     <span className="flex items-center gap-2.5">
@@ -59,7 +59,7 @@ export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
         <img
           src="/logo.svg"
           alt="Inkhel"
-          className="h-full w-full object-contain filter drop-shadow"
+          className="h-full w-full object-contain filter drop-shadow scale-110"
           width={size === 'sm' ? 32 : 40}
           height={size === 'sm' ? 32 : 40}
         />
