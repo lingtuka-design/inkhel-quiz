@@ -45,18 +45,22 @@ export function GoogleIcon({ className = 'h-4 w-4' }: { className?: string }) {
 
 export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const sizes = {
-    sm: 'h-8 w-8 rounded-lg',
-    md: 'h-10 w-10 rounded-xl',
+    sm: 'h-8 w-8 rounded-lg p-1.5',
+    md: 'h-10 w-10 rounded-xl p-2',
   }
   return (
     <span className="flex items-center gap-2.5">
       <span
         className={cn(
-          'flex items-center justify-center bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30',
+          'flex items-center justify-center bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30 overflow-hidden',
           sizes[size],
         )}
       >
-        <Zap className="h-5 w-5" fill="currentColor" />
+        <img
+          src="/inkhel-icon-square.png"
+          alt="Inkhel"
+          className="h-full w-full object-contain filter drop-shadow"
+        />
       </span>
       <span className="font-display text-xl font-bold tracking-tight text-white">
         Ink<span className="text-gradient">hel</span>
