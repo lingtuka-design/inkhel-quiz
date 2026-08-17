@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ArrowLeft, Calendar, CalendarClock, Clock, Lock, Play, ShieldAlert, Trophy, Users, Zap } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { RoundBanner, ShareButtons, roundStatusBadge } from '../components/rounds'
 import { Podium, LeaderboardTable } from '../components/leaderboard'
 import { Badge, Button, Card, SectionHeading, toast } from '../components/ui'
 import { getRound, countParticipants, countQuestions, roundAvailability } from '../services/roundService'
 import { getMonth } from '../services/monthService'
-import { getSeason } from '../services/seasonService'
 import { getRoundLeaderboard } from '../services/leaderboardService'
 import { checkParticipantAttempt, hasCompletedRound } from '../services/attemptService'
 import { getParticipant, useCurrentUser, loginWithGoogle } from '../services/authService'
@@ -20,9 +19,16 @@ export function RoundDetailPage() {
   const navigate = useNavigate()
   const participant = useCurrentUser()
   const [signingIn, setSigningIn] = useState(false)
+  const queryClient = useQueryClient()
 
   const { data: round, isLoading: roundLoading } = useQuery({
     queryKey: ['round', roundId],
+    initialData: () => {
+      const playable = queryClient.getQueryData<any[]>(['rounds', 'playable'])
+      const match = playable?.find((x) => (x.round?.id === roundId ? x.round : x.id === roundId))
+      if (match) return match.round || match
+      return getRound(roundId) || undefined
+    },
     queryFn: async () => {
       try {
         const res = await fetch(`/api/rounds?id=${encodeURIComponent(roundId)}`)
@@ -35,42 +41,7 @@ export function RoundDetailPage() {
     },
   })
 
-  const { data: month } = useQuery({
-    queryKey: ['month', round?.monthId],
-    queryFn: async () => {
-      if (!round?.monthId) return null
-      try {
-        const res = await fetch('/api/seasons')
-        if (res.ok) {
-          const data = await res.json()
-          for (const s of data) {
-            if (Array.isArray(s.months)) {
-              const m = s.months.find((x: any) => x.id === round.monthId)
-              if (m) return m
-            }
-          }
-        }
-      } catch {}
-      return getMonth(round.monthId)
-    },
-    enabled: !!round,
-  })
-
-  const { data: season } = useQuery({
-    queryKey: ['season', month?.seasonId],
-    queryFn: async () => {
-      if (!month?.seasonId) return null
-      try {
-        const res = await fetch(`/api/seasons?id=${encodeURIComponent(month.seasonId)}`)
-        if (res.ok) {
-          const data = await res.json()
-          if (data && data.id) return data
-        }
-      } catch {}
-      return getSeason(month.seasonId)
-    },
-    enabled: !!month,
-  })
+  const month = round?.monthId ? getMonth(round.monthId) : null
 
   const { data: stats } = useQuery({
     queryKey: ['roundStats', roundId, round?.questionCount],
@@ -201,11 +172,13 @@ export function RoundDetailPage() {
           <Card className="p-6 sm:p-8 backdrop-blur-xl border-white/15 shadow-2xl shadow-black/80">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={badge.tone}>{badge.label}</Badge>
-              <Badge tone="violet">
-                <Calendar className="h-3.5 w-3.5" /> {month?.name}
-              </Badge>
-              <Badge tone="slate">
-                <Trophy className="h-3.5 w-3.5" /> {season?.name}
+              {month?.name && (
+                <Badge tone="violet">
+                  <Calendar className="h-3.5 w-3.5" /> {month.name}
+                </Badge>
+              )}
+              <Badge tone="green">
+                <Trophy className="h-3.5 w-3.5" /> Monthly Tournament
               </Badge>
             </div>
             <h1 className="mt-4 font-display text-3xl font-bold text-white sm:text-4xl">

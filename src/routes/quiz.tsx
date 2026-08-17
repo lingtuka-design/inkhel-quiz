@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { AlertTriangle, ListChecks, Play, ShieldAlert, Timer as TimerIcon, Zap } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { RoundBanner } from '../components/rounds'
 import { QuestionCard, QuizTimer, useCountdown } from '../components/quiz'
 import { Button, Card, ErrorNote, Input, Modal, toast } from '../components/ui'
@@ -18,7 +18,7 @@ import {
   submitAnswer,
   finalizeAttempt,
 } from '../services/attemptService'
-import { queryClient } from '../lib/query'
+import { queryClient as libQueryClient } from '../lib/query'
 import type { Attempt, OptionKey, QuizQuestion } from '../types'
 
 type Phase = 'boot' | 'instructions' | 'playing' | 'done'
@@ -43,9 +43,16 @@ function randomizeQuestionsForAttempt(rawQuestions: QuizQuestion[]): QuizQuestio
 export function QuizPage() {
   const { roundId } = useParams({ strict: false })
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const { data: round } = useQuery({
     queryKey: ['round', roundId],
+    initialData: () => {
+      const playable = queryClient.getQueryData<any[]>(['rounds', 'playable'])
+      const match = playable?.find((x) => (x.round?.id === roundId ? x.round : x.id === roundId))
+      if (match) return match.round || match
+      return getRound(roundId) || undefined
+    },
     queryFn: async () => {
       try {
         const res = await fetch(`/api/rounds?id=${encodeURIComponent(roundId)}`)
