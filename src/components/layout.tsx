@@ -65,7 +65,7 @@ export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
         />
       </span>
       <span className="font-display text-xl font-bold tracking-tight text-white">
-        Ink<span className="text-gradient">hel</span>
+        Qu<span className="text-gradient">iz</span>
       </span>
     </span>
   )
