@@ -134,7 +134,22 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   let gradientId = 'aurora'
   let roundLabel: string | undefined
 
-  if (roundId) {
+  if (pollId) {
+    try {
+      const poll = await env.DB.prepare(
+        'SELECT question, description FROM polls WHERE id = ?'
+      )
+        .bind(pollId)
+        .first<{ question: string; description: string }>()
+
+      if (poll) {
+        title = poll.question
+        subtitle = poll.description || 'I vote hlu tak han pe ve teh! Vantlang ngaihdan & fan voting.'
+        gradientId = 'royal'
+        roundLabel = 'Opinion Poll'
+      }
+    } catch {}
+  } else if (roundId) {
     try {
       const round = await env.DB.prepare(
         'SELECT title, description, banner_gradient FROM rounds WHERE id = ?'
