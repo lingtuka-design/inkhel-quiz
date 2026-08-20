@@ -4,6 +4,8 @@ import {
   ArrowRight,
   BarChart3,
   CheckCircle2,
+  Copy,
+  Link2,
   Lock,
   MessageCircle,
   Play,
@@ -18,6 +20,7 @@ import { Badge, Button, Card, toast } from './ui'
 import { CategoryBadge } from './rounds'
 import { getParticipant, loginWithGoogle } from '../services/authService'
 import { votePoll } from '../services/pollService'
+import { formatPollWhatsAppText } from '../services/shareService'
 import { cn, formatDate } from '../lib/utils'
 import type { Poll, PollOption } from '../types'
 
@@ -220,9 +223,32 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
   }
 
   const handleShareWhatsApp = () => {
-    const text = `🗳️ *Inkhel Opinion Poll:*\n"${activePoll.question}"\n\nVote thlak ve la, mipui ngaihdan live-in en rawh le! 👇\nhttps://quiz.inkhel.com/polls/${activePoll.id}`
+    const text = formatPollWhatsAppText(activePoll)
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`
     window.open(url, '_blank')
+  }
+
+  const handleShareFacebook = () => {
+    const pollUrl = `${window.location.origin}/polls/${activePoll.id}`
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pollUrl)}`
+    window.open(url, '_blank')
+  }
+
+  const handleShareX = () => {
+    const pollUrl = `${window.location.origin}/polls/${activePoll.id}`
+    const text = `🗳️ Inkhel Opinion Poll: "${activePoll.question}" — I vote hlu tak han pe ve teh!`
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(pollUrl)}`
+    window.open(url, '_blank')
+  }
+
+  const handleCopyLink = async () => {
+    const pollUrl = `${window.location.origin}/polls/${activePoll.id}`
+    try {
+      await navigator.clipboard.writeText(pollUrl)
+      toast('Poll link copied to clipboard!', 'success')
+    } catch {
+      toast('Failed to copy link', 'error')
+    }
   }
 
   return (
@@ -439,34 +465,73 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
         </div>
 
         {/* Footer Actions */}
-        <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
-          {hasVoted || isClosed ? (
-            <div className="w-full flex flex-wrap items-center justify-between gap-2.5">
-              <span className="text-xs text-ink-300 flex items-center gap-1.5">
+        <div className="pt-2 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            {hasVoted || isClosed ? (
+              <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                {hasVoted ? 'I vote a tluang thlap tawh e' : 'Voting closed'}
+                {hasVoted ? 'I vote a tluang thlap tawh e ✨' : 'Voting closed'}
               </span>
+            ) : (
+              <span className="text-xs text-ink-400">
+                {!participant
+                  ? '💡 Vote thlak nan Google account-a login a ngai e.'
+                  : '💡 I duh ber option zawn kha click tawp la, a in-vote nghal ang.'}
+              </span>
+            )}
 
+            <span className="text-[11px] text-ink-400 font-mono">
+              {activePoll.totalVotes.toLocaleString()} total votes
+            </span>
+          </div>
+
+          {/* Social Share Toolbar */}
+          <div className="border-t border-white/10 pt-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span className="text-xs font-semibold text-ink-200 flex items-center gap-1.5">
+              <Share2 className="h-3.5 w-3.5 text-violet-400" />
+              <span>Share Poll to Friends:</span>
+            </span>
+
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="secondary"
                 size="sm"
                 icon={MessageCircle}
                 onClick={handleShareWhatsApp}
-                className="bg-emerald-500/10 border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20"
+                className="bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 hover:text-white"
               >
-                Share on WhatsApp
+                WhatsApp
+              </Button>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleShareFacebook}
+                className="bg-blue-500/15 border-blue-500/30 text-blue-300 hover:bg-blue-500/25 hover:text-white"
+              >
+                Facebook
+              </Button>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleShareX}
+                className="bg-white/5 border-white/10 text-ink-200 hover:bg-white/10 hover:text-white"
+              >
+                X
+              </Button>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={Link2}
+                onClick={handleCopyLink}
+                className="bg-white/5 border-white/10 text-ink-200 hover:bg-white/10 hover:text-white"
+              >
+                Copy Link
               </Button>
             </div>
-          ) : (
-            <div className="w-full flex items-center justify-between gap-2 text-xs text-ink-400">
-              <span>
-                {!participant
-                  ? '💡 Vote thlak nan Google account-a login a ngai e.'
-                  : '💡 I duh ber option zawn kha click tawp la, a in-vote nghal ang.'}
-              </span>
-              <span className="font-semibold text-violet-400 shrink-0">1-Tap Vote</span>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </Card>

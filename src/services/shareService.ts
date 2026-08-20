@@ -36,8 +36,10 @@ export function xUrl(url: string, text: string): string {
   return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
 }
 
-export function linkedinUrl(url: string): string {
-  return `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`
+export function formatPollWhatsAppText(poll: { id: string; question: string; description?: string }): string {
+  const url = `${window.location.origin}/polls/${poll.id}`
+  const desc = poll.description ? `\n_${poll.description}_\n` : '\n'
+  return `🗳️ *Inkhel Opinion Poll:*\n"${poll.question}"${desc}\nI vote hlu tak han pe ve teh 👇\n${url}`
 }
 
 export function setPageTitle(title: string): void {

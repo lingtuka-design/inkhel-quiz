@@ -111,7 +111,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     })
   }
 
-  // ---------- 2. Dynamic Open Graph tags for round pages ----------
+  // ---------- 2. Dynamic Open Graph tags for polls & rounds ----------
   const response = await context.next()
 
   const contentType = response.headers.get('content-type') || ''
@@ -119,6 +119,62 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return response
   }
 
+  // A. Check for Poll route: /polls/:pollId
+  const pollMatch = url.pathname.match(/^\/polls\/([^\/]+)/)
+  if (pollMatch && pollMatch[1]) {
+    const pollId = pollMatch[1]
+    try {
+      const poll = await context.env.DB.prepare(
+        'SELECT question, description, banner_url FROM polls WHERE id = ?'
+      )
+        .bind(pollId)
+        .first<{ question: string; description: string; banner_url: string }>()
+
+      if (poll) {
+        const title = `${poll.question} — Inkhel Opinion Poll`
+        const desc = poll.description
+          ? `${poll.description} — I vote hlu tak han pe ve teh!`
+          : 'I vote hlu tak han pe ve teh! Live fan voting & results on Inkhel.'
+        const rawBanner = poll.banner_url || ''
+        const image = rawBanner.startsWith('http')
+          ? rawBanner
+          : `${url.origin}${rawBanner.startsWith('/') ? rawBanner : '/og.png'}`
+        const pageUrl = `${url.origin}/polls/${pollId}`
+
+        let html = await response.text()
+
+        const metaTags = `
+    <!-- Dynamic Open Graph / WhatsApp / Facebook Meta Tags for Poll -->
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(desc)}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Inkhel Quiz & Polls" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(desc)}" />
+    <meta property="og:image" content="${escapeHtml(image)}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="675" />
+    <meta property="og:url" content="${escapeHtml(pageUrl)}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapeHtml(title)}" />
+    <meta name="twitter:description" content="${escapeHtml(desc)}" />
+    <meta name="twitter:image" content="${escapeHtml(image)}" />
+        `
+
+        html = html.replace(/<title>.*?<\/title>/i, '')
+        html = html.replace(/<meta\s+name=["']description["'].*?>/i, '')
+        html = html.replace(/<meta\s+(?:property|name)=["'](?:og|twitter):[^"']*["'][^>]*>/gi, '')
+        html = html.replace('</head>', `${metaTags}\n  </head>`)
+
+        return new Response(html, {
+          headers: response.headers,
+          status: response.status,
+        })
+      }
+    } catch (e) {}
+  }
+
+  // B. Check for Round route: /rounds/:roundId
   const match = url.pathname.match(/^\/rounds\/([^\/]+)/)
   if (!match || match[1] === 'new') {
     return response
