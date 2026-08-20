@@ -192,7 +192,7 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
           totalVotes: data.totalVotes || activePoll.totalVotes + 1,
           options: data.options,
         })
-        toast('I vote a tluang e! Live percentage a in-update nghal e.', 'success')
+        toast('I vote zo tawh e! Live percentage a in-update nghal e.', 'success')
         queryClient.invalidateQueries({ queryKey: ['polls'] })
         queryClient.invalidateQueries({ queryKey: ['poll', activePoll.id] })
         onVoted?.()
@@ -470,7 +470,7 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
             {hasVoted || isClosed ? (
               <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                {hasVoted ? 'I vote a tluang thlap tawh e ✨' : 'Voting closed'}
+                {hasVoted ? 'I vote zo tawh e ✨' : 'Voting closed'}
               </span>
             ) : (
               <span className="text-xs text-ink-400">
