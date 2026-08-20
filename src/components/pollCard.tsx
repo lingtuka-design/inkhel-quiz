@@ -334,11 +334,14 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
                     <div className="flex items-center gap-3.5 min-w-0">
                       {/* Optional Option Picture */}
                       {option.imageUrl ? (
-                        <img
-                          src={option.imageUrl}
-                          alt={option.text}
-                          className="h-11 w-11 rounded-lg object-cover border border-white/15 shrink-0 shadow-md"
-                        />
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/[0.07] p-1.5 shadow-sm backdrop-blur-sm">
+                          <img
+                            src={option.imageUrl}
+                            alt={option.text}
+                            className="max-h-full max-w-full object-contain drop-shadow"
+                            loading="lazy"
+                          />
+                        </div>
                       ) : (
                         <div
                           className={cn(
@@ -404,11 +407,14 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
                   <div className="flex items-center gap-3.5 min-w-0">
                     {/* Optional Option Picture */}
                     {option.imageUrl ? (
-                      <img
-                        src={option.imageUrl}
-                        alt={option.text}
-                        className="h-11 w-11 rounded-lg object-cover border border-white/15 shrink-0 shadow-md"
-                      />
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/[0.07] p-1.5 shadow-sm backdrop-blur-sm">
+                        <img
+                          src={option.imageUrl}
+                          alt={option.text}
+                          className="max-h-full max-w-full object-contain drop-shadow"
+                          loading="lazy"
+                        />
+                      </div>
                     ) : (
                       <div
                         className={cn(

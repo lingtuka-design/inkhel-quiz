@@ -521,16 +521,16 @@ export function AdminPollsPage() {
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                       <div className="flex items-center gap-2">
                         {opt.imageUrl ? (
-                          <div className="relative group shrink-0">
+                          <div className="relative group shrink-0 flex h-10 w-10 items-center justify-center rounded-lg border border-white/20 bg-white/[0.08] p-1 shadow">
                             <img
                               src={opt.imageUrl}
                               alt="Option preview"
-                              className="h-9 w-9 rounded-lg object-cover border border-white/20 shadow"
+                              className="max-h-full max-w-full object-contain drop-shadow"
                             />
                             <button
                               type="button"
                               onClick={() => handleOptionImageChange(idx, '')}
-                              className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white text-[10px]"
+                              className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] shadow"
                               title="Remove image"
                             >
                               ×
