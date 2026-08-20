@@ -11,6 +11,7 @@ import {
   Trophy,
   UserCheck,
   Users,
+  Vote,
   X,
   Zap,
 } from 'lucide-react'
@@ -73,6 +74,7 @@ export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
 
 const NAV = [
   { to: '/rounds', label: 'Rounds', icon: Clapperboard },
+  { to: '/polls', label: 'Polls', icon: Vote },
   { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
 ]
 
@@ -284,6 +286,9 @@ export function PublicLayout() {
             <Link to="/rounds" className="transition-colors hover:text-white">
               Rounds
             </Link>
+            <Link to="/polls" className="transition-colors hover:text-white">
+              Polls
+            </Link>
             <Link to="/leaderboard" className="transition-colors hover:text-white">
               Leaderboard
             </Link>
@@ -323,6 +328,7 @@ export function AdminLayout() {
 
   const items = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/admin/polls', label: 'Opinion Polls', icon: Vote },
     { to: '/admin/users', label: 'Users', icon: Users },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { to: '/admin/seasons', label: 'Monthly Tournaments', icon: Calendar },

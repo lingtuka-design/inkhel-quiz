@@ -7,7 +7,7 @@ const FALLBACK_KEY_B64 = 'QVEuQWI4Uk42SjFHT09sYW9GQlZHTzAwSGxtUmd6a3NSU0NzMG9kRW
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try {
     const body: any = await request.json()
-    const { prompt, count = 10, apiKey: clientKey } = body
+    const { prompt, count = 10, apiKey: clientKey, type = 'quiz' } = body
 
     if (!prompt || !prompt.trim()) {
       return err('Prompt / topic is required', 400)
@@ -23,7 +23,31 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       return err('Gemini API key not configured', 500)
     }
 
-    const promptText = `You are an expert football and sports trivia creator specializing in natural, fluent Mizo language.
+    let promptText = ''
+
+    if (type === 'poll') {
+      promptText = `You are an expert football and sports content creator specializing in natural, fluent Mizo language.
+Generate a captivating, viral football or sports opinion poll based on the following topic or theme:
+
+"${prompt.trim()}"
+
+STRICT INSTRUCTIONS:
+1. The poll question and all option texts MUST be in natural, engaging Mizo language.
+2. Provide between 2 to 4 distinct, engaging voting options.
+3. Return ONLY a valid JSON object matching this exact schema without markdown fences:
+{
+  "question": "Eng club nge kumin Premier League Champion tur?",
+  "description": "2026/27 Season Champion tur i ngaihdan thlang rawh le.",
+  "category": "football",
+  "options": [
+    { "text": "Arsenal" },
+    { "text": "Manchester City" },
+    { "text": "Liverpool" },
+    { "text": "Chelsea" }
+  ]
+}`
+    } else {
+      promptText = `You are an expert football and sports trivia creator specializing in natural, fluent Mizo language.
 Generate exactly ${count} engaging, factually accurate multiple-choice quiz questions based on the following topic, theme, or article:
 
 "${prompt.trim()}"
@@ -47,6 +71,7 @@ STRICT INSTRUCTIONS:
     "correctKey": "A"
   }
 ]`
+    }
 
     const models = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3-flash-preview']
     let lastError = ''
@@ -81,8 +106,14 @@ STRICT INSTRUCTIONS:
         }
 
         const parsed = JSON.parse(rawJson)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return json({ questions: parsed })
+        if (type === 'poll') {
+          if (parsed && parsed.question && Array.isArray(parsed.options)) {
+            return json({ poll: parsed })
+          }
+        } else {
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return json({ questions: parsed })
+          }
         }
       } catch (e: any) {
         lastError = e.message || 'Generation error'

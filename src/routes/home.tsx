@@ -3,6 +3,7 @@ import { ArrowRight, Calendar, CalendarClock, Clock, Flame, Play, Sparkles, Trop
 import { useQuery } from '@tanstack/react-query'
 import { RoundBanner, RoundCard } from '../components/rounds'
 import { Podium, RankingTable } from '../components/leaderboard'
+import { PollCard } from '../components/pollCard'
 import { Button, Card, SectionHeading } from '../components/ui'
 import {
   listAllPlayableRounds,
@@ -13,6 +14,7 @@ import { getActiveSeason, listSeasons } from '../services/seasonService'
 import { getCurrentMonth, listAllMonths } from '../services/monthService'
 import { getSeasonRanking } from '../services/leaderboardService'
 import { getParticipant, useCurrentUser } from '../services/authService'
+import { listPolls } from '../services/pollService'
 import { setPageTitle } from '../services/shareService'
 import { formatDate, cn } from '../lib/utils'
 import { useEffect, useMemo, useState } from 'react'
@@ -196,6 +198,12 @@ export function HomePage() {
 
   const playedCount = Object.keys(userAttemptsMap ?? {}).length
 
+  const { data: polls, refetch: refetchPolls } = useQuery({
+    queryKey: ['polls', participant?.id, 'active'],
+    queryFn: () => listPolls(participant?.id ?? null, 'active'),
+    staleTime: 15000,
+  })
+
   return (
     <div>
       <section className="relative overflow-hidden">
@@ -308,6 +316,35 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Featured Opinion Poll Section */}
+      {polls && polls.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6">
+          <SectionHeading
+            eyebrow="Fan Voting"
+            title="Opinion Poll"
+            subtitle="Mizo football & sports fans-te ngaihdan lakna. Vote thlak la, live result en rawh le."
+            action={
+              <Link
+                to="/polls"
+                className="focus-ring inline-flex items-center gap-1.5 text-sm font-semibold text-violet-400 hover:text-violet-300"
+              >
+                All polls <ArrowRight className="h-4 w-4" />
+              </Link>
+            }
+          />
+          <div className="grid gap-6 md:grid-cols-2">
+            {polls.slice(0, 2).map((poll, idx) => (
+              <PollCard
+                key={poll.id}
+                poll={poll}
+                featured={idx === 0}
+                onVoted={() => refetchPolls()}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHeading

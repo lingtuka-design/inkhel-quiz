@@ -16,6 +16,7 @@ import { RoundDetailPage } from './routes/roundDetail'
 import { QuizPage } from './routes/quiz'
 import { ResultPage } from './routes/result'
 import { LeaderboardPage } from './routes/leaderboard'
+import { PollsPage } from './routes/polls'
 import { SeasonsPage } from './routes/seasons'
 import { PrivacyPolicyPage } from './routes/privacy'
 import { TermsOfServicePage } from './routes/terms'
@@ -23,6 +24,7 @@ import { ProfilePage } from './routes/profile'
 
 import { AdminLoginPage } from './routes/admin/login'
 import { AdminDashboardPage } from './routes/admin/dashboard'
+import { AdminPollsPage } from './routes/admin/polls'
 import { AdminUsersPage } from './routes/admin/users'
 import { AdminAnalyticsPage } from './routes/admin/analytics'
 import { AdminSeasonsPage } from './routes/admin/seasons'
@@ -83,6 +85,12 @@ const resultRoute = createRoute({
   }),
 })
 
+const pollsRoute = createRoute({
+  getParentRoute: () => publicLayout,
+  path: '/polls',
+  component: PollsPage,
+})
+
 const leaderboardRoute = createRoute({
   getParentRoute: () => publicLayout,
   path: '/leaderboard',
@@ -134,6 +142,12 @@ const adminDashboardRoute = createRoute({
   getParentRoute: () => adminLayout,
   path: '/admin',
   component: AdminDashboardPage,
+})
+
+const adminPollsRoute = createRoute({
+  getParentRoute: () => adminLayout,
+  path: '/admin/polls',
+  component: AdminPollsPage,
 })
 
 const adminUsersRoute = createRoute({
@@ -234,6 +248,7 @@ const routeTree = rootRoute.addChildren([
   publicLayout.addChildren([
     homeRoute,
     roundsRoute,
+    pollsRoute,
     roundDetailRoute,
     quizRoute,
     resultRoute,
@@ -245,6 +260,7 @@ const routeTree = rootRoute.addChildren([
   ]),
   adminLayout.addChildren([
     adminDashboardRoute,
+    adminPollsRoute,
     adminUsersRoute,
     adminAnalyticsRoute,
     adminSeasonsRoute,

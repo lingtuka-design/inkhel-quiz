@@ -185,3 +185,27 @@ export interface QuestionDraft {
   options: { key: OptionKey; text: string }[]
   correctKey: OptionKey
 }
+
+export interface PollOption {
+  id: string
+  text: string
+  imageUrl?: string
+  votes: number
+  percentage: number
+}
+
+export interface Poll {
+  id: string
+  question: string
+  description?: string
+  category: string
+  status: 'active' | 'closed'
+  featured: boolean
+  totalVotes: number
+  userVotedOptionId?: string | null
+  hasVoted?: boolean
+  options: PollOption[]
+  createdAt: string
+  updatedAt: string
+}
+

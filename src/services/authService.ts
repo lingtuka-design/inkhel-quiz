@@ -108,6 +108,10 @@ export function getCurrentAdmin(): AdminUser | null {
   return admin ?? null
 }
 
+export function getAdminToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
 export function isAdminLoggedIn(): boolean {
   return !!localStorage.getItem(TOKEN_KEY)
 }
