@@ -3,7 +3,7 @@ import { ArrowRight, Calendar, CalendarClock, Clock, Flame, Play, Sparkles, Trop
 import { useQuery } from '@tanstack/react-query'
 import { RoundBanner, RoundCard } from '../components/rounds'
 import { Podium, RankingTable } from '../components/leaderboard'
-import { PollCard } from '../components/pollCard'
+import { PollPreviewCard } from '../components/pollCard'
 import { Button, Card, SectionHeading } from '../components/ui'
 import {
   listAllPlayableRounds,
@@ -333,14 +333,9 @@ export function HomePage() {
               </Link>
             }
           />
-          <div className="grid gap-6 md:grid-cols-2">
-            {polls.slice(0, 2).map((poll, idx) => (
-              <PollCard
-                key={poll.id}
-                poll={poll}
-                featured={idx === 0}
-                onVoted={() => refetchPolls()}
-              />
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {polls.slice(0, 3).map((poll) => (
+              <PollPreviewCard key={poll.id} poll={poll} />
             ))}
           </div>
         </section>

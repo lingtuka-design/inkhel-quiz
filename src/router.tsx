@@ -17,6 +17,7 @@ import { QuizPage } from './routes/quiz'
 import { ResultPage } from './routes/result'
 import { LeaderboardPage } from './routes/leaderboard'
 import { PollsPage } from './routes/polls'
+import { PollDetailPage } from './routes/pollDetail'
 import { SeasonsPage } from './routes/seasons'
 import { PrivacyPolicyPage } from './routes/privacy'
 import { TermsOfServicePage } from './routes/terms'
@@ -89,6 +90,12 @@ const pollsRoute = createRoute({
   getParentRoute: () => publicLayout,
   path: '/polls',
   component: PollsPage,
+})
+
+const pollDetailRoute = createRoute({
+  getParentRoute: () => publicLayout,
+  path: '/polls/$pollId',
+  component: PollDetailPage,
 })
 
 const leaderboardRoute = createRoute({
@@ -249,6 +256,7 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     roundsRoute,
     pollsRoute,
+    pollDetailRoute,
     roundDetailRoute,
     quizRoute,
     resultRoute,

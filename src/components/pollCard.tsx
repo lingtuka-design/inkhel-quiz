@@ -1,20 +1,145 @@
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import {
+  ArrowRight,
   BarChart3,
   CheckCircle2,
   Lock,
   MessageCircle,
+  Play,
   Share2,
   Sparkles,
   TrendingUp,
+  Users,
   Vote,
 } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Badge, Button, Card, toast } from './ui'
+import { CategoryBadge } from './rounds'
 import { getParticipant, loginWithGoogle } from '../services/authService'
 import { votePoll } from '../services/pollService'
-import { cn } from '../lib/utils'
+import { cn, formatDate } from '../lib/utils'
 import type { Poll, PollOption } from '../types'
+
+/* =========================================================================
+   1. PollPreviewCard — Matching RoundCard Style for Homepage & Catalog
+   ========================================================================= */
+
+interface PollPreviewCardProps {
+  poll: Poll
+  className?: string
+}
+
+export function PollPreviewCard({ poll, className }: PollPreviewCardProps) {
+  const hasVoted = poll.hasVoted || !!poll.userVotedOptionId
+  const isClosed = poll.status === 'closed'
+
+  return (
+    <Card
+      className={cn(
+        'group relative overflow-hidden transition-all duration-300',
+        hasVoted
+          ? 'border-emerald-500/20 bg-gradient-to-b from-emerald-950/10 to-transparent hover:border-emerald-500/40 hover:-translate-y-1'
+          : !isClosed
+          ? 'border-violet-500/40 bg-gradient-to-b from-white/[0.04] to-transparent shadow-lg shadow-violet-950/40 hover:-translate-y-1.5 hover:border-violet-400 hover:shadow-2xl hover:shadow-violet-600/25 ring-1 ring-violet-500/20'
+          : 'hover:-translate-y-1 hover:border-white/20',
+        className,
+      )}
+    >
+      <div className="relative">
+        {/* Banner Area */}
+        <div className="relative flex h-40 items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-700">
+          <div className="dot-grid absolute inset-0 opacity-40" />
+          <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
+          <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-black/25 blur-2xl" />
+          <Vote className="relative h-14 w-14 text-white/95 drop-shadow-lg" strokeWidth={1.8} />
+        </div>
+
+        {/* Top-Left Status Badge */}
+        <div className="absolute left-3 top-3">
+          {hasVoted ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/50 bg-emerald-950/80 px-2.5 py-0.5 text-xs font-bold text-emerald-300 shadow-md backdrop-blur-md">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Vote Thlak Tawh
+            </span>
+          ) : !isClosed ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-2.5 py-0.5 text-xs font-extrabold text-white shadow-lg shadow-emerald-950/50">
+              <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+              LIVE VOTING
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/80 px-2.5 py-0.5 text-xs font-bold text-white backdrop-blur">
+              <Lock className="h-3 w-3" /> Closed
+            </span>
+          )}
+        </div>
+
+        {/* Top-Right Category Badge */}
+        <div className="absolute right-3 top-3">
+          <CategoryBadge category={poll.category} />
+        </div>
+
+        {/* Hover Overlay Button */}
+        <Link
+          to={`/polls/${poll.id}`}
+          className="focus-ring absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100"
+          aria-label={`Vote in ${poll.question}`}
+        >
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white shadow-2xl shadow-violet-500/50 transition transform group-hover:scale-110">
+            <Vote className="h-6 w-6" />
+          </span>
+        </Link>
+      </div>
+
+      <div className="p-5">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-violet-400">
+            <Vote className="h-3.5 w-3.5" /> Opinion Poll
+          </p>
+          {hasVoted && (
+            <span className="text-[11px] font-bold text-emerald-400">
+              Recorded ✨
+            </span>
+          )}
+        </div>
+
+        <h3 className="font-display text-lg font-bold leading-snug text-white line-clamp-2">
+          {poll.question}
+        </h3>
+
+        {poll.description && (
+          <p className="mt-1.5 line-clamp-2 text-sm text-ink-300">{poll.description}</p>
+        )}
+
+        <div className="mt-4 flex items-center gap-4 text-xs font-medium text-ink-300">
+          <span className="flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5" />
+            <strong className="text-white">{poll.totalVotes.toLocaleString()}</strong> players voted
+          </span>
+          <span className="flex items-center gap-1.5">
+            <BarChart3 className="h-3.5 w-3.5" />
+            {poll.options.length} options
+          </span>
+        </div>
+
+        <div className="mt-5 border-t border-white/5 pt-4">
+          <Link to={`/polls/${poll.id}`}>
+            <Button
+              className="w-full font-bold"
+              variant={hasVoted ? 'secondary' : 'primary'}
+            >
+              {hasVoted ? 'View Live Results' : 'Vote Now'}
+              <ArrowRight className="h-4 w-4 ml-1.5" />
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+/* =========================================================================
+   2. PollCard — Full Interactive Voting & Animated Percentage Card
+   ========================================================================= */
 
 interface PollCardProps {
   poll: Poll
@@ -55,6 +180,7 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
         })
         toast('I vote a tluang e! Live percentage a in-update nghal e.', 'success')
         queryClient.invalidateQueries({ queryKey: ['polls'] })
+        queryClient.invalidateQueries({ queryKey: ['poll', activePoll.id] })
         onVoted?.()
       } else {
         toast(data.message || 'Vote thlak a hlawhtling lo tlat mai', 'error')
@@ -85,7 +211,7 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
   }
 
   const handleShareWhatsApp = () => {
-    const text = `🗳️ *Inkhel Opinion Poll:*\n"${activePoll.question}"\n\nVote thlak ve la, mipui ngaihdan live-in en rawh le! 👇\nhttps://quiz.inkhel.com/polls`
+    const text = `🗳️ *Inkhel Opinion Poll:*\n"${activePoll.question}"\n\nVote thlak ve la, mipui ngaihdan live-in en rawh le! 👇\nhttps://quiz.inkhel.com/polls/${activePoll.id}`
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`
     window.open(url, '_blank')
   }
@@ -139,18 +265,18 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
 
         {/* Question Title */}
         <div>
-          <h3 className="font-display text-lg font-bold text-white sm:text-xl leading-snug">
+          <h3 className="font-display text-xl font-bold text-white sm:text-2xl leading-snug">
             {activePoll.question}
           </h3>
           {activePoll.description && (
-            <p className="mt-1.5 text-xs text-ink-300 sm:text-sm">
+            <p className="mt-2 text-sm text-ink-300 sm:text-base">
               {activePoll.description}
             </p>
           )}
         </div>
 
         {/* Options Area */}
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {hasVoted || isClosed ? (
             /* Results View (Animated Progress Bars & Dynamic Sorting) */
             activePoll.options.map((option, idx) => {
@@ -161,7 +287,7 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
                 <div
                   key={option.id}
                   className={cn(
-                    'relative overflow-hidden rounded-xl border p-3.5 transition-all duration-500',
+                    'relative overflow-hidden rounded-xl border p-4 transition-all duration-500',
                     isUserPick
                       ? 'border-violet-500/60 bg-violet-950/20 shadow-md shadow-violet-950/30'
                       : 'border-white/10 bg-white/[0.02]',
@@ -182,18 +308,18 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
 
                   {/* Content on top */}
                   <div className="relative z-10 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3.5 min-w-0">
                       {/* Optional Option Picture */}
                       {option.imageUrl ? (
                         <img
                           src={option.imageUrl}
                           alt={option.text}
-                          className="h-9 w-9 rounded-lg object-cover border border-white/15 shrink-0"
+                          className="h-11 w-11 rounded-lg object-cover border border-white/15 shrink-0 shadow-md"
                         />
                       ) : (
                         <div
                           className={cn(
-                            'flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-bold shrink-0',
+                            'flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-bold shrink-0',
                             isTop
                               ? 'border-amber-500/40 bg-amber-500/20 text-amber-300'
                               : 'border-white/10 bg-white/5 text-ink-300',
@@ -207,27 +333,27 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
                         <div className="flex items-center gap-2">
                           <span
                             className={cn(
-                              'truncate text-sm font-semibold',
+                              'truncate text-sm sm:text-base font-semibold',
                               isUserPick ? 'text-violet-200' : 'text-white',
                             )}
                           >
                             {option.text}
                           </span>
                           {isUserPick && (
-                            <span className="flex items-center gap-1 rounded-full bg-violet-500/30 border border-violet-400/40 px-1.5 py-0.2 text-[10px] font-bold text-violet-200">
-                              <CheckCircle2 className="h-2.5 w-2.5 text-violet-300" />
+                            <span className="flex items-center gap-1 rounded-full bg-violet-500/30 border border-violet-400/40 px-2 py-0.5 text-[10px] font-bold text-violet-200 shrink-0">
+                              <CheckCircle2 className="h-3 w-3 text-violet-300" />
                               I Vote
                             </span>
                           )}
                         </div>
-                        <span className="text-[11px] text-ink-300">
+                        <span className="text-xs text-ink-300">
                           {option.votes.toLocaleString()} votes
                         </span>
                       </div>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="font-display text-base font-bold text-white sm:text-lg">
+                      <span className="font-display text-lg font-bold text-white sm:text-xl">
                         {option.percentage}%
                       </span>
                     </div>
@@ -246,35 +372,35 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
                   type="button"
                   onClick={() => setSelectedOptionId(option.id)}
                   className={cn(
-                    'w-full text-left flex items-center justify-between gap-3 rounded-xl border p-3.5 transition-all duration-200 focus:outline-none',
+                    'w-full text-left flex items-center justify-between gap-3 rounded-xl border p-4 transition-all duration-200 focus:outline-none',
                     isSelected
                       ? 'border-violet-500 bg-violet-600/15 shadow-md shadow-violet-950/40'
                       : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]',
                   )}
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex items-center gap-3.5 min-w-0">
                     {/* Optional Option Picture */}
                     {option.imageUrl ? (
                       <img
                         src={option.imageUrl}
                         alt={option.text}
-                        className="h-9 w-9 rounded-lg object-cover border border-white/15 shrink-0"
+                        className="h-11 w-11 rounded-lg object-cover border border-white/15 shrink-0 shadow-md"
                       />
                     ) : (
                       <div
                         className={cn(
-                          'flex h-5 w-5 items-center justify-center rounded-full border shrink-0 transition-colors',
+                          'flex h-6 w-6 items-center justify-center rounded-full border shrink-0 transition-colors',
                           isSelected
                             ? 'border-violet-500 bg-violet-500 text-white'
                             : 'border-white/20 bg-white/5',
                         )}
                       >
-                        {isSelected && <div className="h-2 w-2 rounded-full bg-white" />}
+                        {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-white" />}
                       </div>
                     )}
                     <span
                       className={cn(
-                        'text-sm font-semibold truncate',
+                        'text-sm sm:text-base font-semibold truncate',
                         isSelected ? 'text-white' : 'text-ink-100',
                       )}
                     >
@@ -294,7 +420,7 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
         </div>
 
         {/* Footer Actions */}
-        <div className="pt-1 flex flex-wrap items-center justify-between gap-3">
+        <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
           {hasVoted || isClosed ? (
             <div className="w-full flex flex-wrap items-center justify-between gap-2.5">
               <span className="text-xs text-ink-300 flex items-center gap-1.5">

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { BarChart3, Filter, Sparkles, Vote } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { SectionHeading, Card, EmptyState, Badge } from '../components/ui'
-import { PollCard } from '../components/pollCard'
+import { PollPreviewCard } from '../components/pollCard'
 import { listPolls } from '../services/pollService'
 import { getParticipant } from '../services/authService'
 import { setPageTitle } from '../services/shareService'
@@ -23,7 +23,7 @@ export function PollsPage() {
   })
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 pb-12">
+    <div className="mx-auto max-w-6xl space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -99,14 +99,9 @@ export function PollsPage() {
           }
         />
       ) : (
-        <div className="grid gap-6">
-          {polls.map((poll, idx) => (
-            <PollCard
-              key={poll.id}
-              poll={poll}
-              featured={poll.featured || idx === 0}
-              onVoted={() => refetch()}
-            />
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {polls.map((poll) => (
+            <PollPreviewCard key={poll.id} poll={poll} />
           ))}
         </div>
       )}

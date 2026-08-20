@@ -436,27 +436,37 @@ export function AdminPollsPage() {
                     </div>
 
                     {/* Optional Image URL or Upload */}
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      {opt.imageUrl ? (
-                        <div className="relative group shrink-0">
-                          <img
-                            src={opt.imageUrl}
-                            alt="Option preview"
-                            className="h-9 w-9 rounded-lg object-cover border border-white/20"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleOptionImageChange(idx, '')}
-                            className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white text-[10px]"
-                            title="Remove image"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ) : (
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                      <div className="flex items-center gap-2">
+                        {opt.imageUrl ? (
+                          <div className="relative group shrink-0">
+                            <img
+                              src={opt.imageUrl}
+                              alt="Option preview"
+                              className="h-9 w-9 rounded-lg object-cover border border-white/20 shadow"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleOptionImageChange(idx, '')}
+                              className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white text-[10px]"
+                              title="Remove image"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ) : null}
+
+                        <input
+                          type="url"
+                          value={opt.imageUrl || ''}
+                          onChange={(e) => handleOptionImageChange(idx, e.target.value)}
+                          placeholder="Image URL (embed)"
+                          className="w-full sm:w-36 rounded-lg border border-white/15 bg-white/5 px-2.5 py-2 text-xs text-white placeholder-ink-400 focus:border-violet-500 focus:outline-none"
+                        />
+
                         <label className="flex items-center gap-1.5 cursor-pointer rounded-lg border border-white/15 bg-white/5 px-2.5 py-2 text-xs font-semibold text-ink-300 hover:text-white hover:border-white/30 shrink-0">
                           <Upload className="h-3.5 w-3.5" />
-                          <span>{uploadingIdx === idx ? 'Uploading...' : 'Picture'}</span>
+                          <span>{uploadingIdx === idx ? '...' : 'Upload'}</span>
                           <input
                             type="file"
                             accept="image/*"
@@ -467,13 +477,13 @@ export function AdminPollsPage() {
                             }}
                           />
                         </label>
-                      )}
+                      </div>
 
                       {options.length > 2 && (
                         <button
                           type="button"
                           onClick={() => handleRemoveOption(idx)}
-                          className="p-2 text-rose-400/80 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors"
+                          className="p-2 text-rose-400/80 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0"
                           title="Delete option"
                         >
                           <Trash2 className="h-4 w-4" />
