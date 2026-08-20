@@ -2,7 +2,7 @@ interface Env {
   BUCKET: R2Bucket
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
+export const onRequest: PagesFunction<Env> = async ({ request, params, env }) => {
   try {
     if (!env.BUCKET) {
       return new Response('R2 bucket binding not found', { status: 500 })
@@ -25,13 +25,23 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
     headers.set('etag', object.httpEtag)
     headers.set('Cache-Control', 'public, max-age=31536000, immutable')
     headers.set('Access-Control-Allow-Origin', '*')
+    headers.set('Content-Length', String(object.size))
 
-    if (!headers.get('Content-Type')) {
-      if (key.endsWith('.png')) headers.set('Content-Type', 'image/png')
-      else if (key.endsWith('.webp')) headers.set('Content-Type', 'image/webp')
-      else if (key.endsWith('.gif')) headers.set('Content-Type', 'image/gif')
-      else if (key.endsWith('.svg')) headers.set('Content-Type', 'image/svg+xml')
-      else headers.set('Content-Type', 'image/jpeg')
+    let mimeType = headers.get('Content-Type')
+    if (!mimeType) {
+      if (key.endsWith('.png')) mimeType = 'image/png'
+      else if (key.endsWith('.webp')) mimeType = 'image/webp'
+      else if (key.endsWith('.gif')) mimeType = 'image/gif'
+      else if (key.endsWith('.svg')) mimeType = 'image/svg+xml'
+      else mimeType = 'image/jpeg'
+      headers.set('Content-Type', mimeType)
+    }
+
+    if (request.method === 'HEAD') {
+      return new Response(null, {
+        status: 200,
+        headers,
+      })
     }
 
     return new Response(object.body, {
@@ -42,3 +52,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
     return new Response(err.message || 'Error fetching image', { status: 500 })
   }
 }
+
+export const onRequestGet = onRequest
+export const onRequestHead = onRequest
