@@ -205,20 +205,18 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
     },
   })
 
-  const handleVoteSubmit = async () => {
+  const handleOptionClick = async (optionId: string) => {
+    if (isSubmitting || voteMutation.isPending) return
+
     if (!participant) {
       toast('Google account hmanga login a ngai e', 'info')
       await loginWithGoogle()
       return
     }
 
-    if (!selectedOptionId) {
-      toast('Option pakhat tal thlang rawh le', 'error')
-      return
-    }
-
+    setSelectedOptionId(optionId)
     setIsSubmitting(true)
-    voteMutation.mutate(selectedOptionId)
+    voteMutation.mutate(optionId)
   }
 
   const handleShareWhatsApp = () => {
@@ -388,60 +386,52 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
               )
             })
           ) : (
-            /* Voting Selection View */
-            activePoll.options.map((option) => {
-              const isSelected = selectedOptionId === option.id
+            /* Instant 1-Tap Voting Selection View */
+            activePoll.options.map((option, idx) => {
+              const isCurrentlyVoting = isSubmitting && selectedOptionId === option.id
 
               return (
                 <button
                   key={option.id}
                   type="button"
-                  onClick={() => setSelectedOptionId(option.id)}
+                  disabled={isSubmitting}
+                  onClick={() => handleOptionClick(option.id)}
                   className={cn(
-                    'w-full text-left flex items-center justify-between gap-3 rounded-xl border p-4 transition-all duration-200 focus:outline-none',
-                    isSelected
-                      ? 'border-violet-500 bg-violet-600/15 shadow-md shadow-violet-950/40'
-                      : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]',
+                    'group/opt w-full text-left flex items-center justify-between gap-3.5 rounded-xl border p-4 transition-all duration-200 focus:outline-none',
+                    'border-white/10 bg-white/[0.03] hover:border-violet-500/60 hover:bg-violet-600/10 hover:shadow-lg hover:shadow-violet-950/30 hover:-translate-y-0.5 active:scale-[0.99] cursor-pointer',
+                    isCurrentlyVoting && 'border-violet-500 bg-violet-600/20 shadow-md',
                   )}
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
-                    {/* Optional Option Picture */}
+                    {/* Option Picture or Number */}
                     {option.imageUrl ? (
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/[0.07] p-1.5 shadow-sm backdrop-blur-sm">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/[0.07] p-1.5 shadow-sm backdrop-blur-sm group-hover/opt:border-violet-500/40">
                         <img
                           src={option.imageUrl}
                           alt={option.text}
-                          className="max-h-full max-w-full object-contain drop-shadow"
+                          className="max-h-full max-w-full object-contain drop-shadow transition-transform duration-200 group-hover/opt:scale-105"
                           loading="lazy"
                         />
                       </div>
                     ) : (
-                      <div
-                        className={cn(
-                          'flex h-6 w-6 items-center justify-center rounded-full border shrink-0 transition-colors',
-                          isSelected
-                            ? 'border-violet-500 bg-violet-500 text-white'
-                            : 'border-white/20 bg-white/5',
-                        )}
-                      >
-                        {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-white" />}
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-xs font-bold text-ink-300 group-hover/opt:border-violet-500/50 group-hover/opt:bg-violet-500/20 group-hover/opt:text-violet-200 shrink-0 transition-colors">
+                        {idx + 1}
                       </div>
                     )}
-                    <span
-                      className={cn(
-                        'text-sm sm:text-base font-semibold truncate',
-                        isSelected ? 'text-white' : 'text-ink-100',
-                      )}
-                    >
+                    <span className="text-sm sm:text-base font-semibold text-ink-100 group-hover/opt:text-white truncate">
                       {option.text}
                     </span>
                   </div>
 
-                  {isSelected && (
-                    <span className="text-xs font-semibold text-violet-400 shrink-0">
-                      Selected
-                    </span>
-                  )}
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    {isCurrentlyVoting ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-violet-400 border-t-transparent" />
+                    ) : (
+                      <span className="text-xs font-bold text-violet-400 opacity-0 group-hover/opt:opacity-100 transition-opacity">
+                        Vote →
+                      </span>
+                    )}
+                  </div>
                 </button>
               )
             })
@@ -468,22 +458,13 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
               </Button>
             </div>
           ) : (
-            <div className="w-full flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs text-ink-300">
+            <div className="w-full flex items-center justify-between gap-2 text-xs text-ink-400">
+              <span>
                 {!participant
-                  ? 'Vote thlak nan Google login a ngai e'
-                  : 'Option 1 thlang la, Vote hmet rawh le'}
+                  ? '💡 Vote thlak nan Google account-a login a ngai e.'
+                  : '💡 I duh ber option zawn kha click tawp la, a in-vote nghal ang.'}
               </span>
-
-              <Button
-                size="sm"
-                icon={Vote}
-                disabled={!selectedOptionId || isSubmitting}
-                onClick={handleVoteSubmit}
-                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-md shadow-violet-500/25"
-              >
-                {isSubmitting ? 'Submitting...' : 'Vote Now'}
-              </Button>
+              <span className="font-semibold text-violet-400 shrink-0">1-Tap Vote</span>
             </div>
           )}
         </div>
