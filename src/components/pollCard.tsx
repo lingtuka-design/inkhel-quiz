@@ -48,12 +48,23 @@ export function PollPreviewCard({ poll, className }: PollPreviewCardProps) {
     >
       <div className="relative">
         {/* Banner Area */}
-        <div className="relative flex h-40 items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-700">
-          <div className="dot-grid absolute inset-0 opacity-40" />
-          <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
-          <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-black/25 blur-2xl" />
-          <Vote className="relative h-14 w-14 text-white/95 drop-shadow-lg" strokeWidth={1.8} />
-        </div>
+        {poll.bannerUrl ? (
+          <div className="relative h-40 w-full overflow-hidden bg-slate-950">
+            <img
+              src={poll.bannerUrl}
+              alt={poll.question}
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
+          </div>
+        ) : (
+          <div className="relative flex h-40 items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-700">
+            <div className="dot-grid absolute inset-0 opacity-40" />
+            <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
+            <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-black/25 blur-2xl" />
+            <Vote className="relative h-14 w-14 text-white/95 drop-shadow-lg" strokeWidth={1.8} />
+          </div>
+        )}
 
         {/* Top-Left Status Badge */}
         <div className="absolute left-3 top-3">
@@ -229,6 +240,18 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
       {/* Background glowing ambient light for featured poll */}
       {featured && (
         <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-violet-500/10 blur-3xl" />
+      )}
+
+      {/* Optional Top Banner Image */}
+      {activePoll.bannerUrl && (
+        <div className="relative h-48 sm:h-56 w-full overflow-hidden bg-slate-950">
+          <img
+            src={activePoll.bannerUrl}
+            alt={activePoll.question}
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
+        </div>
       )}
 
       <div className="p-5 sm:p-6 space-y-5">

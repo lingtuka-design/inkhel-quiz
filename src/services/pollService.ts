@@ -63,6 +63,7 @@ export async function savePoll(poll: {
   id?: string
   question: string
   description?: string
+  bannerUrl?: string
   options: { id?: string; text: string; imageUrl?: string }[]
   category?: string
   status?: 'active' | 'closed'

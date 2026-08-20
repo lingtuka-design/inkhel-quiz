@@ -40,6 +40,8 @@ export function AdminPollsPage() {
   const [editingPollId, setEditingPollId] = useState<string | null>(null)
   const [question, setQuestion] = useState('')
   const [description, setDescription] = useState('')
+  const [bannerUrl, setBannerUrl] = useState('')
+  const [uploadingBanner, setUploadingBanner] = useState(false)
   const [category, setCategory] = useState('football')
   const [status, setStatus] = useState<'active' | 'closed'>('active')
   const [featured, setFeatured] = useState(true)
@@ -62,6 +64,7 @@ export function AdminPollsPage() {
     setEditingPollId(null)
     setQuestion('')
     setDescription('')
+    setBannerUrl('')
     setCategory('football')
     setStatus('active')
     setFeatured(true)
@@ -130,6 +133,33 @@ export function AdminPollsPage() {
     }
   }
 
+  const handleBannerUpload = async (file: File) => {
+    try {
+      setUploadingBanner(true)
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!res.ok) {
+        throw new Error('Upload failed')
+      }
+
+      const data = await res.json()
+      if (data.url) {
+        setBannerUrl(data.url)
+        toast('Banner image uploaded successfully', 'success')
+      }
+    } catch (e: any) {
+      toast(e.message || 'Banner upload failed', 'error')
+    } finally {
+      setUploadingBanner(false)
+    }
+  }
+
   const handleAiGenerate = async () => {
     if (!aiTopic.trim()) {
       toast('Please enter a topic for AI poll generation', 'error')
@@ -179,6 +209,7 @@ export function AdminPollsPage() {
         id: editingPollId || undefined,
         question: question.trim(),
         description: description.trim() || undefined,
+        bannerUrl: bannerUrl.trim() || undefined,
         category,
         status,
         featured: featured ? 1 : 0,
@@ -338,6 +369,57 @@ export function AdminPollsPage() {
                 placeholder="e.g. Kumin Ballon d'Or tunge phu ber?"
                 className="mt-1.5 w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white placeholder-ink-400 focus:border-violet-500 focus:outline-none"
               />
+            </div>
+
+            {/* Poll Banner Image (Home & Catalog Banner) */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-ink-300">
+                Poll Banner Image (Home Page & Detail Banner)
+              </label>
+              <div className="mt-1.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {bannerUrl ? (
+                  <div className="relative group shrink-0">
+                    <img
+                      src={bannerUrl}
+                      alt="Banner preview"
+                      className="h-16 w-32 rounded-xl object-cover border border-white/20 shadow-md"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setBannerUrl('')}
+                      className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white text-xs shadow"
+                      title="Remove banner"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : null}
+
+                <input
+                  type="url"
+                  value={bannerUrl}
+                  onChange={(e) => setBannerUrl(e.target.value)}
+                  placeholder="Paste Banner Image URL (e.g. https://.../banner.jpg)"
+                  className="flex-1 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder-ink-400 focus:border-violet-500 focus:outline-none"
+                />
+
+                <label className="flex items-center justify-center gap-1.5 cursor-pointer rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-ink-200 hover:text-white hover:border-white/30 shrink-0">
+                  <Upload className="h-4 w-4" />
+                  <span>{uploadingBanner ? 'Uploading...' : 'Upload Banner'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleBannerUpload(file)
+                    }}
+                  />
+                </label>
+              </div>
+              <p className="mt-1 text-[11px] text-ink-400">
+                Home page leh voting page-a Poll card chung bera lang tur thlalak/banner. A awm loh chuan standard gradient banner a lang ang.
+              </p>
             </div>
 
             <div>
@@ -617,6 +699,7 @@ export function AdminPollsPage() {
                             setEditingPollId(poll.id)
                             setQuestion(poll.question)
                             setDescription(poll.description || '')
+                            setBannerUrl(poll.bannerUrl || '')
                             setCategory(poll.category)
                             setStatus(poll.status)
                             setFeatured(poll.featured)

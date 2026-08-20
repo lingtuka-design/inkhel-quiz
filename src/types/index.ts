@@ -198,6 +198,7 @@ export interface Poll {
   id: string
   question: string
   description?: string
+  bannerUrl?: string
   category: string
   status: 'active' | 'closed'
   featured: boolean
