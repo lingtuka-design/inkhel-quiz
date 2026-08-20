@@ -51,14 +51,15 @@ export function RoundsPage() {
 
   const { data: rounds } = useQuery({
     queryKey: ['rounds'],
-    initialData: () =>
+    placeholderData: () =>
       listRounds()
         .filter((r) => r.status !== 'draft')
         .map((r) => ({
           round: r,
           participants: (r as any).participantCount ?? countParticipants(r.id),
         })),
-    staleTime: 30000,
+    staleTime: 0,
+    refetchOnMount: true,
     queryFn: async () => {
       try {
         const res = await fetch('/api/rounds')

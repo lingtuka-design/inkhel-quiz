@@ -52,7 +52,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       )
         .bind(monthId)
         .all()
-      return json(toCamelCase(rounds), 200, { 'Cache-Control': 'public, max-age=15, stale-while-revalidate=60' })
+      return json(toCamelCase(rounds), 200, { 'Cache-Control': 'no-cache, no-store, must-revalidate' })
     }
 
     // Default: return all rounds with question_count & participant_count using fast JOIN
@@ -74,7 +74,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       ORDER BY r.created_at DESC`
     ).all()
 
-    return json(toCamelCase(rounds), 200, { 'Cache-Control': 'public, max-age=15, stale-while-revalidate=60' })
+    return json(toCamelCase(rounds), 200, { 'Cache-Control': 'no-cache, no-store, must-revalidate' })
   } catch (e: any) {
     return err(e.message || 'Server error', 500)
   }

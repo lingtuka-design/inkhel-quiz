@@ -29,13 +29,14 @@ export function HomePage() {
 
   const { data: rounds } = useQuery({
     queryKey: ['rounds', 'playable'],
-    initialData: () =>
+    placeholderData: () =>
       listAllPlayableRounds().map((r) => ({
         round: r,
         participants: (r as any).participantCount ?? countParticipants(r.id),
         questions: (r as any).questionCount ?? countQuestions(r.id),
       })),
-    staleTime: 30000,
+    staleTime: 0,
+    refetchOnMount: true,
     queryFn: async () => {
       try {
         const res = await fetch('/api/rounds')
