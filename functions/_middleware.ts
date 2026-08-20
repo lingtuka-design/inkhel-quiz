@@ -203,7 +203,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const rawBanner = round.banner_url || ''
       const image = rawBanner.startsWith('http')
         ? rawBanner
-        : `${url.origin}${rawBanner.startsWith('/') ? rawBanner : `/api/og?roundId=${encodeURIComponent(roundId)}`}`
+        : rawBanner.startsWith('/')
+        ? `${url.origin}${rawBanner}`
+        : `${url.origin}/api/og?roundId=${encodeURIComponent(roundId)}`
       const pageUrl = `${url.origin}/rounds/${roundId}`
 
       let html = await response.text()
@@ -217,8 +219,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(desc)}" />
     <meta property="og:image" content="${escapeHtml(image)}" />
+    <meta property="og:image:secure_url" content="${escapeHtml(image)}" />
+    <meta property="og:image:type" content="${image.endsWith('.png') ? 'image/png' : 'image/jpeg'}" />
     <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="675" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:url" content="${escapeHtml(pageUrl)}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />

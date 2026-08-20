@@ -8,6 +8,7 @@ import {
   buildShareUrl,
   copyToClipboard,
   facebookUrl,
+  formatRoundWhatsAppText,
   shareEpisode,
   whatsappUrl,
   xUrl,
@@ -207,64 +208,79 @@ export function RoundCard({
 
 export function ShareButtons({ round }: { round: Round }) {
   const url = buildShareUrl(`/rounds/${round.id}`)
-  const text = `I'm playing "${round.title}" on Inkhel — can you beat my score?`
-
-  const handleShare = async () => {
-    try {
-      await shareEpisode(url, round.title)
-      toast('Share sheet opened', 'success')
-    } catch {
-      toast('Could not open share sheet', 'error')
-    }
-  }
+  const whatsAppText = formatRoundWhatsAppText(round)
 
   const handleCopy = async () => {
     try {
       await copyToClipboard(url)
-      toast('Link copied to clipboard', 'success')
+      toast('Round link copied to clipboard!', 'success')
     } catch {
       toast('Could not copy link', 'error')
     }
   }
 
-  const targets = [
-    { label: 'Copy link', icon: Link2, onClick: handleCopy },
-    { label: 'WhatsApp', icon: MessageCircle, href: whatsappUrl(url, text) },
-    { label: 'X / Twitter', icon: Twitter, href: xUrl(url, text) },
-    { label: 'Facebook', icon: Share2, href: facebookUrl(url) },
-  ]
+  const handleWhatsApp = () => {
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(whatsAppText)}`
+    window.open(waUrl, '_blank')
+  }
+
+  const handleFacebook = () => {
+    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
+    window.open(fbUrl, '_blank')
+  }
+
+  const handleX = () => {
+    const xText = `⚽ Playing "${round.title}" on Inkhel Quiz! Khel ve la, score sang ber nih tum rawh le!`
+    const xShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(xText)}&url=${encodeURIComponent(url)}`
+    window.open(xShareUrl, '_blank')
+  }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button variant="secondary" size="sm" onClick={handleShare}>
-        <Share2 className="h-4 w-4" /> Share
-      </Button>
-      {targets.map((t) =>
-        t.href ? (
-          <a
-            key={t.label}
-            href={t.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="focus-ring flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-ink-200 transition-colors hover:border-white/25 hover:text-white"
-            aria-label={`Share on ${t.label}`}
-          >
-            <t.icon className="h-4 w-4" />
-          </a>
-        ) : (
-          <button
-            key={t.label}
-            onClick={t.onClick}
-            className="focus-ring flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-ink-200 transition-colors hover:border-white/25 hover:text-white"
-            aria-label={t.label}
-          >
-            <t.icon className="h-4 w-4" />
-          </button>
-        ),
-      )}
-      <span className="ml-auto hidden items-center gap-1.5 text-xs text-ink-300 sm:flex">
-        <Copy className="h-3.5 w-3.5" /> {url.replace(window.location.origin, '')}
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <span className="text-xs font-semibold text-ink-200 flex items-center gap-1.5">
+        <Share2 className="h-3.5 w-3.5 text-violet-400" />
+        <span>Share Round to Friends:</span>
       </span>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={MessageCircle}
+          onClick={handleWhatsApp}
+          className="bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 hover:text-white"
+        >
+          WhatsApp
+        </Button>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleFacebook}
+          className="bg-blue-500/15 border-blue-500/30 text-blue-300 hover:bg-blue-500/25 hover:text-white"
+        >
+          Facebook
+        </Button>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleX}
+          className="bg-white/5 border-white/10 text-ink-200 hover:bg-white/10 hover:text-white"
+        >
+          X
+        </Button>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={Link2}
+          onClick={handleCopy}
+          className="bg-white/5 border-white/10 text-ink-200 hover:bg-white/10 hover:text-white"
+        >
+          Copy Link
+        </Button>
+      </div>
     </div>
   )
 }

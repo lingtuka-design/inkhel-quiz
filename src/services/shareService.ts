@@ -42,6 +42,12 @@ export function formatPollWhatsAppText(poll: { id: string; question: string; des
   return `🗳️ *Inkhel Opinion Poll:*\n"${poll.question}"${desc}\nI vote hlu tak han pe ve teh 👇\n${url}`
 }
 
+export function formatRoundWhatsAppText(round: { id: string; title: string; description?: string }): string {
+  const url = `${window.location.origin}/rounds/${round.id}`
+  const desc = round.description ? `\n_${round.description}_\n` : '\n'
+  return `⚽ *Inkhel Quiz - ${round.title}*${desc}\nKhel ve chhin la, score sang ber nih tum rawh le! 👇\n${url}`
+}
+
 export function setPageTitle(title: string): void {
   document.title = title ? `${title} — Inkhel` : 'Inkhel — Competitive Quiz Platform'
 }
