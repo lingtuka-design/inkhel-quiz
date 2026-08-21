@@ -19,7 +19,7 @@ import { BackLink } from '../../components/layout'
 import { Badge, Button, Card, EmptyState, SectionHeading, toast } from '../../components/ui'
 import { listPolls, savePoll, deletePoll, generateAiPoll } from '../../services/pollService'
 import { setPageTitle } from '../../services/shareService'
-import { formatDate } from '../../lib/utils'
+import { formatDate, cn } from '../../lib/utils'
 import type { Poll } from '../../types'
 
 interface OptionDraft {
@@ -42,6 +42,7 @@ export function AdminPollsPage() {
   const [description, setDescription] = useState('')
   const [bannerUrl, setBannerUrl] = useState('')
   const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [layout, setLayout] = useState<'list' | 'grid'>('list')
   const [category, setCategory] = useState('football')
   const [status, setStatus] = useState<'active' | 'closed'>('active')
   const [featured, setFeatured] = useState(true)
@@ -65,6 +66,7 @@ export function AdminPollsPage() {
     setQuestion('')
     setDescription('')
     setBannerUrl('')
+    setLayout('list')
     setCategory('football')
     setStatus('active')
     setFeatured(true)
@@ -210,6 +212,7 @@ export function AdminPollsPage() {
         question: question.trim(),
         description: description.trim() || undefined,
         bannerUrl: bannerUrl.trim() || undefined,
+        layout,
         category,
         status,
         featured: featured ? 1 : 0,
@@ -435,6 +438,70 @@ export function AdminPollsPage() {
               />
             </div>
 
+            {/* Poll Type / Layout Mode Selector */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-ink-300 mb-2">
+                Poll Type & Display Style
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setLayout('list')}
+                  className={cn(
+                    'flex items-start gap-3.5 p-4 rounded-xl border text-left transition-all',
+                    layout === 'list'
+                      ? 'border-violet-500 bg-violet-600/15 shadow-md shadow-violet-950/40'
+                      : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]',
+                  )}
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/20 text-lg border border-violet-500/30">
+                    🛡️
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm text-white flex items-center gap-1.5">
+                      <span>Club / Standard (List Mode)</span>
+                      {layout === 'list' && (
+                        <span className="text-[10px] bg-violet-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-ink-300 mt-1 leading-relaxed">
+                      Club logos, league predictions, leh general questions tan. Rows mawi taka in-tlar.
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLayout('grid')}
+                  className={cn(
+                    'flex items-start gap-3.5 p-4 rounded-xl border text-left transition-all',
+                    layout === 'grid'
+                      ? 'border-fuchsia-500 bg-fuchsia-600/15 shadow-md shadow-fuchsia-950/40'
+                      : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]',
+                  )}
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fuchsia-500/20 text-lg border border-fuchsia-500/30">
+                    👤
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm text-white flex items-center gap-1.5">
+                      <span>Player Mode (Big Photo Grid)</span>
+                      {layout === 'grid' && (
+                        <span className="text-[10px] bg-fuchsia-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-ink-300 mt-1 leading-relaxed">
+                      Player thlalak lian (800×800px photo cards) leh an hming lanna. Ballon d'Or, Best Player, comparisons tan.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-ink-300">
@@ -633,10 +700,20 @@ export function AdminPollsPage() {
                     className="border-b border-white/5 transition-colors last:border-0 hover:bg-white/[0.02]"
                   >
                     <td className="px-4 py-3.5 max-w-xs">
-                      <p className="font-semibold text-white truncate" title={poll.question}>
-                        {poll.question}
-                      </p>
-                      <p className="text-xs text-ink-300 truncate">
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          'rounded-full px-2 py-0.5 text-[10px] font-bold shrink-0 border',
+                          poll.layout === 'grid'
+                            ? 'bg-fuchsia-500/15 border-fuchsia-500/30 text-fuchsia-300'
+                            : 'bg-violet-500/15 border-violet-500/30 text-violet-300'
+                        )}>
+                          {poll.layout === 'grid' ? '👤 Player' : '🛡️ Club'}
+                        </span>
+                        <p className="font-semibold text-white truncate" title={poll.question}>
+                          {poll.question}
+                        </p>
+                      </div>
+                      <p className="text-xs text-ink-300 truncate mt-0.5">
                         {formatDate(poll.createdAt)} · {poll.options.length} options
                       </p>
                     </td>
@@ -700,6 +777,7 @@ export function AdminPollsPage() {
                             setQuestion(poll.question)
                             setDescription(poll.description || '')
                             setBannerUrl(poll.bannerUrl || '')
+                            setLayout(poll.layout || 'list')
                             setCategory(poll.category)
                             setStatus(poll.status)
                             setFeatured(poll.featured)

@@ -323,146 +323,321 @@ export function PollCard({ poll, onVoted, featured = false, className }: PollCar
         </div>
 
         {/* Options Area */}
-        <div className="space-y-3">
-          {hasVoted || isClosed ? (
-            /* Results View (Animated Progress Bars & Dynamic Sorting) */
-            activePoll.options.map((option, idx) => {
-              const isUserPick = option.id === userChoiceId
-              const isTop = idx === 0 && option.votes > 0
+        {activePoll.layout === 'grid' ? (
+          /* =========================================================================
+             PLAYER MODE: Big 800x800 Photo Card Grid
+             ========================================================================= */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {hasVoted || isClosed ? (
+              /* Player Mode: Results View (Ranked Big Photo Cards) */
+              activePoll.options.map((option, idx) => {
+                const isUserPick = option.id === userChoiceId
+                const isTop = idx === 0 && option.votes > 0
 
-              return (
-                <div
-                  key={option.id}
-                  className={cn(
-                    'relative overflow-hidden rounded-xl border p-4 transition-all duration-500',
-                    isUserPick
-                      ? 'border-violet-500/60 bg-violet-950/20 shadow-md shadow-violet-950/30'
-                      : 'border-white/10 bg-white/[0.02]',
-                  )}
-                >
-                  {/* Progress Bar Fill Background */}
+                return (
                   <div
+                    key={option.id}
                     className={cn(
-                      'absolute inset-y-0 left-0 transition-all duration-1000 ease-out',
-                      isTop
-                        ? 'bg-gradient-to-r from-violet-600/30 via-fuchsia-600/20 to-violet-500/10'
-                        : isUserPick
-                        ? 'bg-gradient-to-r from-violet-500/20 to-fuchsia-500/10'
-                        : 'bg-white/[0.05]',
+                      'relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-500',
+                      isUserPick
+                        ? 'border-fuchsia-500/80 bg-fuchsia-950/20 shadow-xl shadow-fuchsia-950/40 ring-1 ring-fuchsia-500/40'
+                        : isTop
+                        ? 'border-amber-500/50 bg-amber-950/10 shadow-lg shadow-amber-950/20'
+                        : 'border-white/10 bg-slate-900/60',
                     )}
-                    style={{ width: `${Math.max(option.percentage, 2)}%` }}
-                  />
-
-                  {/* Content on top */}
-                  <div className="relative z-10 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      {/* Optional Option Picture */}
+                  >
+                    {/* Large Player Photo Container */}
+                    <div className="relative aspect-square w-full overflow-hidden bg-slate-950/80">
                       {option.imageUrl ? (
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/[0.07] p-1.5 shadow-sm backdrop-blur-sm">
-                          <img
-                            src={option.imageUrl}
-                            alt={option.text}
-                            className="max-h-full max-w-full object-contain drop-shadow"
-                            loading="lazy"
-                          />
-                        </div>
+                        <img
+                          src={option.imageUrl}
+                          alt={option.text}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
                       ) : (
-                        <div
-                          className={cn(
-                            'flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-bold shrink-0',
-                            isTop
-                              ? 'border-amber-500/40 bg-amber-500/20 text-amber-300'
-                              : 'border-white/10 bg-white/5 text-ink-300',
-                          )}
-                        >
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-950/40 to-slate-900 text-4xl font-bold text-violet-400/50">
                           {idx + 1}
                         </div>
                       )}
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              'truncate text-sm sm:text-base font-semibold',
-                              isUserPick ? 'text-violet-200' : 'text-white',
-                            )}
-                          >
-                            {option.text}
+                      {/* Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
+
+                      {/* Top Left: Rank Badge */}
+                      <div className="absolute top-3 left-3">
+                        {isTop ? (
+                          <span className="flex items-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-black text-slate-950 shadow-lg">
+                            👑 #1 TOP
                           </span>
-                          {isUserPick && (
-                            <span className="flex items-center gap-1 rounded-full bg-violet-500/30 border border-violet-400/40 px-2 py-0.5 text-[10px] font-bold text-violet-200 shrink-0">
-                              <CheckCircle2 className="h-3 w-3 text-violet-300" />
-                              I Vote
-                            </span>
-                          )}
+                        ) : (
+                          <span className="flex items-center justify-center rounded-lg bg-slate-950/80 border border-white/20 px-2 py-0.5 text-xs font-bold text-white backdrop-blur-md">
+                            #{idx + 1}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Top Right: Big Percentage Overlay */}
+                      <div className="absolute top-3 right-3 flex items-center gap-1 rounded-xl bg-slate-950/85 border border-white/20 px-3 py-1 shadow-2xl backdrop-blur-md">
+                        <span className="font-display text-lg sm:text-xl font-black text-white">
+                          {option.percentage}%
+                        </span>
+                      </div>
+
+                      {/* Bottom Left: User Pick Indicator */}
+                      {isUserPick && (
+                        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1 rounded-full bg-fuchsia-600 border border-fuchsia-400 px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          I Vote
                         </div>
-                        <span className="text-xs text-ink-300">
+                      )}
+                    </div>
+
+                    {/* Player Name and Votes Breakdown */}
+                    <div className="relative p-4 bg-slate-900/90 border-t border-white/10 overflow-hidden">
+                      {/* Animated progress fill behind name */}
+                      <div
+                        className={cn(
+                          'absolute inset-y-0 left-0 transition-all duration-1000 ease-out opacity-25',
+                          isTop
+                            ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                            : isUserPick
+                            ? 'bg-gradient-to-r from-fuchsia-600 to-pink-500'
+                            : 'bg-white/20',
+                        )}
+                        style={{ width: `${Math.max(option.percentage, 3)}%` }}
+                      />
+
+                      <div className="relative z-10 flex items-center justify-between gap-2">
+                        <span
+                          className={cn(
+                            'font-display text-base sm:text-lg font-bold truncate',
+                            isUserPick ? 'text-fuchsia-200' : 'text-white',
+                          )}
+                        >
+                          {option.text}
+                        </span>
+                        <span className="text-xs font-semibold text-ink-300 shrink-0">
                           {option.votes.toLocaleString()} votes
                         </span>
                       </div>
                     </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="font-display text-lg font-bold text-white sm:text-xl">
-                        {option.percentage}%
-                      </span>
-                    </div>
                   </div>
-                </div>
-              )
-            })
-          ) : (
-            /* Instant 1-Tap Voting Selection View */
-            activePoll.options.map((option, idx) => {
-              const isCurrentlyVoting = isSubmitting && selectedOptionId === option.id
+                )
+              })
+            ) : (
+              /* Player Mode: 1-Tap Voting Grid */
+              activePoll.options.map((option, idx) => {
+                const isCurrentlyVoting = isSubmitting && selectedOptionId === option.id
 
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => handleOptionClick(option.id)}
-                  className={cn(
-                    'group/opt w-full text-left flex items-center justify-between gap-3.5 rounded-xl border p-4 transition-all duration-200 focus:outline-none',
-                    'border-white/10 bg-white/[0.03] hover:border-violet-500/60 hover:bg-violet-600/10 hover:shadow-lg hover:shadow-violet-950/30 hover:-translate-y-0.5 active:scale-[0.99] cursor-pointer',
-                    isCurrentlyVoting && 'border-violet-500 bg-violet-600/20 shadow-md',
-                  )}
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    {/* Option Picture or Number */}
-                    {option.imageUrl ? (
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/[0.07] p-1.5 shadow-sm backdrop-blur-sm group-hover/opt:border-violet-500/40">
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => handleOptionClick(option.id)}
+                    className={cn(
+                      'group/card relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-300 text-left focus:outline-none cursor-pointer',
+                      'border-white/10 bg-slate-900/60 hover:border-fuchsia-500/60 hover:shadow-xl hover:shadow-fuchsia-950/40 hover:-translate-y-1 active:scale-[0.98]',
+                      isCurrentlyVoting && 'border-fuchsia-500 ring-2 ring-fuchsia-500/40 bg-fuchsia-950/30',
+                    )}
+                  >
+                    {/* Large 800x800 Player Image Container */}
+                    <div className="relative aspect-square w-full overflow-hidden bg-slate-950/80">
+                      {option.imageUrl ? (
                         <img
                           src={option.imageUrl}
                           alt={option.text}
-                          className="max-h-full max-w-full object-contain drop-shadow transition-transform duration-200 group-hover/opt:scale-105"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-105"
                           loading="lazy"
                         />
-                      </div>
-                    ) : (
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-xs font-bold text-ink-300 group-hover/opt:border-violet-500/50 group-hover/opt:bg-violet-500/20 group-hover/opt:text-violet-200 shrink-0 transition-colors">
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-950/40 to-slate-900 text-4xl font-bold text-violet-400/50">
+                          {idx + 1}
+                        </div>
+                      )}
+
+                      {/* Gradient Overlay for Text Contrast */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+
+                      {/* Top Left: Number Badge */}
+                      <div className="absolute top-3 left-3 flex h-7 w-7 items-center justify-center rounded-lg bg-slate-950/80 border border-white/20 text-xs font-bold text-white backdrop-blur-md">
                         {idx + 1}
                       </div>
-                    )}
-                    <span className="text-sm sm:text-base font-semibold text-ink-100 group-hover/opt:text-white truncate">
-                      {option.text}
-                    </span>
-                  </div>
 
-                  <div className="shrink-0 flex items-center gap-1.5">
-                    {isCurrentlyVoting ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-violet-400 border-t-transparent" />
-                    ) : (
-                      <span className="text-xs font-bold text-violet-400 opacity-0 group-hover/opt:opacity-100 transition-opacity">
+                      {/* Top Right: Vote / Loading Tag */}
+                      <div className="absolute top-3 right-3">
+                        {isCurrentlyVoting ? (
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-fuchsia-600 text-white shadow-lg">
+                            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          </div>
+                        ) : (
+                          <span className="flex items-center gap-1 rounded-full bg-slate-950/80 border border-white/20 px-2.5 py-1 text-[11px] font-bold text-white opacity-0 group-hover/card:opacity-100 transition-all duration-200 backdrop-blur-md shadow-lg group-hover/card:bg-fuchsia-600 group-hover/card:border-fuchsia-400">
+                            Vote 👆
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bottom: Player Name */}
+                    <div className="p-4 bg-slate-900/90 border-t border-white/10 flex items-center justify-between gap-2">
+                      <span className="font-display text-base sm:text-lg font-bold text-white group-hover/card:text-fuchsia-200 transition-colors truncate">
+                        {option.text}
+                      </span>
+                      <span className="text-xs font-semibold text-fuchsia-400 group-hover/card:translate-x-0.5 transition-transform shrink-0">
                         Vote →
                       </span>
+                    </div>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        ) : (
+          /* =========================================================================
+             CLUB / STANDARD MODE: Sleek Horizontal Rows
+             ========================================================================= */
+          <div className="space-y-3">
+            {hasVoted || isClosed ? (
+              /* Results View (Animated Progress Bars & Dynamic Sorting) */
+              activePoll.options.map((option, idx) => {
+                const isUserPick = option.id === userChoiceId
+                const isTop = idx === 0 && option.votes > 0
+
+                return (
+                  <div
+                    key={option.id}
+                    className={cn(
+                      'relative overflow-hidden rounded-xl border p-4 transition-all duration-500',
+                      isUserPick
+                        ? 'border-violet-500/60 bg-violet-950/20 shadow-md shadow-violet-950/30'
+                        : 'border-white/10 bg-white/[0.02]',
                     )}
+                  >
+                    {/* Progress Bar Fill Background */}
+                    <div
+                      className={cn(
+                        'absolute inset-y-0 left-0 transition-all duration-1000 ease-out',
+                        isTop
+                          ? 'bg-gradient-to-r from-violet-600/30 via-fuchsia-600/20 to-violet-500/10'
+                          : isUserPick
+                          ? 'bg-gradient-to-r from-violet-500/20 to-fuchsia-500/10'
+                          : 'bg-white/[0.05]',
+                      )}
+                      style={{ width: `${Math.max(option.percentage, 2)}%` }}
+                    />
+
+                    {/* Content on top */}
+                    <div className="relative z-10 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        {/* Optional Option Picture */}
+                        {option.imageUrl ? (
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/[0.07] p-1.5 shadow-sm backdrop-blur-sm">
+                            <img
+                              src={option.imageUrl}
+                              alt={option.text}
+                              className="max-h-full max-w-full object-contain drop-shadow"
+                              loading="lazy"
+                            />
+                          </div>
+                        ) : (
+                          <div
+                            className={cn(
+                              'flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-bold shrink-0',
+                              isTop
+                                ? 'border-amber-500/40 bg-amber-500/20 text-amber-300'
+                                : 'border-white/10 bg-white/5 text-ink-300',
+                            )}
+                          >
+                            {idx + 1}
+                          </div>
+                        )}
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                'truncate text-sm sm:text-base font-semibold',
+                                isUserPick ? 'text-violet-200' : 'text-white',
+                              )}
+                            >
+                              {option.text}
+                            </span>
+                            {isUserPick && (
+                              <span className="flex items-center gap-1 rounded-full bg-violet-500/30 border border-violet-400/40 px-2 py-0.5 text-[10px] font-bold text-violet-200 shrink-0">
+                                <CheckCircle2 className="h-3 w-3 text-violet-300" />
+                                I Vote
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-ink-300">
+                            {option.votes.toLocaleString()} votes
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="font-display text-lg font-bold text-white sm:text-xl">
+                          {option.percentage}%
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </button>
-              )
-            })
-          )}
-        </div>
+                )
+              })
+            ) : (
+              /* Instant 1-Tap Voting Selection View */
+              activePoll.options.map((option, idx) => {
+                const isCurrentlyVoting = isSubmitting && selectedOptionId === option.id
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => handleOptionClick(option.id)}
+                    className={cn(
+                      'group/opt w-full text-left flex items-center justify-between gap-3.5 rounded-xl border p-4 transition-all duration-200 focus:outline-none',
+                      'border-white/10 bg-white/[0.03] hover:border-violet-500/60 hover:bg-violet-600/10 hover:shadow-lg hover:shadow-violet-950/30 hover:-translate-y-0.5 active:scale-[0.99] cursor-pointer',
+                      isCurrentlyVoting && 'border-violet-500 bg-violet-600/20 shadow-md',
+                    )}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      {/* Option Picture or Number */}
+                      {option.imageUrl ? (
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white/[0.07] p-1.5 shadow-sm backdrop-blur-sm group-hover/opt:border-violet-500/40">
+                          <img
+                            src={option.imageUrl}
+                            alt={option.text}
+                            className="max-h-full max-w-full object-contain drop-shadow transition-transform duration-200 group-hover/opt:scale-105"
+                            loading="lazy"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-xs font-bold text-ink-300 group-hover/opt:border-violet-500/50 group-hover/opt:bg-violet-500/20 group-hover/opt:text-violet-200 shrink-0 transition-colors">
+                          {idx + 1}
+                        </div>
+                      )}
+                      <span className="text-sm sm:text-base font-semibold text-ink-100 group-hover/opt:text-white truncate">
+                        {option.text}
+                      </span>
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-1.5">
+                      {isCurrentlyVoting ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-violet-400 border-t-transparent" />
+                      ) : (
+                        <span className="text-xs font-bold text-violet-400 opacity-0 group-hover/opt:opacity-100 transition-opacity">
+                          Vote →
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        )}
 
         {/* Footer Actions */}
         <div className="pt-2 space-y-4">

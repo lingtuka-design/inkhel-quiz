@@ -101,6 +101,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
           question: row.question,
           description: row.description || '',
           bannerUrl: row.banner_url || '',
+          layout: row.layout || 'list',
           category: row.category || 'football',
           status: row.status || 'active',
           featured: row.featured === 1,
@@ -136,6 +137,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       question,
       description = '',
       bannerUrl = '',
+      layout = 'list',
       options = [],
       category = 'football',
       status = 'active',
@@ -162,19 +164,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const optionsJson = JSON.stringify(sanitizedOptions)
 
     await env.DB.prepare(
-      `INSERT INTO polls (id, question, description, banner_url, options, category, status, featured, total_votes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+      `INSERT INTO polls (id, question, description, banner_url, layout, options, category, status, featured, total_votes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          question = excluded.question,
          description = excluded.description,
          banner_url = excluded.banner_url,
+         layout = excluded.layout,
          options = excluded.options,
          category = excluded.category,
          status = excluded.status,
          featured = excluded.featured,
          updated_at = excluded.updated_at`
     )
-      .bind(pollId, question.trim(), description, bannerUrl.trim(), optionsJson, category, status, featured ? 1 : 0, now, now)
+      .bind(pollId, question.trim(), description, bannerUrl.trim(), layout, optionsJson, category, status, featured ? 1 : 0, now, now)
       .run()
 
     return json({ success: true, id: pollId })

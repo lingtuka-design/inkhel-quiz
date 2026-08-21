@@ -199,6 +199,7 @@ export interface Poll {
   question: string
   description?: string
   bannerUrl?: string
+  layout?: 'list' | 'grid'
   category: string
   status: 'active' | 'closed'
   featured: boolean

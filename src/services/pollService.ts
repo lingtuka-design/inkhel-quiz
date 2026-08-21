@@ -64,6 +64,7 @@ export async function savePoll(poll: {
   question: string
   description?: string
   bannerUrl?: string
+  layout?: 'list' | 'grid'
   options: { id?: string; text: string; imageUrl?: string }[]
   category?: string
   status?: 'active' | 'closed'
