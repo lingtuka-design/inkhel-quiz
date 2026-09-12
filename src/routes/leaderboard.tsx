@@ -3,6 +3,7 @@ import { CalendarRange, Medal, Trophy } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Podium, RankingTable, LeaderboardTable } from '../components/leaderboard'
 import { Card, Select, SectionHeading } from '../components/ui'
+import { AdBanner } from '../components/adBanner'
 import { getSeason, listSeasons } from '../services/seasonService'
 import { listAllMonths, getCurrentMonth } from '../services/monthService'
 import {
@@ -223,6 +224,9 @@ export function LeaderboardPage() {
           </Link>
         </Card>
       )}
+
+      {/* Strategic Ad Slot: Leaderboard Top Section */}
+      <AdBanner className="my-6" label="Sponsored" />
 
       {(tab === 'month' ? monthRanking : tab === 'alltime' ? allTimeRanking : roundLeaderboard)?.length ? (
         <div>
