@@ -5,7 +5,6 @@ import { RoundBanner, RoundCard } from '../components/rounds'
 import { Podium, RankingTable } from '../components/leaderboard'
 import { PollPreviewCard } from '../components/pollCard'
 import { Button, Card, SectionHeading } from '../components/ui'
-import { AdBanner } from '../components/adBanner'
 import {
   listAllPlayableRounds,
   countParticipants,
@@ -442,12 +441,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Strategic Ad Slot: Home Feed Banner */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6">
-        <AdBanner className="my-6" label="Sponsored" />
-      </section>
-
-      <section className="mx-auto mt-16 max-w-6xl px-4 sm:px-6">
+      <section className="mx-auto mt-20 max-w-6xl px-4 sm:px-6">
         <Card className="overflow-hidden border-violet-500/20 shadow-2xl">
           <div className="grid items-center gap-6 border-b border-white/5 bg-gradient-to-r from-violet-950/40 via-indigo-950/20 to-transparent p-6 sm:p-8 lg:grid-cols-[1fr_auto]">
             <div>

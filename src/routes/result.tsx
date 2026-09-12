@@ -23,7 +23,6 @@ import { useQuery } from '@tanstack/react-query'
 import { CategoryBadge, RoundCard, ShareButtons } from '../components/rounds'
 import { AnswerOption } from '../components/quiz'
 import { Badge, Button, Card, SectionHeading, Spinner, toast } from '../components/ui'
-import { AdBanner } from '../components/adBanner'
 import { getAttemptReview } from '../services/attemptService'
 import { getRound, listAllPlayableRounds, countParticipants, countQuestions } from '../services/roundService'
 import { getMonth, listAllMonths } from '../services/monthService'
@@ -314,9 +313,6 @@ export function ResultPage() {
             </div>
           </div>
         </div>
-
-        {/* Strategic Ad Slot: Result Scorecard Screen */}
-        <AdBanner className="mt-8 mb-2" label="Sponsored" />
 
         {/* WhatsApp Score Card Share Section */}
         <div className="relative mt-8 rounded-2xl border border-emerald-500/20 bg-gradient-to-r from-emerald-950/30 via-ink-900/40 to-violet-950/20 p-5 sm:p-6 shadow-xl shadow-black/50">
