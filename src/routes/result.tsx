@@ -41,6 +41,19 @@ export function ResultPage() {
   const participant = useCurrentUser()
   const [generatingImage, setGeneratingImage] = useState(false)
 
+  // Trigger Monetag Vignette (Full-Screen Interstitial) specifically on Result Screen
+  useEffect(() => {
+    try {
+      const existing = document.getElementById('monetag-vignette-script')
+      if (existing) existing.remove()
+      const s = document.createElement('script')
+      s.id = 'monetag-vignette-script'
+      s.dataset.zone = '11792645'
+      s.src = 'https://n6wxm.com/vignette.min.js'
+      document.body.appendChild(s)
+    } catch {}
+  }, [attemptId, roundId])
+
   const { data: userAttemptsMap } = useQuery({
     queryKey: ['userAttemptsMap', participant?.id, participant?.email, participant?.googleId],
     queryFn: async () => {

@@ -403,6 +403,19 @@ export function QuizPage() {
     }
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+        {/* Suppress all floating ads/banners while actively answering quiz questions */}
+        <style>{`
+          iframe[src*="nap5k"],
+          iframe[src*="n6wxm"],
+          div[class*="monetag"],
+          div[id*="monetag"],
+          .in-page-push,
+          [class*="in-page-push"] {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+          }
+        `}</style>
         <div className="mb-8 flex items-center justify-between gap-4">
           <p className="text-sm font-semibold text-ink-300">
             <span className="hidden sm:inline">{round.title} · </span>
