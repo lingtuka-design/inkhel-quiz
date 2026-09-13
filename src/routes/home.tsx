@@ -216,20 +216,17 @@ export function HomePage() {
                 <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-violet-300">
                   <Flame className="h-3.5 w-3.5" />
                   {currentMonth
-                    ? `${currentMonth.name} — Trial Period`
+                    ? `${currentMonth.name} Tournament`
                     : season
                       ? `Season ${season.seasonNumber} is live`
-                      : 'Season starting soon'}
-                </div>
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                  🎁 Prize ₹2,000 starts September
+                      : 'Season live'}
                 </div>
               </div>
               <h1 className="font-display text-4xl font-extrabold tracking-tight text-white sm:text-6xl sm:leading-none">
                 Inkhel Quiz <span className="text-gradient">Competition</span>
               </h1>
               <p className="mt-6 max-w-lg text-base text-ink-200 sm:text-lg leading-relaxed">
-                Football, Sports, Music, Movies leh Mizoram chanchin thlengin! Hunbi chhungin zawhna 10 chhang la, <b>September thla atangin thla tin lawmman ₹2,000 kan tan dawn e!</b> Tun thla (August) chu Trial Period a ni e.
+                Football, Sports, Music, Movies leh Mizoram chanchin thlengin! Hunbi chhungin zawhna 10 chhang la, score sang ber nih tum rawh le!
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -446,18 +443,15 @@ export function HomePage() {
           <div className="grid items-center gap-6 border-b border-white/5 bg-gradient-to-r from-violet-950/40 via-indigo-950/20 to-transparent p-6 sm:p-8 lg:grid-cols-[1fr_auto]">
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-bold text-emerald-300">
-                  🎁 Lawmman: Thla tin ₹2,000 (Starts September)
-                </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 border border-violet-500/30 px-3 py-1 text-xs font-bold text-violet-300">
-                  ⚡ {currentMonth?.name ?? 'August 2026'} Tournament
+                  ⚡ {currentMonth?.name ?? 'Monthly'} Tournament
                 </span>
               </div>
               <h2 className="mt-1 font-display text-2xl font-bold text-white sm:text-3xl">
-                {currentMonth?.name ?? 'August 2026'} Leaderboard Standings
+                {currentMonth?.name ?? 'Monthly'} Leaderboard Standings
               </h2>
               <p className="mt-2 max-w-xl text-sm text-ink-300">
-                Thla tin ni 1 atanga ni tawp thlengin Quiz Round awm zawng zawng chhang la, Leaderboard-a a chungnung berin thla tin lawmman an dawng ziah ang!
+                Thla tin ni 1 atanga ni tawp thlengin Quiz Round awm zawng zawng chhang la, Leaderboard-a a chungnung ber nih tum rawh le!
               </p>
             </div>
             <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-4">

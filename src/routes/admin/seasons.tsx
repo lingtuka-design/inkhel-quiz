@@ -84,11 +84,6 @@ export function AdminSeasonsPage() {
                           {status === 'upcoming' ? '⏳ Upcoming' : '🔒 Closed'}
                         </span>
                       )}
-                      {m.name.includes('September') && (
-                        <span className="rounded-full bg-yellow-500/20 border border-yellow-500/40 px-2.5 py-0.5 text-xs font-bold text-yellow-300">
-                          🎁 ₹2,000 Prize Starts
-                        </span>
-                      )}
                     </div>
                     <p className="mt-1 text-sm text-ink-300">
                       {formatDate(m.startDate)} — {formatDate(m.endDate)} ·{' '}

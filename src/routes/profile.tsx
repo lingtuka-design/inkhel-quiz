@@ -138,9 +138,9 @@ export function ProfilePage() {
             <Gift className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="font-display text-lg font-bold text-white">Prize Winner Contact Details</h2>
+            <h2 className="font-display text-lg font-bold text-white">Player Contact & Payment Details</h2>
             <p className="mt-0.5 text-xs text-ink-300 leading-relaxed">
-              September thla atanga thla tin lawmman <b>(Monthly Prize ₹2,000)</b> i dawn theih nan leh GPay / PhonePe / WhatsApp-a biak pawh zung zung theih nan i Phone number lo dah rawh le. (August hi Trial period a ni e).
+              Biak pawh zung zung theih nan leh GPay / PhonePe / WhatsApp atan i Phone number lo dah rawh le.
             </p>
           </div>
         </div>

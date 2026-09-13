@@ -178,9 +178,6 @@ export function LeaderboardPage() {
           </div>
           
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-              🎁 Monthly Prize: ₹2,000
-            </span>
             {currentMonth?.id === selectedMonth.id && (
               <Link to="/rounds" className="text-sm font-semibold text-violet-400 hover:text-violet-300">
                 Play Rounds →
