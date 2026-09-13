@@ -47,14 +47,16 @@ export function LeaderboardPage() {
   })
 
   const defaultMonthId = useMemo(() => {
-    if (currentMonth?.id) return currentMonth.id
     const now = Date.now()
-    const openMonth = months?.find((m) => {
-      const start = new Date(m.startDate).getTime()
-      const end = new Date(m.endDate).getTime()
-      return now >= start && now <= end
-    })
-    if (openMonth) return openMonth.id
+    if (Array.isArray(months) && months.length > 0) {
+      const openMonth = months.find((m: any) => {
+        const start = new Date(m.startDate).getTime()
+        const end = new Date(m.endDate).getTime()
+        return now >= start && now <= end
+      })
+      if (openMonth) return openMonth.id
+    }
+    if (currentMonth?.id) return currentMonth.id
     return months?.[0]?.id ?? ''
   }, [currentMonth, months])
 
@@ -62,7 +64,7 @@ export function LeaderboardPage() {
   const [roundId, setRoundId] = useState<string>('')
 
   useEffect(() => {
-    if (defaultMonthId && (!monthId || monthId === 'season_1786731482471_m10')) {
+    if (defaultMonthId && !monthId) {
       setMonthId(defaultMonthId)
     }
   }, [defaultMonthId, monthId])

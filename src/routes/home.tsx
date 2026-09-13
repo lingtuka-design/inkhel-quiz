@@ -12,7 +12,7 @@ import {
 } from '../services/roundService'
 import { getActiveSeason, listSeasons } from '../services/seasonService'
 import { getCurrentMonth, listAllMonths } from '../services/monthService'
-import { getSeasonRanking } from '../services/leaderboardService'
+import { getMonthRanking, getSeasonRanking } from '../services/leaderboardService'
 import { getParticipant, useCurrentUser } from '../services/authService'
 import { listPolls } from '../services/pollService'
 import { setPageTitle } from '../services/shareService'
@@ -110,25 +110,28 @@ export function HomePage() {
   })
 
   const currentMonth = useMemo(() => {
-    if (!months || months.length === 0) return getCurrentMonth()
     const now = Date.now()
-    const open = months.filter((m: any) => {
-      const start = new Date(m.startDate).getTime()
-      const end = new Date(m.endDate).getTime()
-      return now >= start && now <= end
-    })
-    return open.sort((a: any, b: any) => a.startDate.localeCompare(b.startDate))[0] ?? months[0] ?? null
+    if (Array.isArray(months) && months.length > 0) {
+      const open = months.filter((m: any) => {
+        const start = new Date(m.startDate).getTime()
+        const end = new Date(m.endDate).getTime()
+        return now >= start && now <= end
+      })
+      if (open.length > 0) return open[0]
+      return months.find((m: any) => new Date(m.endDate).getTime() >= now) ?? months.at(-1) ?? null
+    }
+    return getCurrentMonth()
   }, [months])
 
   const { data: ranking } = useQuery({
-    queryKey: ['ranking', 'season', season?.id],
+    queryKey: ['ranking', 'month', currentMonth?.id],
     queryFn: async () => {
-      if (!season) return []
+      if (!currentMonth?.id) return []
       try {
-        const res = await fetch(`/api/leaderboard?type=season&seasonId=${encodeURIComponent(season.id)}`)
+        const res = await fetch(`/api/leaderboard?type=month&monthId=${encodeURIComponent(currentMonth.id)}`)
         if (res.ok) {
           const data = await res.json()
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             return data.map((r: any) => ({
               rank: r.rank,
               participant: r.participant,
@@ -143,9 +146,9 @@ export function HomePage() {
           }
         }
       } catch {}
-      return getSeasonRanking(season.id, { currentParticipantId: participant?.id ?? null })
+      return getMonthRanking(currentMonth.id, { currentParticipantId: participant?.id ?? null })
     },
-    enabled: !!season,
+    enabled: !!currentMonth?.id,
   })
   const { data: userAttemptsMap } = useQuery({
     queryKey: ['userAttemptsMap', participant?.id, participant?.email, participant?.googleId],
