@@ -349,30 +349,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Featured Opinion Poll Section */}
-      {polls && polls.length > 0 && (
-        <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6">
-          <SectionHeading
-            eyebrow="Fan Voting"
-            title="Opinion Poll"
-            subtitle="Mizo football & sports fans-te ngaihdan lakna. Vote thlak la, live result en rawh le."
-            action={
-              <Link
-                to="/polls"
-                className="focus-ring inline-flex items-center gap-1.5 text-sm font-semibold text-violet-400 hover:text-violet-300"
-              >
-                All polls <ArrowRight className="h-4 w-4" />
-              </Link>
-            }
-          />
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {polls.slice(0, 3).map((poll) => (
-              <PollPreviewCard key={poll.id} poll={poll} />
-            ))}
-          </div>
-        </section>
-      )}
-
       <section className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHeading
           eyebrow="This month"
@@ -565,6 +541,30 @@ export function HomePage() {
           </div>
         </Card>
       </section>
+
+      {/* Featured Opinion Poll Section */}
+      {polls && polls.length > 0 && (
+        <section className="mx-auto mt-20 max-w-6xl px-4 pb-16 sm:px-6">
+          <SectionHeading
+            eyebrow="Fan Voting"
+            title="Opinion Poll"
+            subtitle="Mizo football & sports fans-te ngaihdan lakna. Vote thlak la, live result en rawh le."
+            action={
+              <Link
+                to="/polls"
+                className="focus-ring inline-flex items-center gap-1.5 text-sm font-semibold text-violet-400 hover:text-violet-300"
+              >
+                All polls <ArrowRight className="h-4 w-4" />
+              </Link>
+            }
+          />
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {polls.slice(0, 3).map((poll) => (
+              <PollPreviewCard key={poll.id} poll={poll} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
