@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useSearch } from '@tanstack/react-router'
 import { Search } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { RoundCard } from '../components/rounds'
@@ -8,7 +7,7 @@ import { listRounds, countParticipants } from '../services/roundService'
 import { listAllMonths, monthStatus } from '../services/monthService'
 import { setPageTitle } from '../services/shareService'
 import { cn } from '../lib/utils'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { getParticipant, useCurrentUser } from '../services/authService'
 
@@ -17,10 +16,17 @@ type Filter = 'all' | 'live' | 'closed'
 export function RoundsPage() {
   useEffect(() => setPageTitle('Rounds'), [])
   const participant = useCurrentUser()
-  const [filter, setFilter] = useState<Filter>('all')
+  const searchParams = useSearch({ strict: false }) as { filter?: Filter }
+  const [filter, setFilter] = useState<Filter>(searchParams?.filter || 'all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [monthFilter, setMonthFilter] = useState('all')
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    if (searchParams?.filter) {
+      setFilter(searchParams.filter)
+    }
+  }, [searchParams?.filter])
 
   const { data: userAttemptsMap } = useQuery({
     queryKey: ['userAttemptsMap', participant?.id, participant?.email, participant?.googleId],
@@ -128,9 +134,12 @@ export function RoundsPage() {
     if (!rounds) return []
     return rounds.filter(({ round }) => {
       const month = months?.find((m) => m.id === round.monthId)
-      const status = month ? monthStatus(month) : 'completed'
-      if (filter === 'live' && (round.status !== 'published' || status !== 'open')) return false
-      if (filter === 'closed' && status === 'open') return false
+      const isMonthOpen = month ? monthStatus(month) === 'open' : false
+      const isLive = round.status === 'published' && isMonthOpen
+      const isClosed = round.status === 'archived' || !isMonthOpen
+
+      if (filter === 'live' && !isLive) return false
+      if (filter === 'closed' && !isClosed) return false
       if (categoryFilter !== 'all') {
         const cat = (round.category || 'football').toLowerCase()
         if (cat !== categoryFilter.toLowerCase()) return false
@@ -183,6 +192,50 @@ export function RoundsPage() {
         })}
       </div>
 
+      {/* Quick Status Tabs */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setFilter('all')}
+          className={cn(
+            'rounded-xl px-4 py-2 text-xs font-bold transition-all',
+            filter === 'all'
+              ? 'bg-white/15 text-white ring-1 ring-white/20 shadow-md'
+              : 'bg-white/5 text-ink-300 hover:bg-white/10 hover:text-white',
+          )}
+        >
+          All Rounds ({rounds?.length ?? 0})
+        </button>
+        <button
+          onClick={() => setFilter('live')}
+          className={cn(
+            'flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all',
+            filter === 'live'
+              ? 'bg-emerald-600/90 text-white shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40'
+              : 'bg-white/5 text-ink-300 hover:bg-white/10 hover:text-white',
+          )}
+        >
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          Live Now ({rounds?.filter(({ round }) => {
+            const m = months?.find((x) => x.id === round.monthId)
+            return round.status === 'published' && m && monthStatus(m) === 'open'
+          }).length ?? 0})
+        </button>
+        <button
+          onClick={() => setFilter('closed')}
+          className={cn(
+            'flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all',
+            filter === 'closed'
+              ? 'bg-violet-600/90 text-white shadow-md shadow-violet-950/40 ring-1 ring-violet-400/40'
+              : 'bg-white/5 text-ink-300 hover:bg-white/10 hover:text-white',
+          )}
+        >
+          📦 Archive ({rounds?.filter(({ round }) => {
+            const m = months?.find((x) => x.id === round.monthId)
+            return round.status === 'archived' || (m && monthStatus(m) !== 'open')
+          }).length ?? 0})
+        </button>
+      </div>
+
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-300" />
@@ -193,10 +246,10 @@ export function RoundsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} className="sm:w-36">
-          <option value="all" className="bg-ink-800">All Status</option>
-          <option value="live" className="bg-ink-800">Open now</option>
-          <option value="closed" className="bg-ink-800">Closed</option>
+        <Select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} className="sm:w-44">
+          <option value="all" className="bg-ink-800">All Rounds</option>
+          <option value="live" className="bg-ink-800">Live Now</option>
+          <option value="closed" className="bg-ink-800">Archived / Closed</option>
         </Select>
         <Select value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} className="sm:w-48">
           <option value="all" className="bg-ink-800">All months</option>

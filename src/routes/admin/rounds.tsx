@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
+  Archive,
   Calendar,
   CheckCircle2,
   Clapperboard,
@@ -20,7 +21,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { Badge, Button, Card, Input, Modal, toast } from '../../components/ui'
 import { RoundBanner, roundStatusBadge } from '../../components/rounds'
-import { deleteRound, setRoundStatus } from '../../services/roundService'
+import { deleteRound, setRoundStatus, archiveClosedRounds } from '../../services/roundService'
 import { queryClient } from '../../lib/query'
 import { formatDate } from '../../lib/utils'
 import type { Round, RoundStatus } from '../../types'
@@ -81,15 +82,17 @@ export function AdminRoundsPage() {
     const total = rounds.length
     const published = rounds.filter((r) => r.status === 'published').length
     const draft = rounds.filter((r) => r.status === 'draft').length
+    const archived = rounds.filter((r) => r.status === 'archived').length
     const totalQuestions = rounds.reduce((acc, r: any) => acc + (r.questionCount || 0), 0)
-    return { total, published, draft, totalQuestions }
+    return { total, published, draft, archived, totalQuestions }
   }, [rounds])
 
-  const handleToggleStatus = async (round: Round) => {
-    const nextStatus: RoundStatus = round.status === 'published' ? 'draft' : 'published'
-    setBusyId(round.id)
+  const [archivingAll, setArchivingAll] = useState(false)
+
+  const handleSetStatus = async (roundId: string, nextStatus: RoundStatus) => {
+    setBusyId(roundId)
     try {
-      await setRoundStatus(round.id, nextStatus)
+      await setRoundStatus(roundId, nextStatus)
       toast(`Round is now ${nextStatus}`, 'success')
       await refetch()
       await queryClient.invalidateQueries({ queryKey: ['rounds'] })
@@ -97,6 +100,21 @@ export function AdminRoundsPage() {
       toast(err.message || 'Failed to update round status', 'error')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  const handleArchiveClosed = async () => {
+    if (!confirm('Archive all published rounds whose month has ended? (They will be marked as archived and hidden from Home)')) return
+    setArchivingAll(true)
+    try {
+      const count = await archiveClosedRounds()
+      toast(`Successfully archived ${count} closed rounds!`, 'success')
+      await refetch()
+      await queryClient.invalidateQueries({ queryKey: ['rounds'] })
+    } catch (err: any) {
+      toast(err.message || 'Failed to archive rounds', 'error')
+    } finally {
+      setArchivingAll(false)
     }
   }
 
@@ -126,20 +144,30 @@ export function AdminRoundsPage() {
             Overview and manage all quiz rounds across every season and month.
           </p>
         </div>
-        <Link to="/admin/seasons">
-          <Button icon={Plus}>Create via Season</Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            icon={Archive}
+            loading={archivingAll}
+            onClick={handleArchiveClosed}
+          >
+            Archive Closed Rounds
+          </Button>
+          <Link to="/admin/seasons">
+            <Button icon={Plus}>Create via Season</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         <Card className="p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
               <Clapperboard className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-ink-300">Total Rounds</p>
+              <p className="text-xs text-ink-300">Total</p>
               <p className="font-display text-xl font-bold text-white">{stats.total}</p>
             </div>
           </div>
@@ -153,6 +181,18 @@ export function AdminRoundsPage() {
             <div>
               <p className="text-xs text-ink-300">Published</p>
               <p className="font-display text-xl font-bold text-emerald-400">{stats.published}</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4 sm:p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
+              <Archive className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-ink-300">Archived</p>
+              <p className="font-display text-xl font-bold text-indigo-400">{stats.archived}</p>
             </div>
           </div>
         </Card>
@@ -175,7 +215,7 @@ export function AdminRoundsPage() {
               <FileQuestion className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs text-ink-300">Total Questions</p>
+              <p className="text-xs text-ink-300">Questions</p>
               <p className="font-display text-xl font-bold text-cyan-400">{stats.totalQuestions}</p>
             </div>
           </div>
@@ -297,14 +337,45 @@ export function AdminRoundsPage() {
                       </Button>
                     </Link>
 
-                    <Button
-                      variant={round.status === 'published' ? 'outline' : 'primary'}
-                      size="sm"
-                      loading={busyId === round.id}
-                      onClick={() => handleToggleStatus(round)}
-                    >
-                      {round.status === 'published' ? 'Unpublish' : 'Publish'}
-                    </Button>
+                    {round.status === 'published' ? (
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={Archive}
+                          loading={busyId === round.id}
+                          onClick={() => handleSetStatus(round.id, 'archived')}
+                        >
+                          Archive
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          loading={busyId === round.id}
+                          onClick={() => handleSetStatus(round.id, 'draft')}
+                        >
+                          Unpublish
+                        </Button>
+                      </>
+                    ) : round.status === 'archived' ? (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        loading={busyId === round.id}
+                        onClick={() => handleSetStatus(round.id, 'published')}
+                      >
+                        Restore Live
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        loading={busyId === round.id}
+                        onClick={() => handleSetStatus(round.id, 'published')}
+                      >
+                        Publish
+                      </Button>
+                    )}
 
                     <Button
                       variant="ghost"

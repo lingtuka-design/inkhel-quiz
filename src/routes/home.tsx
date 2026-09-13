@@ -176,7 +176,26 @@ export function HomePage() {
 
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
-  const live = rounds ?? []
+  const live = useMemo(() => {
+    if (!rounds) return []
+    const now = Date.now()
+    return rounds.filter(({ round }) => {
+      // Must be published (never draft or archived)
+      if (round.status !== 'published') return false
+
+      // Check month window: if month is completed/closed, do not show on Home
+      if (months && months.length > 0) {
+        const m = months.find((x: any) => x.id === round.monthId)
+        if (m) {
+          const start = new Date(m.startDate).getTime()
+          const end = new Date(m.endDate).getTime()
+          if (now < start || now > end) return false
+        }
+      }
+      return true
+    })
+  }, [rounds, months])
+
   const featured = live[0]
   const totalPlayers = live.reduce((s, e) => s + e.participants, 0)
   const totalQuestions = live.reduce((s, e) => s + e.questions, 0)
@@ -345,9 +364,21 @@ export function HomePage() {
           title="Live rounds"
           subtitle={`${currentMonth?.name ?? 'The current month'} — every round stays open until the month ends.`}
           action={
-            <Link to="/rounds" className="focus-ring inline-flex items-center gap-1.5 text-sm font-semibold text-violet-400 hover:text-violet-300">
-              All rounds <ArrowRight className="h-4 w-4" />
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/rounds"
+                search={{ filter: 'closed' }}
+                className="focus-ring inline-flex items-center gap-1 text-xs font-semibold text-ink-300 hover:text-white transition-colors"
+              >
+                Archive ({rounds ? Math.max(0, rounds.length - live.length) : ''}) <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link
+                to="/rounds"
+                className="focus-ring inline-flex items-center gap-1.5 text-sm font-semibold text-violet-400 hover:text-violet-300"
+              >
+                All rounds <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           }
         />
 
@@ -424,18 +455,39 @@ export function HomePage() {
           })}
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredLive.map(({ round, participants, questions }) => (
-            <RoundCard
-              key={round.id}
-              round={round}
-              month={currentMonth ?? undefined}
-              participantCount={participants}
-              questionCount={questions}
-              userAttempt={userAttemptsMap?.[round.id]}
-            />
-          ))}
-        </div>
+        {filteredLive.length === 0 ? (
+          <Card className="p-10 text-center border-white/10 bg-white/[0.02]">
+            <Sparkles className="mx-auto h-10 w-10 text-violet-400 opacity-60" />
+            <h3 className="mt-3 font-display text-lg font-bold text-white">
+              {categoryFilter === 'all'
+                ? 'Quiz Round thar buatsaih mek a ni e'
+                : 'He category-ah hian round live a la awm rih lo'}
+            </h3>
+            <p className="mt-1 text-sm text-ink-300 max-w-md mx-auto">
+              Round closed tawh te chu Archive-ah dahthat an ni a, round thar chhuah thuai a ni ang.
+            </p>
+            <div className="mt-5 flex justify-center gap-3">
+              <Link to="/rounds" search={{ filter: 'closed' }}>
+                <Button variant="secondary" size="sm">
+                  View Past / Archived Rounds
+                </Button>
+              </Link>
+            </div>
+          </Card>
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredLive.map(({ round, participants, questions }) => (
+              <RoundCard
+                key={round.id}
+                round={round}
+                month={currentMonth ?? undefined}
+                participantCount={participants}
+                questionCount={questions}
+                userAttempt={userAttemptsMap?.[round.id]}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="mx-auto mt-20 max-w-6xl px-4 sm:px-6">

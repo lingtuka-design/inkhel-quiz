@@ -89,6 +89,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const { action } = body
     const now = new Date().toISOString()
 
+    if (action === 'archive_closed') {
+      const result = await env.DB.prepare(
+        `UPDATE rounds 
+         SET status = 'archived', updated_at = ? 
+         WHERE status = 'published' 
+           AND month_id IN (SELECT id FROM months WHERE end_date < ?)`
+      )
+        .bind(now, now)
+        .run()
+
+      return json({ success: true, count: result.meta?.changes || 0 })
+    }
+
     if (action === 'create') {
       const { monthId, title, description, category = 'football', bannerGradient, bannerIcon, bannerUrl, timeLimitSeconds = 300 } = body
       if (!monthId || !title) return err('monthId and title are required')

@@ -241,6 +241,26 @@ export async function setRoundStatus(id: string, status: RoundStatus): Promise<R
   }
 }
 
+export async function archiveClosedRounds(): Promise<number> {
+  const token = localStorage.getItem('inkhel_admin_token')
+  const res = await fetch('/api/rounds', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'X-Admin-Token': token } : {}),
+    },
+    body: JSON.stringify({ action: 'archive_closed' }),
+  })
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}))
+    throw new Error(errData.error || 'Failed to archive closed rounds')
+  }
+
+  const data = await res.json()
+  return data.count ?? 0
+}
+
 export function validatePublishedContent(roundId: string): string[] {
   const db = getDb()
   const round = db.rounds.find((r) => r.id === roundId)
