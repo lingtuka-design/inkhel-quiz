@@ -6,6 +6,7 @@ import { Podium, RankingTable } from '../components/leaderboard'
 import { PollPreviewCard } from '../components/pollCard'
 import { Button, Card, SectionHeading } from '../components/ui'
 import {
+  listRounds,
   listAllPlayableRounds,
   countParticipants,
   countQuestions,
@@ -27,14 +28,16 @@ export function HomePage() {
     setPageTitle('')
   }, [])
 
-  const { data: rounds } = useQuery({
+  const { data: rounds } = useQuery<{ round: any; participants: number; questions: number }[]>({
     queryKey: ['rounds', 'playable'],
     placeholderData: () =>
-      listAllPlayableRounds().map((r) => ({
-        round: r,
-        participants: (r as any).participantCount ?? countParticipants(r.id),
-        questions: (r as any).questionCount ?? countQuestions(r.id),
-      })),
+      listRounds()
+        .filter((r) => r.status !== 'draft')
+        .map((r) => ({
+          round: r,
+          participants: (r as any).participantCount ?? countParticipants(r.id),
+          questions: (r as any).questionCount ?? countQuestions(r.id),
+        })),
     staleTime: 0,
     refetchOnMount: true,
     queryFn: async () => {
@@ -57,7 +60,7 @@ export function HomePage() {
             } catch {}
 
             return data
-              .filter((r: any) => r.status === 'published')
+              .filter((r: any) => r.status !== 'draft')
               .map((r: any) => ({
                 round: r,
                 participants: r.participantCount || 0,
@@ -66,11 +69,13 @@ export function HomePage() {
           }
         }
       } catch {}
-      return listAllPlayableRounds().map((r) => ({
-        round: r,
-        participants: (r as any).participantCount ?? countParticipants(r.id),
-        questions: (r as any).questionCount ?? countQuestions(r.id),
-      }))
+      return listRounds()
+        .filter((r) => r.status !== 'draft')
+        .map((r) => ({
+          round: r,
+          participants: (r as any).participantCount ?? countParticipants(r.id),
+          questions: (r as any).questionCount ?? countQuestions(r.id),
+        }))
     },
   })
 
@@ -199,9 +204,10 @@ export function HomePage() {
     })
   }, [rounds, months])
 
-  const featured = live[0]
-  const totalPlayers = live.reduce((s, e) => s + e.participants, 0)
-  const totalQuestions = live.reduce((s, e) => s + e.questions, 0)
+  const featured = live[0] ?? rounds?.[0]
+  const totalPlayers = (rounds ?? []).reduce((s, e) => s + e.participants, 0)
+  const totalQuestions = (rounds ?? []).reduce((s, e) => s + e.questions, 0)
+  const totalRounds = (rounds ?? []).length
 
   const categories = [
     { id: 'all', label: 'All', icon: '✨' },
@@ -273,7 +279,7 @@ export function HomePage() {
               <div className="mt-10 grid grid-cols-3 gap-4 border-t border-white/10 pt-8 sm:gap-6">
                 <div>
                   <p className="font-display text-2xl font-bold text-white sm:text-3xl">
-                    {totalPlayers}
+                    {totalPlayers.toLocaleString()}
                   </p>
                   <p className="text-xs text-ink-300">players</p>
                 </div>
@@ -285,9 +291,9 @@ export function HomePage() {
                 </div>
                 <div>
                   <p className="font-display text-2xl font-bold text-gradient sm:text-3xl">
-                    {live.length}
+                    {totalRounds}
                   </p>
-                  <p className="text-xs text-ink-300">active rounds</p>
+                  <p className="text-xs text-ink-300">quiz rounds</p>
                 </div>
               </div>
             </div>
