@@ -219,7 +219,13 @@ export function HomePage() {
     return (round.category || 'football').toLowerCase() === categoryFilter.toLowerCase()
   })
 
-  const playedCount = Object.keys(userAttemptsMap ?? {}).length
+  const playedLiveCount = useMemo(() => {
+    if (!userAttemptsMap || live.length === 0) return 0
+    return live.filter(({ round }) => {
+      const a = userAttemptsMap[round.id]
+      return a && (a.status === 'completed' || a.status === 'expired')
+    }).length
+  }, [userAttemptsMap, live])
 
   const { data: polls, refetch: refetchPolls } = useQuery({
     queryKey: ['polls', participant?.id, 'active'],
@@ -392,16 +398,16 @@ export function HomePage() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-violet-300">
-                    🎮 Your Campaign Progress
+                    🎮 {currentMonth?.name ?? 'Monthly'} Campaign Progress
                   </span>
                   <span className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-bold text-emerald-400">
-                    {playedCount} / {live.length} Rounds Done
+                    {playedLiveCount} / {live.length} Rounds Done
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-ink-300">
-                  {playedCount === live.length
-                    ? '🎉 Ro-pui lutuk! Round awm zawng zawng i khel kim vek e!'
-                    : `Round ${live.length - playedCount} i la khel lo — Khel kim la, Leaderboard-ah i rank ti sang sauh rawh!`}
+                  {playedLiveCount === live.length
+                    ? `🎉 Ro-pui lutuk! ${currentMonth?.name ?? 'Tun thla'} Round awm zawng zawng i khel kim vek e!`
+                    : `Round ${live.length - playedLiveCount} i la khel lo — Khel kim la, Leaderboard-ah i rank ti sang sauh rawh!`}
                 </p>
               </div>
               <div className="w-full sm:w-56 space-y-1">
@@ -409,14 +415,14 @@ export function HomePage() {
                   <div
                     className="h-full bg-gradient-to-r from-emerald-400 via-teal-400 to-violet-500 transition-all duration-500"
                     style={{
-                      width: `${Math.min(100, Math.round((playedCount / Math.max(1, live.length)) * 100))}%`,
+                      width: `${Math.min(100, Math.round((playedLiveCount / Math.max(1, live.length)) * 100))}%`,
                     }}
                   />
                 </div>
                 <div className="flex justify-between text-[10px] font-mono text-ink-400">
                   <span>Progress</span>
                   <span className="font-bold text-emerald-400">
-                    {Math.round((playedCount / Math.max(1, live.length)) * 100)}%
+                    {Math.round((playedLiveCount / Math.max(1, live.length)) * 100)}%
                   </span>
                 </div>
               </div>
