@@ -153,8 +153,20 @@ export function ResultPage() {
   })
 
   const liveRounds = useMemo(() => {
-    return (allRounds ?? []).filter((r) => r.round.status === 'published')
-  }, [allRounds])
+    const now = Date.now()
+    return (allRounds ?? []).filter((r) => {
+      if (r.round.status !== 'published') return false
+      if (allMonths && allMonths.length > 0) {
+        const m = allMonths.find((x: any) => x.id === r.round.monthId)
+        if (m) {
+          const start = new Date(m.startDate).getTime()
+          const end = new Date(m.endDate).getTime()
+          if (now < start || now > end) return false
+        }
+      }
+      return true
+    })
+  }, [allRounds, allMonths])
 
   const playedRoundIds = useMemo(() => {
     const s = new Set<string>()
@@ -170,8 +182,12 @@ export function ResultPage() {
     return unplayed[0] || null
   }, [liveRounds, playedRoundIds])
 
-  const playedCount = playedRoundIds.size
+  const playedLiveCount = useMemo(() => {
+    return liveRounds.filter((r) => playedRoundIds.has(r.round.id)).length
+  }, [liveRounds, playedRoundIds])
+
   const totalRoundsCount = Math.max(liveRounds.length, 1)
+  const progressPercent = Math.min(100, Math.round((playedLiveCount / totalRoundsCount) * 100))
 
   const otherRounds = useMemo(() => {
     if (!allRounds) return []
@@ -406,7 +422,7 @@ export function ResultPage() {
                   </span>
                   <CategoryBadge category={nextUnplayedRound.round.category} />
                   <span className="text-xs font-semibold text-violet-300">
-                    {playedCount} of {totalRoundsCount} Rounds Completed
+                    {playedLiveCount} of {totalRoundsCount} Rounds Completed
                   </span>
                 </div>
 
@@ -423,12 +439,12 @@ export function ResultPage() {
                     <div
                       className="h-full bg-gradient-to-r from-emerald-400 via-teal-400 to-violet-400 transition-all duration-500"
                       style={{
-                        width: `${Math.min(100, Math.round((playedCount / totalRoundsCount) * 100))}%`,
+                        width: `${progressPercent}%`,
                       }}
                     />
                   </div>
                   <span className="text-xs font-mono font-bold text-emerald-400">
-                    {Math.round((playedCount / totalRoundsCount) * 100)}% Campaign Done
+                    {progressPercent}% Campaign Done
                   </span>
                 </div>
               </div>
