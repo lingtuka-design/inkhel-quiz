@@ -403,14 +403,13 @@ export function QuizPage() {
     }
     return (
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-        {/* Suppress all floating ads/banners while actively answering quiz questions */}
+        {/* Suppress all floating ads/banners and Google auto-ads while actively answering quiz questions */}
         <style>{`
-          iframe[src*="nap5k"],
-          iframe[src*="n6wxm"],
-          div[class*="monetag"],
-          div[id*="monetag"],
-          .in-page-push,
-          [class*="in-page-push"] {
+          .adsbygoogle,
+          ins.adsbygoogle,
+          div[id*="google_ads"],
+          div[class*="google_ads"],
+          .google-auto-placed {
             display: none !important;
             visibility: hidden !important;
             pointer-events: none !important;
