@@ -85,9 +85,10 @@ export function QuizPage() {
 
   const goToResult = useCallback(
     (attemptId: string) => {
-      navigate({ to: `/rounds/${roundId}/result?attemptId=${attemptId}` })
+      // Use window.location.href to trigger Google AdSense full-screen Vignette interstitial
+      window.location.href = `/rounds/${roundId}/result?attemptId=${attemptId}`
     },
-    [navigate, roundId],
+    [roundId],
   )
 
   const handleFinalize = useCallback(
