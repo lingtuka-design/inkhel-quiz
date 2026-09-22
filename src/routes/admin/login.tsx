@@ -14,7 +14,12 @@ export function AdminLoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => setPageTitle('Admin Login'), [])
+  useEffect(() => {
+    setPageTitle('Admin Login')
+    try {
+      document.querySelectorAll('ins.adsbygoogle, .google-auto-placed, [id*="google_ads"], iframe[id*="google_ads"]').forEach((el) => el.remove())
+    } catch {}
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,6 +37,21 @@ export function AdminLoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4">
+      {/* Strict ad suppression on admin login */}
+      <style>{`
+        .adsbygoogle,
+        ins.adsbygoogle,
+        div[id*="google_ads"],
+        div[class*="google_ads"],
+        .google-auto-placed,
+        iframe[id*="google_ads"] {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+          height: 0 !important;
+          max-height: 0 !important;
+        }
+      `}</style>
       <div className="dot-grid pointer-events-none absolute inset-0 opacity-50 [mask-image:radial-gradient(60%_50%_at_50%_40%,black,transparent)]" />
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex justify-center">

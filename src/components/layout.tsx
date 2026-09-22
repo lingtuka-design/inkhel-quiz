@@ -319,6 +319,10 @@ export function AdminLayout() {
   useEffect(() => {
     setMenuOpen(false)
     window.scrollTo({ top: 0 })
+    // Purge any active or injected Google ads when entering admin
+    try {
+      document.querySelectorAll('ins.adsbygoogle, .google-auto-placed, [id*="google_ads"], iframe[id*="google_ads"]').forEach((el) => el.remove())
+    } catch {}
   }, [location.pathname])
 
   const handleLogout = () => {
@@ -337,6 +341,21 @@ export function AdminLayout() {
 
   return (
     <div className="flex min-h-screen">
+      {/* Strict ad suppression across all admin screens */}
+      <style>{`
+        .adsbygoogle,
+        ins.adsbygoogle,
+        div[id*="google_ads"],
+        div[class*="google_ads"],
+        .google-auto-placed,
+        iframe[id*="google_ads"] {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+          height: 0 !important;
+          max-height: 0 !important;
+        }
+      `}</style>
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-white/5 bg-ink-900/60 backdrop-blur-xl lg:flex">
         <div className="flex h-16 items-center border-b border-white/5 px-5">
           <Link to="/admin" className="focus-ring rounded-xl">
