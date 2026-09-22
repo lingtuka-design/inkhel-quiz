@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
-import { AlertTriangle, ListChecks, Play, ShieldAlert, Timer as TimerIcon, Zap } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, ListChecks, Play, ShieldAlert, Timer as TimerIcon, Trophy, Zap } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { RoundBanner } from '../components/rounds'
 import { QuestionCard, QuizTimer, useCountdown } from '../components/quiz'
@@ -21,7 +21,7 @@ import {
 import { queryClient as libQueryClient } from '../lib/query'
 import type { Attempt, OptionKey, QuizQuestion } from '../types'
 
-type Phase = 'boot' | 'instructions' | 'playing' | 'done'
+type Phase = 'boot' | 'instructions' | 'playing' | 'completed' | 'done'
 
 function shuffleList<T>(array: T[]): T[] {
   const arr = [...array]
@@ -73,6 +73,7 @@ export function QuizPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [namePromptOpen, setNamePromptOpen] = useState(false)
+  const [finalAttemptId, setFinalAttemptId] = useState<string | null>(null)
   const attemptIdRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -94,14 +95,15 @@ export function QuizPage() {
   const handleFinalize = useCallback(
     async (attemptId: string) => {
       if (!attemptId) return
+      setFinalAttemptId(attemptId)
       try {
         await finalizeAttempt(attemptId)
       } catch {}
       await queryClient.invalidateQueries({ queryKey: ['leaderboard'] })
       await queryClient.invalidateQueries({ queryKey: ['played'] })
-      goToResult(attemptId)
+      setPhase('completed')
     },
-    [goToResult],
+    [queryClient],
   )
 
   // Boot: check for a resumable attempt
@@ -300,6 +302,46 @@ export function QuizPage() {
         <Link to="/rounds" className="mt-4 inline-block text-violet-400 hover:text-violet-300">
           Browse all rounds
         </Link>
+      </div>
+    )
+  }
+
+  if (phase === 'completed') {
+    const targetAttemptId = finalAttemptId || attempt?.id || attemptIdRef.current || ''
+    return (
+      <div className="relative mx-auto max-w-lg px-4 py-16 sm:px-6 sm:py-24 text-center">
+        <div className="pointer-events-none absolute -top-10 left-1/2 h-72 w-96 -translate-x-1/2 rounded-full bg-violet-600/30 blur-3xl" />
+        <Card className="animate-fade-up relative overflow-hidden border-white/15 bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-8 sm:p-10 shadow-2xl backdrop-blur-md">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-violet-600 to-fuchsia-500 shadow-xl shadow-violet-600/40">
+            <Trophy className="h-10 w-10 text-white animate-pulse" />
+          </div>
+
+          <div className="mt-6 space-y-2">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5" /> Quiz Finished
+            </div>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-white">
+              Quiz i zo ta e! 🎉
+            </h1>
+            <p className="text-sm sm:text-base text-ink-300">
+              I score, point hmuh zat leh leaderboard ranking a inpeih tawh e.
+            </p>
+          </div>
+
+          <div className="mt-8">
+            <a
+              href={`/rounds/${roundId}/result?attemptId=${targetAttemptId}`}
+              className="group flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-fuchsia-600 px-6 py-4.5 font-display text-base sm:text-lg font-bold text-white shadow-xl shadow-violet-600/35 transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-violet-600/55 active:scale-[0.98]"
+            >
+              <span>Result En Rawh (View Result)</span>
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1.5" />
+            </a>
+          </div>
+
+          <p className="mt-4 text-xs text-ink-400">
+            A chunga button khu hmetin i result en rawh le
+          </p>
+        </Card>
       </div>
     )
   }
