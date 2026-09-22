@@ -151,18 +151,6 @@ export function RoundDetailPage() {
       </div>
 
       <div className="relative mx-auto max-w-5xl px-4 pt-6 pb-12 sm:px-6">
-        {/* Suppress all ads on initial Round Landing / Pre-game to ensure a completely clean social media entry */}
-        <style>{`
-          .adsbygoogle,
-          ins.adsbygoogle,
-          div[id*="google_ads"],
-          div[class*="google_ads"],
-          .google-auto-placed {
-            display: none !important;
-            visibility: hidden !important;
-            pointer-events: none !important;
-          }
-        `}</style>
         <Link
           to="/rounds"
           className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-ink-300 hover:text-white transition-colors"
