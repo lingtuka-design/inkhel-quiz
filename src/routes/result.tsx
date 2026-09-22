@@ -437,7 +437,7 @@ export function ResultPage() {
               </div>
 
               <div className="shrink-0">
-                <Link to={`/rounds/${nextUnplayedRound.round.id}`}>
+                <a href={`/rounds/${nextUnplayedRound.round.id}`}>
                   <Button
                     size="lg"
                     className="w-full sm:w-auto font-black text-base px-8 py-4 bg-gradient-to-r from-violet-600 via-indigo-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-xl shadow-violet-950/80 hover:scale-105 transition-all"
@@ -445,7 +445,7 @@ export function ResultPage() {
                   >
                     Play Next Round ➔
                   </Button>
-                </Link>
+                </a>
               </div>
             </div>
           </div>
