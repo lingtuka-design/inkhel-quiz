@@ -89,6 +89,12 @@ export function PublicLayout() {
     setMenuOpen(false)
     window.scrollTo({ top: 0 })
     trackPageView(location.pathname)
+    try {
+      // Register SPA virtual page view with Google AdSense
+      if (typeof window !== 'undefined' && (window as any).adsbygoogle) {
+        ;((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({})
+      }
+    } catch {}
   }, [location.pathname])
 
   useEffect(() => {
