@@ -241,6 +241,18 @@ export function HomePage() {
 
   return (
     <div>
+      {/* Keep Home Page clean and premium without cluttering banner ads */}
+      <style>{`
+        .adsbygoogle,
+        ins.adsbygoogle,
+        div[id*="google_ads"],
+        div[class*="google_ads"],
+        .google-auto-placed {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+      `}</style>
       <section className="relative overflow-hidden">
         <div className="dot-grid absolute inset-0 opacity-60 [mask-image:radial-gradient(70%_60%_at_50%_30%,black,transparent)]" />
         <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pt-20 lg:pb-24">
