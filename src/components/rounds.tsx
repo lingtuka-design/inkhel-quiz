@@ -186,7 +186,7 @@ export function RoundCard({
           </span>
         </div>
 
-        <Link to={href} className="mt-4 block" {...(!isPlayed ? { 'data-google-vignette': 'false' } : {})}>
+        <a href={href} className="mt-4 block">
           {isPlayed ? (
             <Button className="w-full text-xs font-semibold" size="sm" variant="outline">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> View Result & Score ({userAttempt.finalScore ?? 0} pts)
@@ -200,7 +200,7 @@ export function RoundCard({
               <Play className="h-3.5 w-3.5 fill-current" /> Play Round Now
             </Button>
           )}
-        </Link>
+        </a>
       </div>
     </Card>
   )

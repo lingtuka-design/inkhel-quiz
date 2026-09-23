@@ -224,11 +224,11 @@ export function RoundDetailPage() {
                     <GoogleIcon className="mr-2 h-5 w-5" /> Sign in with Google to Play
                   </Button>
                 ) : (
-                  <Link to={`/rounds/${round.id}/quiz`} className="sm:w-auto w-full" data-google-vignette="false">
+                  <a href={`/rounds/${round.id}/quiz`} className="sm:w-auto w-full">
                     <Button className="w-full" size="lg" icon={Play}>
                       Start Round
                     </Button>
-                  </Link>
+                  </a>
                 )
               ) : (
                 <div className="flex items-center gap-2 text-sm font-medium text-amber-300">
