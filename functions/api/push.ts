@@ -26,7 +26,6 @@ export async function onRequestPost({ request, env }: { request: Request; env: a
         included_segments: ['Total Subscriptions'],
         headings: { en: title },
         contents: { en: message },
-        url: url,
         web_url: url,
       }),
     })
