@@ -52,7 +52,7 @@ export function RoundFormPage() {
 
         if (input.status === 'published' && confirm('Round hi Publish a ni a! Users zawng zawng hnenah Push Notification thawn nghal i duh em?')) {
           await sendPushNotification({
-            title: `⚽ ${input.title} a chhuak e!`,
+            title: `⚽ Quiz thar a awm : ${input.title}`,
             message: input.description ? `${input.description.slice(0, 80)}... Khel nghal rawh le!` : 'Round thar khel turin a inpeih ta e. Khel nghal la point hmu hnem rawh le!',
             url: `https://quiz.inkhel.com/rounds/${created.id}`,
           })
@@ -68,7 +68,7 @@ export function RoundFormPage() {
 
         if (input.status === 'published' && confirm('Round hi Publish a ni a! Users zawng zawng hnenah Push Notification thawn nghal i duh em?')) {
           await sendPushNotification({
-            title: `⚽ ${input.title} a chhuak e!`,
+            title: `⚽ Quiz thar a awm : ${input.title}`,
             message: input.description ? `${input.description.slice(0, 80)}... Khel nghal rawh le!` : 'Round thar khel turin a inpeih ta e. Khel nghal la point hmu hnem rawh le!',
             url: `https://quiz.inkhel.com/rounds/${roundId}`,
           })

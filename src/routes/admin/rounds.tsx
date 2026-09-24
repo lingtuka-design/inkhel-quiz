@@ -99,11 +99,11 @@ export function AdminRoundsPage() {
   const [archivingAll, setArchivingAll] = useState(false)
 
   const handleSendPush = async (round: Round) => {
-    if (!confirm(`Hemi round tan hian users zawng zawng hnenah Push Notification thawn i duh tak tak em?\n\nTitle: ⚽ ${round.title} a chhuak e!\nURL: https://quiz.inkhel.com/rounds/${round.id}`)) return
+    if (!confirm(`Hemi round tan hian users zawng zawng hnenah Push Notification thawn i duh tak tak em?\n\nTitle: ⚽ Quiz thar a awm : ${round.title}\nURL: https://quiz.inkhel.com/rounds/${round.id}`)) return
     setPushingId(round.id)
     try {
       const res = await sendPushNotification({
-        title: `⚽ ${round.title} a chhuak e!`,
+        title: `⚽ Quiz thar a awm : ${round.title}`,
         message: round.description ? `${round.description.slice(0, 80)}... Khel nghal rawh le!` : 'Round thar khel turin a inpeih ta e. Khel nghal la point hmu hnem rawh le!',
         url: `https://quiz.inkhel.com/rounds/${round.id}`,
       })
