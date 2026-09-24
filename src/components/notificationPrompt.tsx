@@ -14,36 +14,64 @@ export function NotificationPrompt() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Check current subscription status
-    const checkStatus = () => {
-      if (typeof window === 'undefined') return
+    if (typeof window === 'undefined') return
 
-      if ('Notification' in window && Notification.permission === 'granted') {
-        setIsSubscribed(true)
-        return
-      }
-
-      // Check dismiss count
-      const dismissCount = parseInt(localStorage.getItem('inkhel_push_dismiss_count') || '0', 10)
-      if (dismissCount >= 2) {
-        // User dismissed twice or more, do not show automatically
-        return
-      }
-
-      // Delay prompt slightly (2.5s) so page loads comfortably
-      const timer = setTimeout(() => {
-        setShowPrompt(true)
-      }, 2500)
-
-      return () => clearTimeout(timer)
+    // 1. Check local storage first (instant check)
+    if (localStorage.getItem('inkhel_push_granted') === 'true') {
+      setIsSubscribed(true)
+      return
     }
 
-    checkStatus()
+    // 2. Check native browser notification permission
+    if ('Notification' in window && Notification.permission === 'granted') {
+      localStorage.setItem('inkhel_push_granted', 'true')
+      setIsSubscribed(true)
+      return
+    }
+
+    // 3. Check dismiss count (if user dismissed 2 or more times, do not show)
+    const dismissCount = parseInt(localStorage.getItem('inkhel_push_dismiss_count') || '0', 10)
+    if (dismissCount >= 2) {
+      return
+    }
+
+    // 4. Check OneSignal SDK state directly
+    if (window.OneSignalDeferred) {
+      window.OneSignalDeferred.push(async function (OneSignal: any) {
+        try {
+          if (OneSignal.User?.PushSubscription?.optedIn) {
+            localStorage.setItem('inkhel_push_granted', 'true')
+            setIsSubscribed(true)
+            setShowPrompt(false)
+            return
+          }
+        } catch {}
+      })
+    }
+
+    // 5. If not subscribed and dismiss count < 2, delay prompt by 2.5s
+    const timer = setTimeout(() => {
+      // Re-verify before showing
+      if (
+        localStorage.getItem('inkhel_push_granted') === 'true' ||
+        ('Notification' in window && Notification.permission === 'granted')
+      ) {
+        return
+      }
+      setShowPrompt(true)
+    }, 2500)
+
+    return () => clearTimeout(timer)
   }, [])
 
   const handleAllow = async () => {
     try {
       setLoading(true)
+      // Immediately mark as granted locally so prompt disappears and never shows again
+      localStorage.setItem('inkhel_push_granted', 'true')
+      setIsSubscribed(true)
+      setShowPrompt(false)
+
       if (window.OneSignalDeferred) {
         window.OneSignalDeferred.push(async function (OneSignal: any) {
           try {
@@ -55,13 +83,13 @@ export function NotificationPrompt() {
       }
 
       if ('Notification' in window) {
-        const permission = await Notification.requestPermission()
-        if (permission === 'granted') {
-          setIsSubscribed(true)
-          localStorage.setItem('inkhel_push_granted', 'true')
-        }
+        try {
+          const perm = await Notification.requestPermission()
+          if (perm === 'granted') {
+            setIsSubscribed(true)
+          }
+        } catch {}
       }
-      setShowPrompt(false)
     } catch (err) {
       console.error(err)
     } finally {
@@ -76,7 +104,7 @@ export function NotificationPrompt() {
     setShowPrompt(false)
   }
 
-  if (!showPrompt) return null
+  if (!showPrompt || isSubscribed) return null
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md animate-in fade-in slide-in-from-bottom-5 duration-300">
@@ -129,15 +157,33 @@ export function NotificationBellButton() {
   const [clicked, setClicked] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'granted') {
-        setSubscribed(true)
-      }
+    if (typeof window === 'undefined') return
+
+    if (
+      localStorage.getItem('inkhel_push_granted') === 'true' ||
+      ('Notification' in window && Notification.permission === 'granted')
+    ) {
+      setSubscribed(true)
+      return
+    }
+
+    if (window.OneSignalDeferred) {
+      window.OneSignalDeferred.push(async function (OneSignal: any) {
+        try {
+          if (OneSignal.User?.PushSubscription?.optedIn) {
+            setSubscribed(true)
+            localStorage.setItem('inkhel_push_granted', 'true')
+          }
+        } catch {}
+      })
     }
   }, [])
 
   const toggleNotification = async () => {
     try {
+      localStorage.setItem('inkhel_push_granted', 'true')
+      setSubscribed(true)
+
       if (window.OneSignalDeferred) {
         window.OneSignalDeferred.push(async function (OneSignal: any) {
           try {
@@ -149,10 +195,12 @@ export function NotificationBellButton() {
       }
 
       if ('Notification' in window) {
-        const permission = await Notification.requestPermission()
-        if (permission === 'granted') {
-          setSubscribed(true)
-        }
+        try {
+          const permission = await Notification.requestPermission()
+          if (permission === 'granted') {
+            setSubscribed(true)
+          }
+        } catch {}
       }
       setClicked(true)
       setTimeout(() => setClicked(false), 3000)
