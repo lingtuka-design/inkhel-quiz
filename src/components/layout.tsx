@@ -16,6 +16,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { Avatar, Button, toast } from './ui'
+import { NotificationPrompt, NotificationBellButton } from './notificationPrompt'
 import { getParticipant, loginWithGoogle, logoutParticipant, logoutAdmin, subscribeToAuth } from '../services/authService'
 import { trackPageView } from '../lib/analyticsTracker'
 import { cn } from '../lib/utils'
@@ -148,6 +149,7 @@ export function PublicLayout() {
           </nav>
 
           <div className="hidden items-center gap-3 md:flex">
+            <NotificationBellButton />
             {participant && participant.provider === 'google' ? (
               <div className="flex items-center gap-2">
                 <Link
@@ -201,13 +203,16 @@ export function PublicLayout() {
             </Button>
           </div>
 
-          <button
-            className="focus-ring rounded-lg p-2 text-ink-200 hover:text-white md:hidden"
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-2 md:hidden">
+            <NotificationBellButton />
+            <button
+              className="focus-ring rounded-lg p-2 text-ink-200 hover:text-white"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Toggle menu"
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         {menuOpen && (
@@ -279,6 +284,7 @@ export function PublicLayout() {
       </header>
 
       <main className="flex-1">
+        <NotificationPrompt />
         <Outlet />
       </main>
 

@@ -36,6 +36,17 @@
       src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2343866392435128"
       crossorigin="anonymous"
     ></script>
+    <!-- OneSignal Web Push SDK -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        await OneSignal.init({
+          appId: "656af57b-8a86-471a-a8d3-5dd3d5406dc7",
+          allowLocalhostAsSecureOrigin: true,
+        });
+      });
+    </script>
   </head>
   <body class="bg-[#0a0a16] text-white">
     <div id="root">
