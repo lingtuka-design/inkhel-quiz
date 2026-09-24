@@ -23,7 +23,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Badge, Button, Card, Input, Modal, toast } from '../../components/ui'
 import { RoundBanner, roundStatusBadge } from '../../components/rounds'
 import { deleteRound, setRoundStatus, archiveClosedRounds } from '../../services/roundService'
-import { sendPushNotification } from '../../services/pushService'
+import { sendPushNotification, getPushSubscribersCount } from '../../services/pushService'
 import { queryClient } from '../../lib/query'
 import { formatDate } from '../../lib/utils'
 import type { Round, RoundStatus } from '../../types'
@@ -51,6 +51,12 @@ export function AdminRoundsPage() {
       if (!res.ok) return []
       return res.json()
     },
+  })
+
+  const { data: pushStats } = useQuery({
+    queryKey: ['adminPushStats'],
+    queryFn: getPushSubscribersCount,
+    refetchInterval: 30000,
   })
 
   const monthMap = useMemo(() => {
@@ -192,7 +198,7 @@ export function AdminRoundsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <Card className="p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
@@ -213,6 +219,20 @@ export function AdminRoundsPage() {
             <div>
               <p className="text-xs text-ink-300">Published</p>
               <p className="font-display text-xl font-bold text-emerald-400">{stats.published}</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4 sm:p-5 border-violet-500/30 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20 text-violet-300">
+              <Bell className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-violet-300 font-medium">Push Noti ON</p>
+              <p className="font-display text-xl font-bold text-white">
+                {pushStats ? `${pushStats.activeSubscribers} on` : '...'}
+              </p>
             </div>
           </div>
         </Card>

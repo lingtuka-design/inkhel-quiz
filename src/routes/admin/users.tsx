@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { GoogleIcon } from '../../components/layout'
 import {
+  BellRing,
   Calendar,
   CheckCircle2,
   ChevronLeft,
@@ -20,6 +21,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { Avatar, Badge, Button, Card, Input, SectionHeading, StatCard } from '../../components/ui'
 import { setPageTitle } from '../../services/shareService'
+import { getPushSubscribersCount } from '../../services/pushService'
 import { formatDate, cn } from '../../lib/utils'
 
 const PAGE_SIZE = 50
@@ -40,6 +42,12 @@ export function AdminUsersPage() {
       } catch {}
       return { total: 0, googleCount: 0, guestCount: 0 }
     },
+  })
+
+  const { data: pushStats } = useQuery({
+    queryKey: ['adminPushStats'],
+    queryFn: getPushSubscribersCount,
+    refetchInterval: 30000,
   })
 
   const { data: usersData, isLoading } = useQuery({
@@ -93,7 +101,7 @@ export function AdminUsersPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Total Players"
           value={total}
@@ -109,8 +117,14 @@ export function AdminUsersPage() {
         <StatCard
           label="With Phone Number"
           value={participants.filter((p) => p.phoneNumber).length}
-          accent="violet"
+          accent="amber"
           icon={Phone}
+        />
+        <StatCard
+          label="Push Subscribers"
+          value={pushStats ? `${pushStats.activeSubscribers} on` : '...'}
+          accent="violet"
+          icon={BellRing}
         />
       </div>
 

@@ -51,3 +51,41 @@ export async function onRequestPost({ request, env }: { request: Request; env: a
     })
   }
 }
+
+export async function onRequestGet({ env }: { env: any }) {
+  try {
+    const apiKey = env?.ONESIGNAL_API_KEY || atob(FALLBACK_KEY_B64)
+    const res = await fetch(`https://onesignal.com/api/v1/apps/${ONESIGNAL_APP_ID}`, {
+      headers: {
+        'Authorization': `Key ${apiKey}`,
+      },
+    })
+
+    if (!res.ok) {
+      return new Response(JSON.stringify({ error: 'Failed to fetch OneSignal app details' }), {
+        status: res.status,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const data: any = await res.json()
+    return new Response(
+      JSON.stringify({
+        totalSubscribers: data.players || 0,
+        activeSubscribers: data.messageable_players || 0,
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      },
+    )
+  } catch (err: any) {
+    return new Response(JSON.stringify({ error: err.message || 'Failed to fetch subscriber count' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+}

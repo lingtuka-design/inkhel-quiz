@@ -34,3 +34,20 @@ export async function sendPushNotification({
     return { success: false, error: error.message || 'Failed to dispatch push notification' }
   }
 }
+
+export interface SubscriberStats {
+  totalSubscribers: number
+  activeSubscribers: number
+}
+
+export async function getPushSubscribersCount(): Promise<SubscriberStats> {
+  try {
+    const res = await fetch('/api/push')
+    if (res.ok) {
+      return await res.json()
+    }
+  } catch (err) {
+    console.error('Failed to fetch push subscribers:', err)
+  }
+  return { totalSubscribers: 0, activeSubscribers: 0 }
+}

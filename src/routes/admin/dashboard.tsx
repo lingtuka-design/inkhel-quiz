@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
+  BellRing,
   Calendar,
   CalendarRange,
   CheckCircle2,
@@ -21,6 +22,7 @@ import { Avatar, Badge, Button, Card, SectionHeading, StatCard } from '../../com
 import { listRounds, countQuestions, countParticipants, countAttempts as countRoundAttempts } from '../../services/roundService'
 import { getActiveSeason, listSeasons } from '../../services/seasonService'
 import { getCurrentMonth, listAllMonths, monthStatus } from '../../services/monthService'
+import { getPushSubscribersCount } from '../../services/pushService'
 import { getDb } from '../../db/database'
 import { roundStatusBadge } from '../../components/rounds'
 import { setPageTitle } from '../../services/shareService'
@@ -66,6 +68,12 @@ export function AdminDashboardPage() {
       } catch {}
       return { total: 0, googleCount: 0, guestCount: 0 }
     },
+  })
+
+  const { data: pushStats } = useQuery({
+    queryKey: ['adminPushStats'],
+    queryFn: getPushSubscribersCount,
+    refetchInterval: 30000,
   })
 
   const months = useMemo(() => {
@@ -151,6 +159,12 @@ export function AdminDashboardPage() {
           label="Google Users"
           value={usersData?.googleCount ?? 0}
           accent="emerald"
+        />
+        <StatCard
+          icon={BellRing}
+          label="Push Subscribers"
+          value={pushStats ? `${pushStats.activeSubscribers} on` : '...'}
+          accent="violet"
         />
         <StatCard
           icon={Clapperboard}
