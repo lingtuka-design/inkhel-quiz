@@ -98,8 +98,8 @@ export function AdminRoundsPage() {
 
   const [archivingAll, setArchivingAll] = useState(false)
 
-  const handleSendPush = async (round: Round) => {
-    if (!confirm(`Hemi round tan hian users zawng zawng hnenah Push Notification thawn i duh tak tak em?\n\nTitle: ⚽ Quiz thar a awm : ${round.title}\nURL: https://quiz.inkhel.com/rounds/${round.id}`)) return
+  const handleSendPush = async (round: Round, skipConfirm = false) => {
+    if (!skipConfirm && !confirm(`Hemi round tan hian users zawng zawng hnenah Push Notification thawn i duh tak tak em?\n\nTitle: ⚽ Quiz thar a awm : ${round.title}\nURL: https://quiz.inkhel.com/rounds/${round.id}`)) return
     setPushingId(round.id)
     try {
       const res = await sendPushNotification({
@@ -130,8 +130,8 @@ export function AdminRoundsPage() {
 
       if (isPublishing) {
         const target = rounds.find((r) => r.id === roundId)
-        if (target && confirm(`Round hi Publish a ni ta! Users zawng zawng hnenah Push Notification thawn nghal i duh em?`)) {
-          await handleSendPush(target)
+        if (target) {
+          await handleSendPush(target, true)
         }
       }
     } catch (err: any) {

@@ -10,6 +10,7 @@ import { getRound, setRoundStatus, validatePublishedContent } from '../../servic
 import { getQuestionsWithOptions, saveQuestions } from '../../services/questionService'
 import { queryClient } from '../../lib/query'
 import { setPageTitle } from '../../services/shareService'
+import { sendPushNotification } from '../../services/pushService'
 import type { QuestionDraft } from '../../types'
 
 export function AdminRoundQuestionsPage() {
@@ -133,6 +134,22 @@ export function AdminRoundQuestionsPage() {
       await queryClient.invalidateQueries({ queryKey: ['adminRounds'] })
       await refetchRound()
       toast('🎉 Round is now PUBLISHED and live for players!', 'success')
+
+      // Automatically send push notification to all subscribers
+      try {
+        const pushRes = await sendPushNotification({
+          title: `⚽ Quiz thar a awm : ${round.title}`,
+          message: round.description ? `${round.description.slice(0, 80)}... Khel nghal rawh le!` : 'Round thar khel turin a inpeih ta e. Khel nghal la point hmu hnem rawh le!',
+          url: `https://quiz.inkhel.com/rounds/${roundId}`,
+        })
+        if (pushRes.success) {
+          toast('📲 Push Notification automatic-in a inthawn fel e!', 'success')
+        } else {
+          toast(`Push thawn theih loh: ${pushRes.error}`, 'error')
+        }
+      } catch (pushErr: any) {
+        toast(`Push thawn theih loh: ${pushErr.message}`, 'error')
+      }
     } catch (err: any) {
       toast(err.message || 'Publish failed', 'error')
     } finally {
