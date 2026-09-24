@@ -89,12 +89,14 @@ export function RoundCard({
   participantCount,
   questionCount,
   userAttempt,
+  allowVignetteOnPlay = false,
 }: {
   round: Round
   month?: Month
   participantCount?: number
   questionCount?: number
   userAttempt?: { id?: string; finalScore?: number; status?: string } | null
+  allowVignetteOnPlay?: boolean
 }) {
   const isPlayed = userAttempt?.status === 'completed' || userAttempt?.status === 'expired'
   const badge = roundStatusBadge(round)
@@ -186,12 +188,14 @@ export function RoundCard({
           </span>
         </div>
 
-        <a href={href} className="mt-4 block">
-          {isPlayed ? (
+        {isPlayed ? (
+          <a href={href} className="mt-4 block">
             <Button className="w-full text-xs font-semibold" size="sm" variant="outline">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> View Result & Score ({userAttempt.finalScore ?? 0} pts)
             </Button>
-          ) : (
+          </a>
+        ) : allowVignetteOnPlay ? (
+          <a href={href} className="mt-4 block">
             <Button
               className="w-full text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md shadow-violet-950/50"
               size="sm"
@@ -199,8 +203,18 @@ export function RoundCard({
             >
               <Play className="h-3.5 w-3.5 fill-current" /> Play Round Now
             </Button>
-          )}
-        </a>
+          </a>
+        ) : (
+          <Link to={href} className="mt-4 block" data-google-vignette="false">
+            <Button
+              className="w-full text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md shadow-violet-950/50"
+              size="sm"
+              variant="primary"
+            >
+              <Play className="h-3.5 w-3.5 fill-current" /> Play Round Now
+            </Button>
+          </Link>
+        )}
       </div>
     </Card>
   )

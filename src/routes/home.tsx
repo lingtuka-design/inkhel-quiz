@@ -347,11 +347,11 @@ export function HomePage() {
                           closes {formatDate(currentMonth?.endDate ?? '')}
                         </span>
                       </div>
-                      <a href={`/rounds/${featured.round.id}`} className="mt-6 block">
+                      <Link to={`/rounds/${featured.round.id}`} className="mt-6 block" data-google-vignette="false">
                         <Button className="w-full font-bold" icon={Play}>
                           Start Playing
                         </Button>
-                      </a>
+                      </Link>
                     </div>
                   </Card>
                 </div>

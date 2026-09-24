@@ -136,6 +136,12 @@ export function RoundDetailPage() {
 
   return (
     <div className="relative overflow-hidden">
+      {/* Ensure 0 ads / banners on round detail page so shared links remain 100% clean and fast */}
+      <style>{`
+        .adsbygoogle, ins.adsbygoogle, .google-auto-placed {
+          display: none !important;
+        }
+      `}</style>
       {/* Cinematic Blurred Ambient Backdrop */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] overflow-hidden">
         {round.bannerUrl ? (
@@ -224,11 +230,11 @@ export function RoundDetailPage() {
                     <GoogleIcon className="mr-2 h-5 w-5" /> Sign in with Google to Play
                   </Button>
                 ) : (
-                  <a href={`/rounds/${round.id}/quiz`} className="sm:w-auto w-full">
+                  <Link to={`/rounds/${round.id}/quiz`} className="sm:w-auto w-full" data-google-vignette="false">
                     <Button className="w-full" size="lg" icon={Play}>
                       Start Round
                     </Button>
-                  </a>
+                  </Link>
                 )
               ) : (
                 <div className="flex items-center gap-2 text-sm font-medium text-amber-300">

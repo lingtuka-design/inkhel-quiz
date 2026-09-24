@@ -470,6 +470,17 @@ export function ResultPage() {
       )}
 
       <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
+        {nextUnplayedRound && (
+          <a href={`/rounds/${nextUnplayedRound.round.id}`} className="block">
+            <Button
+              size="lg"
+              icon={Play}
+              className="bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-xl shadow-violet-500/30 hover:brightness-110 font-bold"
+            >
+              Play Next Round ({nextUnplayedRound.round.title})
+            </Button>
+          </a>
+        )}
         <Link to={`/rounds/${round.id}`}>
           <Button icon={Trophy}>Round Leaderboard</Button>
         </Link>
@@ -478,11 +489,11 @@ export function ResultPage() {
             Monthly & Season Ranking
           </Button>
         </Link>
-        <Link to="/rounds">
+        <a href="/rounds">
           <Button variant="ghost" icon={Home}>
             All Rounds
           </Button>
-        </Link>
+        </a>
       </div>
 
       {otherRounds.length > 0 && (
@@ -492,12 +503,12 @@ export function ResultPage() {
             title="More rounds to play"
             subtitle="I la khelh loh leh round thar awmte chhang chhunzawm nghal rawh le."
             action={
-              <Link
-                to="/rounds"
+              <a
+                href="/rounds"
                 className="focus-ring inline-flex items-center gap-1.5 text-sm font-semibold text-violet-400 hover:text-violet-300"
               >
                 All rounds <ArrowRight className="h-4 w-4" />
-              </Link>
+              </a>
             }
           />
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -511,6 +522,7 @@ export function ResultPage() {
                   participantCount={pCount}
                   questionCount={qCount}
                   userAttempt={userAttemptsMap?.[r.id]}
+                  allowVignetteOnPlay={true}
                 />
               )
             })}
