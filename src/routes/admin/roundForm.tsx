@@ -8,6 +8,7 @@ import { Button, Card, toast } from '../../components/ui'
 import { createRound, getRound, updateRound } from '../../services/roundService'
 import { listMonths, isMonthOpen } from '../../services/monthService'
 import { listSeasons } from '../../services/seasonService'
+import { sendPushNotification } from '../../services/pushService'
 import { queryClient } from '../../lib/query'
 import { setPageTitle } from '../../services/shareService'
 
@@ -48,12 +49,31 @@ export function RoundFormPage() {
         queryClient.setQueryData(['round', created.id], created)
         await queryClient.invalidateQueries({ queryKey: ['rounds'] })
         toast('Round created', 'success')
+
+        if (input.status === 'published' && confirm('Round hi Publish a ni a! Users zawng zawng hnenah Push Notification thawn nghal i duh em?')) {
+          await sendPushNotification({
+            title: `⚽ ${input.title} a chhuak e!`,
+            message: input.description ? `${input.description.slice(0, 80)}... Khel nghal rawh le!` : 'Round thar khel turin a inpeih ta e. Khel nghal la point hmu hnem rawh le!',
+            url: `https://quiz.inkhel.com/rounds/${created.id}`,
+          })
+          toast('Push Notification thawn fel a ni e!', 'success')
+        }
+
         navigate({ to: `/admin/rounds/${created.id}/questions` })
       } else {
         const updated = await updateRound(roundId!, input)
         queryClient.setQueryData(['round', roundId], updated)
         await queryClient.invalidateQueries({ queryKey: ['rounds'] })
         toast('Round updated', 'success')
+
+        if (input.status === 'published' && confirm('Round hi Publish a ni a! Users zawng zawng hnenah Push Notification thawn nghal i duh em?')) {
+          await sendPushNotification({
+            title: `⚽ ${input.title} a chhuak e!`,
+            message: input.description ? `${input.description.slice(0, 80)}... Khel nghal rawh le!` : 'Round thar khel turin a inpeih ta e. Khel nghal la point hmu hnem rawh le!',
+            url: `https://quiz.inkhel.com/rounds/${roundId}`,
+          })
+          toast('Push Notification thawn fel a ni e!', 'success')
+        }
       }
     } catch (err: any) {
       toast(err.message || 'Failed to save round', 'error')
