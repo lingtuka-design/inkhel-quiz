@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   Archive,
+  Bell,
   Calendar,
   CheckCircle2,
   Clapperboard,
@@ -22,6 +23,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Badge, Button, Card, Input, Modal, toast } from '../../components/ui'
 import { RoundBanner, roundStatusBadge } from '../../components/rounds'
 import { deleteRound, setRoundStatus, archiveClosedRounds } from '../../services/roundService'
+import { sendPushNotification } from '../../services/pushService'
 import { queryClient } from '../../lib/query'
 import { formatDate } from '../../lib/utils'
 import type { Round, RoundStatus } from '../../types'
@@ -31,6 +33,7 @@ export function AdminRoundsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [pushingId, setPushingId] = useState<string | null>(null)
 
   const { data: rounds = [], isLoading, refetch } = useQuery<Round[]>({
     queryKey: ['adminRounds'],
@@ -89,13 +92,42 @@ export function AdminRoundsPage() {
 
   const [archivingAll, setArchivingAll] = useState(false)
 
+  const handleSendPush = async (round: Round) => {
+    if (!confirm(`Hemi round tan hian users zawng zawng hnenah Push Notification thawn i duh tak tak em?\n\nTitle: ⚽ ${round.title} a chhuak e!\nURL: https://quiz.inkhel.com/rounds/${round.id}`)) return
+    setPushingId(round.id)
+    try {
+      const res = await sendPushNotification({
+        title: `⚽ ${round.title} a chhuak e!`,
+        message: round.description ? `${round.description.slice(0, 80)}... Khel nghal rawh le!` : 'Round thar khel turin a inpeih ta e. Khel nghal la point hmu hnem rawh le!',
+        url: `https://quiz.inkhel.com/rounds/${round.id}`,
+      })
+      if (res.success) {
+        toast('Notification thawn fel a ni e! (Subscribers zawng zawng hnenah)', 'success')
+      } else {
+        toast(`Push thawn theih loh: ${res.error}`, 'error')
+      }
+    } catch (err: any) {
+      toast(err.message || 'Push dispatch failed', 'error')
+    } finally {
+      setPushingId(null)
+    }
+  }
+
   const handleSetStatus = async (roundId: string, nextStatus: RoundStatus) => {
     setBusyId(roundId)
+    const isPublishing = nextStatus === 'published'
     try {
       await setRoundStatus(roundId, nextStatus)
       toast(`Round is now ${nextStatus}`, 'success')
       await refetch()
       await queryClient.invalidateQueries({ queryKey: ['rounds'] })
+
+      if (isPublishing) {
+        const target = rounds.find((r) => r.id === roundId)
+        if (target && confirm(`Round hi Publish a ni ta! Users zawng zawng hnenah Push Notification thawn nghal i duh em?`)) {
+          await handleSendPush(target)
+        }
+      }
     } catch (err: any) {
       toast(err.message || 'Failed to update round status', 'error')
     } finally {
@@ -339,6 +371,17 @@ export function AdminRoundsPage() {
 
                     {round.status === 'published' ? (
                       <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          icon={Bell}
+                          className="border-violet-500/30 text-violet-300 hover:bg-violet-500/10"
+                          loading={pushingId === round.id}
+                          onClick={() => handleSendPush(round)}
+                          title="Send Push Notification to all users"
+                        >
+                          Push Noti
+                        </Button>
                         <Button
                           variant="secondary"
                           size="sm"
