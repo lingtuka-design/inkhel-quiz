@@ -23,6 +23,7 @@ import { useQuery } from '@tanstack/react-query'
 import { CategoryBadge, RoundCard, ShareButtons } from '../components/rounds'
 import { AnswerOption } from '../components/quiz'
 import { Badge, Button, Card, SectionHeading, Spinner, toast } from '../components/ui'
+import { AdSenseUnit } from '../components/AdSenseUnit'
 import { getAttemptReview } from '../services/attemptService'
 import { getRound, listAllPlayableRounds, countParticipants, countQuestions } from '../services/roundService'
 import { getMonth, listAllMonths } from '../services/monthService'
@@ -247,7 +248,9 @@ export function ResultPage() {
         </p>
       </div>
 
-      <Card className="animate-fade-up [animation-delay:100ms] relative mt-8 overflow-hidden p-6 sm:p-10">
+      <AdSenseUnit className="mt-6" />
+
+      <Card className="animate-fade-up [animation-delay:100ms] relative mt-6 overflow-hidden p-6 sm:p-10">
         <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-96 -translate-x-1/2 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="relative flex flex-col items-center gap-8 lg:flex-row lg:justify-between">
           <div className="flex items-center gap-6">
