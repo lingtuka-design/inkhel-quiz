@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { RoundBanner } from '../components/rounds'
 import { QuestionCard, QuizTimer, useCountdown } from '../components/quiz'
 import { Button, Card, ErrorNote, Input, Modal, toast } from '../components/ui'
-import { AdSenseUnit } from '../components/AdSenseUnit'
 import { getRound } from '../services/roundService'
 import { getQuizQuestions } from '../services/questionService'
 import { getParticipant, saveParticipant, loginWithGoogle } from '../services/authService'
@@ -329,11 +328,7 @@ export function QuizPage() {
             </p>
           </div>
 
-          <div className="mt-6">
-            <AdSenseUnit className="w-full" />
-          </div>
-
-          <div className="mt-6">
+          <div className="mt-8">
             <a
               href={`/rounds/${roundId}/result?attemptId=${targetAttemptId}`}
               className="group flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-fuchsia-600 px-6 py-4.5 font-display text-base sm:text-lg font-bold text-white shadow-xl shadow-violet-600/35 transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-violet-600/55 active:scale-[0.98]"
