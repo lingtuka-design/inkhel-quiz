@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { Calendar, CheckCircle2, Clock, Copy, Link2, Lock, MessageCircle, Play, Share2, Twitter, Users, Zap } from 'lucide-react'
 import type { Month, Round } from '../types'
 import { getBannerPreset, resolveIcon } from '../lib/banners'
@@ -98,12 +98,19 @@ export function RoundCard({
   userAttempt?: { id?: string; finalScore?: number; status?: string } | null
   allowVignetteOnPlay?: boolean
 }) {
+  const navigate = useNavigate()
   const isPlayed = userAttempt?.status === 'completed' || userAttempt?.status === 'expired'
   const badge = roundStatusBadge(round)
   const availability = roundAvailability(round)
   const href = isPlayed ? `/rounds/${round.id}/result?attemptId=${userAttempt.id}` : `/rounds/${round.id}`
   const players = participantCount ?? (round as any).participantCount ?? 0
   const qCount = questionCount ?? (round as any).questionCount ?? countQuestionsOf(round.id) ?? 10
+
+  const handleSafeNavigate = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    navigate({ to: href })
+  }
 
   return (
     <Card
@@ -140,18 +147,34 @@ export function RoundCard({
         </div>
 
         {availability.open && (
-          <Link
-            to={href}
-            className="focus-ring absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100"
-            aria-label={isPlayed ? `View results for ${round.title}` : `Play ${round.title}`}
-          >
-            <span className={cn(
-              'flex h-14 w-14 items-center justify-center rounded-full shadow-2xl transition transform group-hover:scale-110',
-              isPlayed ? 'bg-white/80 text-ink-900' : 'bg-gradient-to-tr from-violet-600 to-indigo-500 text-white shadow-violet-500/50'
-            )}>
-              <Play className="h-6 w-6 translate-x-0.5 fill-current" />
-            </span>
-          </Link>
+          allowVignetteOnPlay ? (
+            <a
+              href={href}
+              className="focus-ring absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100"
+              aria-label={isPlayed ? `View results for ${round.title}` : `Play ${round.title}`}
+            >
+              <span className={cn(
+                'flex h-14 w-14 items-center justify-center rounded-full shadow-2xl transition transform group-hover:scale-110',
+                isPlayed ? 'bg-white/80 text-ink-900' : 'bg-gradient-to-tr from-violet-600 to-indigo-500 text-white shadow-violet-500/50'
+              )}>
+                <Play className="h-6 w-6 translate-x-0.5 fill-current" />
+              </span>
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSafeNavigate}
+              className="focus-ring absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100 cursor-pointer w-full h-full border-none p-0"
+              aria-label={isPlayed ? `View results for ${round.title}` : `Play ${round.title}`}
+            >
+              <span className={cn(
+                'flex h-14 w-14 items-center justify-center rounded-full shadow-2xl transition transform group-hover:scale-110',
+                isPlayed ? 'bg-white/80 text-ink-900' : 'bg-gradient-to-tr from-violet-600 to-indigo-500 text-white shadow-violet-500/50'
+              )}>
+                <Play className="h-6 w-6 translate-x-0.5 fill-current" />
+              </span>
+            </button>
+          )
         )}
 
         {!availability.open && round.status === 'published' && (
@@ -189,11 +212,19 @@ export function RoundCard({
         </div>
 
         {isPlayed ? (
-          <a href={href} className="mt-4 block">
-            <Button className="w-full text-xs font-semibold" size="sm" variant="outline">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> View Result & Score ({userAttempt.finalScore ?? 0} pts)
-            </Button>
-          </a>
+          allowVignetteOnPlay ? (
+            <a href={href} className="mt-4 block">
+              <Button className="w-full text-xs font-semibold" size="sm" variant="outline">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> View Result & Score ({userAttempt.finalScore ?? 0} pts)
+              </Button>
+            </a>
+          ) : (
+            <div className="mt-4 block">
+              <Button onClick={handleSafeNavigate} className="w-full text-xs font-semibold" size="sm" variant="outline">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> View Result & Score ({userAttempt.finalScore ?? 0} pts)
+              </Button>
+            </div>
+          )
         ) : allowVignetteOnPlay ? (
           <a href={href} className="mt-4 block">
             <Button
@@ -205,15 +236,16 @@ export function RoundCard({
             </Button>
           </a>
         ) : (
-          <Link to={href} className="mt-4 block" data-google-vignette="false">
+          <div className="mt-4 block">
             <Button
+              onClick={handleSafeNavigate}
               className="w-full text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md shadow-violet-950/50"
               size="sm"
               variant="primary"
             >
               <Play className="h-3.5 w-3.5 fill-current" /> Play Round Now
             </Button>
-          </Link>
+          </div>
         )}
       </div>
     </Card>

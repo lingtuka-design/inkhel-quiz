@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowRight, Calendar, CalendarClock, Clock, Flame, Play, Sparkles, Trophy, Users, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { RoundBanner, RoundCard } from '../components/rounds'
@@ -21,6 +21,7 @@ import { formatDate, cn } from '../lib/utils'
 import { useEffect, useMemo, useState } from 'react'
 
 export function HomePage() {
+  const navigate = useNavigate()
   const participant = useCurrentUser()
 
   useEffect(() => {
@@ -347,11 +348,15 @@ export function HomePage() {
                           closes {formatDate(currentMonth?.endDate ?? '')}
                         </span>
                       </div>
-                      <Link to={`/rounds/${featured.round.id}`} className="mt-6 block" data-google-vignette="false">
-                        <Button className="w-full font-bold" icon={Play}>
+                      <div className="mt-6">
+                        <Button
+                          className="w-full font-bold"
+                          icon={Play}
+                          onClick={() => navigate({ to: `/rounds/${featured.round.id}` })}
+                        >
                           Start Playing
                         </Button>
-                      </Link>
+                      </div>
                     </div>
                   </Card>
                 </div>
