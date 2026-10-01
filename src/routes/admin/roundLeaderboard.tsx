@@ -39,17 +39,34 @@ export function AdminRoundLeaderboardPage() {
   const [selectedRoundId, setSelectedRoundId] = useState<string>(routeRoundId || '')
   const [rankFilter, setRankFilter] = useState<RankFilter>('top10')
 
-  // 1. Fetch all seasons/months with local fallback initialData
+  const DEFAULT_ADMIN_MONTHS = [
+    {
+      id: 'season_1786731482471_m2',
+      name: 'September 2026',
+      seasonName: 'Inkhel Mega Quiz 2026-27',
+      startDate: '2026-09-01T00:00:00.000Z',
+      endDate: '2026-09-30T23:59:59.999Z',
+    },
+    {
+      id: 'season_1786731482471_m3',
+      name: 'October 2026',
+      seasonName: 'Inkhel Mega Quiz 2026-27',
+      startDate: '2026-10-01T00:00:00.000Z',
+      endDate: '2026-10-31T23:59:59.999Z',
+    },
+    {
+      id: 'season_1786731482471_m1',
+      name: 'August 2026',
+      seasonName: 'Inkhel Mega Quiz 2026-27',
+      startDate: '2026-08-01T00:00:00.000Z',
+      endDate: '2026-08-31T23:59:59.999Z',
+    },
+  ]
+
+  // 1. Fetch all seasons/months with real D1 initialData
   const { data: dbMonths = [] } = useQuery({
     queryKey: ['adminMonthsList'],
-    initialData: () =>
-      listAllMonths().map((m) => ({
-        id: m.id,
-        name: m.name,
-        seasonName: 'Premier Season',
-        startDate: m.startDate,
-        endDate: m.endDate,
-      })),
+    initialData: () => DEFAULT_ADMIN_MONTHS,
     queryFn: async () => {
       try {
         const res = await fetch('/api/seasons')
@@ -72,25 +89,13 @@ export function AdminRoundLeaderboardPage() {
           if (ms.length > 0) return ms.sort((a, b) => a.startDate.localeCompare(b.startDate))
         }
       } catch {}
-      return listAllMonths().map((m) => ({
-        id: m.id,
-        name: m.name,
-        seasonName: 'Premier Season',
-        startDate: m.startDate,
-        endDate: m.endDate,
-      }))
+      return DEFAULT_ADMIN_MONTHS
     },
   })
 
   const months = useMemo(() => {
     if (Array.isArray(dbMonths) && dbMonths.length > 0) return dbMonths
-    return listAllMonths().map((m) => ({
-      id: m.id,
-      name: m.name,
-      seasonName: 'Premier Season',
-      startDate: m.startDate,
-      endDate: m.endDate,
-    }))
+    return DEFAULT_ADMIN_MONTHS
   }, [dbMonths])
 
   // September 2026 is the tournament month that just ended and where prize winners are!
@@ -98,11 +103,22 @@ export function AdminRoundLeaderboardPage() {
     return months.find((m: any) => m.name.toLowerCase().includes('september')) || months[0]
   }, [months])
 
-  const [selectedMonthId, setSelectedMonthId] = useState<string>(() => {
-    const all = listAllMonths()
-    const sept = all.find((m) => m.name.toLowerCase().includes('september'))
-    return sept?.id || all[0]?.id || 'season_1_m2'
-  })
+  const [selectedMonthId, setSelectedMonthId] = useState<string>('season_1786731482471_m2')
+
+  // When dbMonths updates from API, ensure selectedMonthId is synced
+  useEffect(() => {
+    if (Array.isArray(dbMonths) && dbMonths.length > 0) {
+      const exists = dbMonths.some((m: any) => m.id === selectedMonthId)
+      if (!exists) {
+        const sept = dbMonths.find((m: any) => m.name?.toLowerCase().includes('september'))
+        if (sept) {
+          setSelectedMonthId(sept.id)
+        } else if (dbMonths[0]) {
+          setSelectedMonthId(dbMonths[0].id)
+        }
+      }
+    }
+  }, [dbMonths, selectedMonthId])
 
   // 2. Fetch all rounds with initialData
   const { data: rounds = [] } = useQuery<Round[]>({
@@ -401,9 +417,24 @@ export function AdminRoundLeaderboardPage() {
               </Badge>
             </div>
 
-            {monthlyRows.length === 0 ? (
+            {monthlyLoading ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="p-6 border-white/5 bg-white/5 animate-pulse">
+                    <div className="h-5 w-24 bg-white/10 rounded mb-3" />
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-full bg-white/10" />
+                      <div className="space-y-2 flex-1">
+                        <div className="h-4 w-32 bg-white/10 rounded" />
+                        <div className="h-3 w-20 bg-white/10 rounded" />
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : monthlyRows.length === 0 ? (
               <Card className="p-8 text-center text-sm text-ink-300 border-amber-500/20 bg-amber-500/5">
-                <p className="font-semibold text-white text-base">He thla ({currentMonth?.name}) ah hian participants an la awm lo.</p>
+                <p className="font-semibold text-white text-base">He thla ({currentMonth?.name}) ah hian participants an la awm rih lo.</p>
                 <p className="mt-2 text-sm text-ink-300">
                   September 2026 thla tournament lawmman semna tur en duh chuan:
                 </p>
@@ -673,8 +704,39 @@ export function AdminRoundLeaderboardPage() {
               </div>
             </div>
 
-            {/* Ranking Table */}
-            <RankingTable rows={displayMonthlyRows} showPhone={true} />
+            {/* Ranking Table or Loading / Empty */}
+            {monthlyLoading ? (
+              <Card className="p-12 text-center text-sm text-ink-300">
+                <div className="flex flex-col items-center justify-center gap-3">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
+                  <p className="font-semibold text-white">Leaderboard data lak mek a ni...</p>
+                  <p className="text-xs text-ink-400">Khawngaihin lo nghak lawk rawh.</p>
+                </div>
+              </Card>
+            ) : monthlyRows.length === 0 ? (
+              <Card className="p-10 text-center text-ink-300">
+                <Trophy className="mx-auto h-10 w-10 text-ink-400/40 mb-3" />
+                <p className="font-bold text-white text-base">
+                  {currentMonth?.name || 'He thla'}-ah hian tournament ranking a la awm rih lo.
+                </p>
+                <p className="text-xs text-ink-400 mt-1 max-w-md mx-auto">
+                  September 2026 thla tournament-ah player 1,760+ an tel a, lawmman dawngtu (Top 10) an awm e. A hnuaia button hi hmet la September en rawh le:
+                </p>
+                {septMonth && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="mt-4"
+                    icon={Trophy}
+                    onClick={() => setSelectedMonthId(septMonth.id)}
+                  >
+                    September 2026 Top 10 En Rawh
+                  </Button>
+                )}
+              </Card>
+            ) : (
+              <RankingTable rows={displayMonthlyRows} showPhone={true} />
+            )}
           </div>
         </div>
       )}

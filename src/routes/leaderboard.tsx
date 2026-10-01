@@ -59,8 +59,11 @@ export function LeaderboardPage() {
   })
 
   const defaultMonthId = useMemo(() => {
-    const now = Date.now()
     if (Array.isArray(months) && months.length > 0) {
+      // Prioritize September 2026 (completed tournament with prize winners)
+      const sept = months.find((m: any) => m.name.toLowerCase().includes('september'))
+      if (sept) return sept.id
+      const now = Date.now()
       const openMonth = months.find((m: any) => {
         const start = new Date(m.startDate).getTime()
         const end = new Date(m.endDate).getTime()

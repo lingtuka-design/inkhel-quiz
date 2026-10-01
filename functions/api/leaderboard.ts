@@ -55,7 +55,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     }
 
     if (type === 'month') {
-      if (!monthId) return err('monthId is required')
+      let resolvedMonthId = monthId || ''
+
+      // If monthId is mock or fuzzy name like 'season_1_m2' or contains 'sept'
+      if (!resolvedMonthId || resolvedMonthId === 'season_1_m2' || resolvedMonthId.toLowerCase().includes('sept')) {
+        const foundSept = await env.DB.prepare(
+          "SELECT id FROM months WHERE name LIKE '%September%' OR id LIKE '%m2' ORDER BY created_at DESC LIMIT 1"
+        ).first<{ id: string }>()
+        if (foundSept?.id) {
+          resolvedMonthId = foundSept.id
+        }
+      }
 
       const { results: rows } = await env.DB.prepare(
         `SELECT 
@@ -69,11 +79,21 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
          FROM attempts a
          JOIN rounds r ON a.round_id = r.id
          JOIN participants p ON a.participant_id = p.id
-         WHERE (r.month_id = ? OR r.month_id IN (SELECT id FROM months WHERE name = ? OR id = ?)) AND a.status = 'completed' AND a.is_test_attempt = 0
+         WHERE (
+           r.month_id = ? 
+           OR r.month_id IN (
+             SELECT id FROM months 
+             WHERE id = ? 
+                OR name = ? 
+                OR LOWER(name) = LOWER(?)
+                OR (? = 'season_1_m2' AND name LIKE '%September%')
+                OR (? LIKE '%m2' AND month_number = 2)
+           )
+         ) AND a.status = 'completed' AND a.is_test_attempt = 0
          GROUP BY p.id
          ORDER BY total_points DESC, total_correct DESC, avg_time ASC`
       )
-        .bind(monthId, monthId, monthId)
+        .bind(resolvedMonthId, resolvedMonthId, resolvedMonthId, resolvedMonthId, resolvedMonthId, resolvedMonthId)
         .all<any>()
 
       const ranked = rows.map((r, i) => ({
