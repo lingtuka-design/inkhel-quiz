@@ -69,11 +69,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
          FROM attempts a
          JOIN rounds r ON a.round_id = r.id
          JOIN participants p ON a.participant_id = p.id
-         WHERE r.month_id = ? AND a.status = 'completed' AND a.is_test_attempt = 0
+         WHERE (r.month_id = ? OR r.month_id IN (SELECT id FROM months WHERE name = ? OR id = ?)) AND a.status = 'completed' AND a.is_test_attempt = 0
          GROUP BY p.id
          ORDER BY total_points DESC, total_correct DESC, avg_time ASC`
       )
-        .bind(monthId)
+        .bind(monthId, monthId, monthId)
         .all<any>()
 
       const ranked = rows.map((r, i) => ({

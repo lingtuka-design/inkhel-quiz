@@ -102,7 +102,7 @@ export function LeaderboardTable({
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-ink-300">
               <th className="px-4 py-3 font-semibold">Rank</th>
               <th className="px-4 py-3 font-semibold">Player</th>
-              {showContact && <th className="px-4 py-3 font-semibold">Phone / Email</th>}
+              {showContact && <th className="px-4 py-3 font-semibold">Phone Number / Contact</th>}
               <th className="px-4 py-3 text-center font-semibold">Dik Zat</th>
               {showAdminDetails && <th className="px-4 py-3 text-center font-semibold">Round Khelh</th>}
               <th className="px-4 py-3 text-center font-semibold">Hun Hman</th>
@@ -235,7 +235,7 @@ export function RankingTable({ rows, showPhone = false }: { rows: RankingRow[]; 
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-ink-300">
               <th className="px-4 py-3 font-semibold">Rank</th>
               <th className="px-4 py-3 font-semibold">Player</th>
-              {showPhone && <th className="px-4 py-3 font-semibold">Phone / Email</th>}
+              {showPhone && <th className="px-4 py-3 font-semibold">Phone Number / Contact</th>}
               <th className="px-4 py-3 text-center font-semibold">Round Khelh</th>
               <th className="px-4 py-3 text-center font-semibold">Dik Zat</th>
               <th className="px-4 py-3 text-center font-semibold">Avg Hun Hman</th>
