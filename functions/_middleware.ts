@@ -210,9 +210,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       let html = await response.text()
 
       const metaTags = `
-    <!-- Dynamic Open Graph / WhatsApp / Facebook Meta Tags -->
+    <!-- Dynamic Open Graph / WhatsApp / Facebook / Twitter Meta Tags -->
     <title>${escapeHtml(title)}</title>
+    <meta name="title" content="${escapeHtml(title)}" />
     <meta name="description" content="${escapeHtml(desc)}" />
+    <meta itemprop="name" content="${escapeHtml(title)}" />
+    <meta itemprop="description" content="${escapeHtml(desc)}" />
+    <meta itemprop="image" content="${escapeHtml(image)}" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Inkhel Quiz" />
     <meta property="og:title" content="${escapeHtml(title)}" />
@@ -229,12 +233,12 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     <meta name="twitter:image" content="${escapeHtml(image)}" />
       `
 
-      // Remove the existing title/description AND any static og/twitter tags so
-      // the round-specific values above are the only ones crawlers see.
+      // Remove existing tags
       html = html.replace(/<title>.*?<\/title>/i, '')
       html = html.replace(/<meta\s+name=["']description["'].*?>/i, '')
-      html = html.replace(/<meta\s+(?:property|name)=["'](?:og|twitter):[^"']*["'][^>]*>/gi, '')
-      html = html.replace(/<head[^>]*>/i, (match) => `${match}\n${metaTags}`)
+      html = html.replace(/<meta\s+(?:property|name|itemprop)=["'](?:og|twitter|name|description|image):?[^"']*["'][^>]*>/gi, '')
+      html = html.replace(/<html([^>]*)>/i, '<html$1 prefix="og: http://ogp.me/ns#">')
+      html = html.replace(/<meta\s+charset=["'][^"']*["']\s*\/?>/i, (m) => `${m}\n${metaTags}`)
 
       return new Response(html, {
         headers: response.headers,
