@@ -421,16 +421,22 @@ export function AdminLayout() {
             <Link to="/admin" className="focus-ring rounded-xl">
               <Logo size="sm" />
             </Link>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Link
+                to="/admin/leaderboard"
+                className="rounded-lg border border-amber-500/40 bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-300 hover:bg-amber-500/25 flex items-center gap-1 shadow-sm"
+              >
+                <Trophy className="h-3.5 w-3.5 text-amber-400" /> Leaderboard
+              </Link>
               <Link
                 to="/"
-                className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-ink-300 hover:text-white"
+                className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs font-medium text-ink-300 hover:text-white"
               >
-                View Site
+                Site
               </Link>
               <button
                 onClick={handleLogout}
-                className="rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300"
+                className="rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-300"
               >
                 Logout
               </button>

@@ -21,7 +21,8 @@ import {
 import { BackLink } from '../../components/layout'
 import { LeaderboardTable, RankingTable, RankBadge } from '../../components/leaderboard'
 import { Avatar, Badge, Button, Card, toast } from '../../components/ui'
-import { countQuestions } from '../../services/roundService'
+import { countQuestions, listRounds } from '../../services/roundService'
+import { listAllMonths } from '../../services/monthService'
 import { getMonthRanking, getRoundLeaderboard } from '../../services/leaderboardService'
 import { setPageTitle } from '../../services/shareService'
 import { formatTime, formatDate } from '../../lib/utils'
@@ -36,58 +37,86 @@ export function AdminRoundLeaderboardPage() {
   // Active Tab: default to 'monthly' unless routeRoundId is explicitly given
   const [activeTab, setActiveTab] = useState<LeaderboardTab>(routeRoundId ? 'round' : 'monthly')
   const [selectedRoundId, setSelectedRoundId] = useState<string>(routeRoundId || '')
-  const [selectedMonthId, setSelectedMonthId] = useState<string>('')
   const [rankFilter, setRankFilter] = useState<RankFilter>('top10')
 
-  // 1. Fetch all seasons/months
-  const { data: seasons = [] } = useQuery({
-    queryKey: ['adminSeasons'],
+  // 1. Fetch all seasons/months with local fallback initialData
+  const { data: dbMonths = [] } = useQuery({
+    queryKey: ['adminMonthsList'],
+    initialData: () =>
+      listAllMonths().map((m) => ({
+        id: m.id,
+        name: m.name,
+        seasonName: 'Premier Season',
+        startDate: m.startDate,
+        endDate: m.endDate,
+      })),
     queryFn: async () => {
-      const res = await fetch('/api/seasons')
-      if (!res.ok) return []
-      return res.json()
+      try {
+        const res = await fetch('/api/seasons')
+        if (res.ok) {
+          const data = await res.json()
+          const ms: any[] = []
+          for (const s of data) {
+            if (Array.isArray(s.months)) {
+              for (const m of s.months) {
+                ms.push({
+                  id: m.id,
+                  name: m.name || m.slug,
+                  seasonName: s.name,
+                  startDate: m.startDate,
+                  endDate: m.endDate,
+                })
+              }
+            }
+          }
+          if (ms.length > 0) return ms.sort((a, b) => a.startDate.localeCompare(b.startDate))
+        }
+      } catch {}
+      return listAllMonths().map((m) => ({
+        id: m.id,
+        name: m.name,
+        seasonName: 'Premier Season',
+        startDate: m.startDate,
+        endDate: m.endDate,
+      }))
     },
   })
 
-  // Build months list
   const months = useMemo(() => {
-    const list: { id: string; name: string; seasonName: string; startDate: string; endDate: string }[] = []
-    for (const s of seasons as any[]) {
-      if (Array.isArray(s.months)) {
-        for (const m of s.months) {
-          list.push({
-            id: m.id,
-            name: m.name || m.slug,
-            seasonName: s.name,
-            startDate: m.startDate,
-            endDate: m.endDate,
-          })
-        }
-      }
-    }
-    return list
-  }, [seasons])
+    if (Array.isArray(dbMonths) && dbMonths.length > 0) return dbMonths
+    return listAllMonths().map((m) => ({
+      id: m.id,
+      name: m.name,
+      seasonName: 'Premier Season',
+      startDate: m.startDate,
+      endDate: m.endDate,
+    }))
+  }, [dbMonths])
 
-  // Default month selection to the active or latest month
-  useEffect(() => {
-    if (!selectedMonthId && months.length > 0) {
-      // Pick current or latest month
-      const now = new Date().toISOString()
-      const currentMonth =
-        months.find((m) => m.startDate <= now && m.endDate >= now) || months[months.length - 1] || months[0]
-      if (currentMonth) {
-        setSelectedMonthId(currentMonth.id)
-      }
-    }
-  }, [months, selectedMonthId])
+  // September 2026 is the tournament month that just ended and where prize winners are!
+  const septMonth = useMemo(() => {
+    return months.find((m: any) => m.name.toLowerCase().includes('september')) || months[0]
+  }, [months])
 
-  // 2. Fetch all rounds
+  const [selectedMonthId, setSelectedMonthId] = useState<string>(() => {
+    const all = listAllMonths()
+    const sept = all.find((m) => m.name.toLowerCase().includes('september'))
+    return sept?.id || all[0]?.id || 'season_1_m2'
+  })
+
+  // 2. Fetch all rounds with initialData
   const { data: rounds = [] } = useQuery<Round[]>({
     queryKey: ['adminRounds'],
+    initialData: () => listRounds(),
     queryFn: async () => {
-      const res = await fetch('/api/rounds')
-      if (!res.ok) throw new Error('Failed to fetch rounds')
-      return res.json()
+      try {
+        const res = await fetch('/api/rounds')
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data) && data.length > 0) return data
+        }
+      } catch {}
+      return listRounds()
     },
   })
 
@@ -316,19 +345,31 @@ export function AdminRoundLeaderboardPage() {
                 <div className="mt-2 flex flex-wrap gap-2">
                   {months.map((m) => {
                     const active = m.id === selectedMonthId
+                    const isSept = m.name.toLowerCase().includes('september')
+                    const isOct = m.name.toLowerCase().includes('october')
                     return (
                       <button
                         key={m.id}
                         type="button"
                         onClick={() => setSelectedMonthId(m.id)}
-                        className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all flex items-center gap-2 ${
+                        className={`rounded-xl px-4 py-2 text-sm font-bold transition-all flex items-center gap-2 ${
                           active
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-950/30'
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-950/30 ring-2 ring-amber-400'
                             : 'bg-white/5 text-ink-300 hover:bg-white/10 hover:text-white border border-white/5'
                         }`}
                       >
                         <Calendar className="h-4 w-4" />
                         <span>{m.name}</span>
+                        {isSept && (
+                          <span className="rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold">
+                            🏆 Lawmman Semna
+                          </span>
+                        )}
+                        {isOct && (
+                          <span className="rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 text-[10px] font-semibold">
+                            ⚡ Live
+                          </span>
+                        )}
                       </button>
                     )
                   })}
@@ -361,8 +402,21 @@ export function AdminRoundLeaderboardPage() {
             </div>
 
             {monthlyRows.length === 0 ? (
-              <Card className="p-8 text-center text-sm text-ink-400">
-                He thla ({currentMonth?.name}) ah hian participant an la awm lo.
+              <Card className="p-8 text-center text-sm text-ink-300 border-amber-500/20 bg-amber-500/5">
+                <p className="font-semibold text-white text-base">He thla ({currentMonth?.name}) ah hian participants an la awm lo.</p>
+                <p className="mt-2 text-sm text-ink-300">
+                  September 2026 thla tournament lawmman semna tur en duh chuan:
+                </p>
+                {septMonth && (
+                  <Button
+                    size="sm"
+                    icon={Trophy}
+                    onClick={() => setSelectedMonthId(septMonth.id)}
+                    className="mt-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold"
+                  >
+                    September 2026 Leaderboard En Rawh
+                  </Button>
+                )}
               </Card>
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

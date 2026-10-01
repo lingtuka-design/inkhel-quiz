@@ -134,6 +134,15 @@ export function AdminDashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link to="/admin/leaderboard">
+            <Button
+              size="sm"
+              icon={Trophy}
+              className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold shadow-md hover:brightness-110"
+            >
+              Monthly Leaderboard
+            </Button>
+          </Link>
           <Link to="/admin/seasons/new">
             <Button variant="secondary" size="sm" icon={Calendar}>
               New Season
@@ -146,6 +155,33 @@ export function AdminDashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Monthly Leaderboard & Prize Distribution Quick Banner */}
+      <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-transparent p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-md">
+              <Trophy className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-lg font-bold text-white">
+                  Monthly Tournament Leaderboard (Top 10)
+                </h2>
+                <Badge tone="amber">Lawmman Semna</Badge>
+              </div>
+              <p className="text-xs text-ink-300 mt-0.5">
+                September 2026 leh thla dang Top 10, participant contacts (WhatsApp & Email), points, leh prize distribution.
+              </p>
+            </div>
+          </div>
+          <Link to="/admin/leaderboard">
+            <Button size="sm" icon={Trophy} className="bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white font-semibold shadow-lg">
+              Leaderboard En Rawh
+            </Button>
+          </Link>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
