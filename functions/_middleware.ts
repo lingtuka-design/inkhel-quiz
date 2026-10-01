@@ -140,7 +140,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           ? rawBanner
           : rawBanner.startsWith('/')
           ? `${url.origin}${rawBanner}`
-          : `${url.origin}/api/og?pollId=${encodeURIComponent(pollId)}`
+          : `${url.origin}/og-banner.jpg`
         const pageUrl = `${url.origin}/polls/${pollId}`
 
         let html = await response.text()
@@ -155,7 +155,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     <meta property="og:description" content="${escapeHtml(desc)}" />
     <meta property="og:image" content="${escapeHtml(image)}" />
     <meta property="og:image:secure_url" content="${escapeHtml(image)}" />
-    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:type" content="${image.endsWith('.png') ? 'image/png' : 'image/jpeg'}" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:url" content="${escapeHtml(pageUrl)}" />
@@ -168,7 +168,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         html = html.replace(/<title>.*?<\/title>/i, '')
         html = html.replace(/<meta\s+name=["']description["'].*?>/i, '')
         html = html.replace(/<meta\s+(?:property|name)=["'](?:og|twitter):[^"']*["'][^>]*>/gi, '')
-        html = html.replace('</head>', `${metaTags}\n  </head>`)
+        html = html.replace(/<head[^>]*>/i, (match) => `${match}\n${metaTags}`)
 
         return new Response(html, {
           headers: response.headers,
@@ -195,17 +195,16 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     if (round) {
       const title = `${round.title} — Inkhel Quiz`
-      const desc = round.description || 'Beat the clock, answer fast, and climb the season leaderboard on Inkhel!'
+      const rawDesc = round.description || 'Beat the clock, answer fast, and climb the season leaderboard on Inkhel!'
+      const desc = rawDesc.length > 280 ? rawDesc.slice(0, 277) + '...' : rawDesc
 
-      // Social platforms require an ABSOLUTE og:image URL. Rounds may store a
-      // relative banner path (R2) — resolve it against the origin. When there
-      // is no banner, generate a branded card on the fly.
+      // Social platforms require an ABSOLUTE og:image URL with <300KB size.
       const rawBanner = round.banner_url || ''
       const image = rawBanner.startsWith('http')
         ? rawBanner
         : rawBanner.startsWith('/')
         ? `${url.origin}${rawBanner}`
-        : `${url.origin}/api/og?roundId=${encodeURIComponent(roundId)}`
+        : `${url.origin}/og-banner.jpg`
       const pageUrl = `${url.origin}/rounds/${roundId}`
 
       let html = await response.text()
@@ -235,7 +234,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       html = html.replace(/<title>.*?<\/title>/i, '')
       html = html.replace(/<meta\s+name=["']description["'].*?>/i, '')
       html = html.replace(/<meta\s+(?:property|name)=["'](?:og|twitter):[^"']*["'][^>]*>/gi, '')
-      html = html.replace('</head>', `${metaTags}\n  </head>`)
+      html = html.replace(/<head[^>]*>/i, (match) => `${match}\n${metaTags}`)
 
       return new Response(html, {
         headers: response.headers,
