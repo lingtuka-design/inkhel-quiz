@@ -1,4 +1,4 @@
-import { Crown, Medal, MessageCircle, Phone, Timer, Trophy } from 'lucide-react'
+import { Crown, Mail, Medal, MessageCircle, Phone, Timer, Trophy } from 'lucide-react'
 import type { LeaderboardRow, RankingRow } from '../types'
 import { Avatar, Card } from './ui'
 import { formatTime } from '../lib/utils'
@@ -76,7 +76,17 @@ export function Podium({ rows }: { rows: LeaderboardRow[] }) {
   )
 }
 
-export function LeaderboardTable({ rows, showPhone = false }: { rows: LeaderboardRow[]; showPhone?: boolean }) {
+export function LeaderboardTable({
+  rows,
+  showPhone = false,
+  showAdminDetails = false,
+}: {
+  rows: LeaderboardRow[]
+  showPhone?: boolean
+  showAdminDetails?: boolean
+}) {
+  const showContact = showPhone || showAdminDetails
+
   if (rows.length === 0) {
     return (
       <Card className="p-10 text-center text-sm text-ink-300">
@@ -92,15 +102,17 @@ export function LeaderboardTable({ rows, showPhone = false }: { rows: Leaderboar
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-ink-300">
               <th className="px-4 py-3 font-semibold">Rank</th>
               <th className="px-4 py-3 font-semibold">Player</th>
-              {showPhone && <th className="px-4 py-3 font-semibold">Phone / WhatsApp</th>}
-              <th className="px-4 py-3 text-center font-semibold">Correct</th>
-              <th className="px-4 py-3 text-center font-semibold">Time</th>
-              <th className="px-4 py-3 text-right font-semibold">Score</th>
+              {showContact && <th className="px-4 py-3 font-semibold">Phone / Email</th>}
+              <th className="px-4 py-3 text-center font-semibold">Dik Zat</th>
+              {showAdminDetails && <th className="px-4 py-3 text-center font-semibold">Round Khelh</th>}
+              <th className="px-4 py-3 text-center font-semibold">Hun Hman</th>
+              <th className="px-4 py-3 text-right font-semibold">Points</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => {
               const phone = row.participant.phoneNumber
+              const email = row.participant.email
               const cleanPhone = phone ? phone.replace(/\D/g, '') : ''
               const waUrl = cleanPhone
                 ? `https://wa.me/${cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone}?text=Hi%20${encodeURIComponent(row.participant.displayName)},%20Inkhel%20Quiz%20atanga%20rawn%20be%20che%20kan%20ni%20e.`
@@ -129,7 +141,7 @@ export function LeaderboardTable({ rows, showPhone = false }: { rows: Leaderboar
                         size="sm"
                       />
                       <span
-                        className="truncate font-semibold text-white max-w-[130px] sm:max-w-[240px] md:max-w-none"
+                        className="truncate font-semibold text-white max-w-[130px] sm:max-w-[220px] md:max-w-none"
                         title={row.participant.displayName}
                       >
                         {row.participant.displayName}
@@ -141,36 +153,61 @@ export function LeaderboardTable({ rows, showPhone = false }: { rows: Leaderboar
                       )}
                     </div>
                   </td>
-                  {showPhone && (
+                  {showContact && (
                     <td className="px-4 py-3">
-                      {phone && waUrl ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-xs font-semibold text-emerald-400">{phone}</span>
-                          <a
-                            href={waUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-lg bg-emerald-500/20 p-1 text-emerald-400 hover:bg-emerald-500/30 hover:text-white"
-                            title="Chat on WhatsApp"
-                          >
-                            <MessageCircle className="h-3.5 w-3.5" />
-                          </a>
-                        </div>
-                      ) : (
-                        <span className="text-xs italic text-ink-300/50">—</span>
-                      )}
+                      <div className="space-y-1">
+                        {phone && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs font-semibold text-emerald-400">{phone}</span>
+                            {waUrl && (
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-lg bg-emerald-500/20 p-1 text-emerald-400 hover:bg-emerald-500/30 hover:text-white"
+                                title="Chat on WhatsApp"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        {email && (
+                          <div className="flex items-center gap-1.5">
+                            <Mail className="h-3 w-3 text-blue-400 shrink-0" />
+                            <a
+                              href={`mailto:${email}`}
+                              className="text-xs text-ink-300 hover:text-white hover:underline truncate max-w-[160px] sm:max-w-[200px]"
+                              title={email}
+                            >
+                              {email}
+                            </a>
+                          </div>
+                        )}
+                        {!phone && !email && (
+                          <span className="text-xs italic text-ink-300/50">—</span>
+                        )}
+                      </div>
                     </td>
                   )}
-                  <td className="px-4 py-3 text-center text-ink-200">
-                    {row.correctAnswers}/{row.totalQuestions}
+                  <td className="px-4 py-3 text-center">
+                    <span className="font-semibold text-emerald-400">{row.correctAnswers}</span>
+                    <span className="text-xs text-ink-400">/{row.totalQuestions}</span>
                   </td>
+                  {showAdminDetails && (
+                    <td className="px-4 py-3 text-center">
+                      <span className="rounded-full bg-violet-500/15 border border-violet-500/20 px-2.5 py-0.5 text-xs font-semibold text-violet-300">
+                        {row.roundsPlayed ?? 1} {row.roundsPlayed === 1 ? 'round' : 'rounds'}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-center">
                     <span className="inline-flex items-center gap-1 text-ink-200">
-                      <Timer className="h-3.5 w-3.5" /> {formatTime(row.timeTakenSeconds)}
+                      <Timer className="h-3.5 w-3.5 text-ink-400" /> {formatTime(row.timeTakenSeconds)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <span className="font-display text-base font-bold text-white">{row.score}</span>
+                    <span className="font-display text-base font-bold text-gradient">{row.score}</span>
                   </td>
                 </tr>
               )
@@ -247,22 +284,39 @@ export function RankingTable({ rows, showPhone = false }: { rows: RankingRow[]; 
                   </td>
                   {showPhone && (
                     <td className="px-4 py-3">
-                      {phone && waUrl ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-xs font-semibold text-emerald-400">{phone}</span>
-                          <a
-                            href={waUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-lg bg-emerald-500/20 p-1 text-emerald-400 hover:bg-emerald-500/30 hover:text-white"
-                            title="Chat on WhatsApp"
-                          >
-                            <MessageCircle className="h-3.5 w-3.5" />
-                          </a>
-                        </div>
-                      ) : (
-                        <span className="text-xs italic text-ink-300/50">—</span>
-                      )}
+                      <div className="space-y-1">
+                        {phone && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs font-semibold text-emerald-400">{phone}</span>
+                            {waUrl && (
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-lg bg-emerald-500/20 p-1 text-emerald-400 hover:bg-emerald-500/30 hover:text-white"
+                                title="Chat on WhatsApp"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        {row.participant.email && (
+                          <div className="flex items-center gap-1.5">
+                            <Mail className="h-3 w-3 text-blue-400 shrink-0" />
+                            <a
+                              href={`mailto:${row.participant.email}`}
+                              className="text-xs text-ink-300 hover:text-white hover:underline truncate max-w-[160px] sm:max-w-[200px]"
+                              title={row.participant.email}
+                            >
+                              {row.participant.email}
+                            </a>
+                          </div>
+                        )}
+                        {!phone && !row.participant.email && (
+                          <span className="text-xs italic text-ink-300/50">—</span>
+                        )}
+                      </div>
                     </td>
                   )}
                   <td className="px-4 py-3 text-center text-ink-200">{row.rounds}</td>

@@ -14,7 +14,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       if (!roundId) return err('roundId is required')
 
       const { results: attempts } = await env.DB.prepare(
-        `SELECT a.*, p.id as p_id, p.display_name as p_name, p.email as p_email, p.phone_number as p_phone, p.photo_url as p_photo, p.avatar_gradient as p_avatar, p.provider as p_provider
+        `SELECT a.*, p.id as p_id, p.display_name as p_name, p.email as p_email, p.phone_number as p_phone, p.photo_url as p_photo, p.avatar_gradient as p_avatar, p.provider as p_provider,
+           (SELECT COUNT(DISTINCT a2.round_id) FROM attempts a2 WHERE a2.participant_id = p.id AND a2.status = 'completed' AND a2.is_test_attempt = 0) as rounds_played
          FROM attempts a
          JOIN participants p ON a.participant_id = p.id
          WHERE a.round_id = ? AND a.status = 'completed' AND a.is_test_attempt = 0
@@ -47,6 +48,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         completedAt: a.completed_at,
         attemptId: a.id,
         isCurrentUser: false,
+        roundsPlayed: a.rounds_played || 1,
       }))
 
       return json(rows, 200, { 'Cache-Control': 'public, max-age=10, stale-while-revalidate=30' })

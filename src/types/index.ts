@@ -163,6 +163,7 @@ export interface LeaderboardRow {
   completedAt: string
   attemptId: string
   isCurrentUser: boolean
+  roundsPlayed?: number
 }
 
 export interface RankingRow {

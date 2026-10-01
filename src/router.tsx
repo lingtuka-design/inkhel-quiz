@@ -223,6 +223,12 @@ const adminRoundLeaderboardRoute = createRoute({
   component: AdminRoundLeaderboardPage,
 })
 
+const adminLeaderboardRoute = createRoute({
+  getParentRoute: () => adminLayout,
+  path: '/admin/leaderboard',
+  component: AdminRoundLeaderboardPage,
+})
+
 const adminRoundsRoute = createRoute({
   getParentRoute: () => adminLayout,
   path: '/admin/rounds',
@@ -281,6 +287,7 @@ const routeTree = rootRoute.addChildren([
     adminRoundFormRoute,
     adminRoundQuestionsRoute,
     adminRoundLeaderboardRoute,
+    adminLeaderboardRoute,
   ]),
   adminLoginRoute,
   notFoundRoute,

@@ -46,17 +46,26 @@ export async function getRoundLeaderboard(
     .filter((a) => a.roundId === roundId && (a.status === 'completed' || a.status === 'expired') && !a.isTestAttempt)
     .sort(compareAttempts)
   const totalQuestions = db.questions.filter((q) => q.roundId === roundId).length
-  return attempts.map((a, i) => ({
-    rank: i + 1,
-    participant: participantById(a.participantId),
-    correctAnswers: a.correctAnswers,
-    totalQuestions,
-    timeTakenSeconds: a.timeTakenSeconds ?? 0,
-    score: a.finalScore,
-    completedAt: a.completedAt ?? a.createdAt,
-    attemptId: a.id,
-    isCurrentUser: a.participantId === opts.currentParticipantId,
-  }))
+  return attempts.map((a, i) => {
+    const roundsPlayed = new Set(
+      db.attempts
+        .filter((x) => x.participantId === a.participantId && (x.status === 'completed' || x.status === 'expired') && !x.isTestAttempt)
+        .map((x) => x.roundId)
+    ).size
+
+    return {
+      rank: i + 1,
+      participant: participantById(a.participantId),
+      correctAnswers: a.correctAnswers,
+      totalQuestions,
+      timeTakenSeconds: a.timeTakenSeconds ?? 0,
+      score: a.finalScore,
+      completedAt: a.completedAt ?? a.createdAt,
+      attemptId: a.id,
+      isCurrentUser: a.participantId === opts.currentParticipantId,
+      roundsPlayed: roundsPlayed || 1,
+    }
+  })
 }
 
 /** Level 2 — monthly ranking (Live from Cloudflare D1) */
