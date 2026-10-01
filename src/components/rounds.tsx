@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { Calendar, CheckCircle2, Clock, Copy, Link2, Lock, MessageCircle, Play, Share2, Twitter, Users, Zap } from 'lucide-react'
+import { Calendar, CheckCircle2, Clock, Copy, Link2, Lock, MessageCircle, Play, Share2, Trophy, Twitter, Users, Zap } from 'lucide-react'
 import type { Month, Round } from '../types'
 import { getBannerPreset, resolveIcon } from '../lib/banners'
 import { formatTime, pluralize } from '../lib/utils'
@@ -178,11 +178,14 @@ export function RoundCard({
         )}
 
         {!availability.open && round.status === 'published' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-            <span className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white">
-              <Lock className="h-3.5 w-3.5" /> {badge.label}
+          <Link
+            to={`/rounds/${round.id}`}
+            className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[2px] hover:bg-black/60 transition-all group/lock"
+          >
+            <span className="flex items-center gap-2 rounded-full bg-black/75 border border-white/20 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-white shadow-xl group-hover/lock:scale-105 transition-transform">
+              <Trophy className="h-3.5 w-3.5 text-yellow-400" /> Leaderboard En Rawh
             </span>
-          </div>
+          </Link>
         )}
       </div>
 
@@ -211,40 +214,78 @@ export function RoundCard({
           </span>
         </div>
 
-        {isPlayed ? (
-          allowVignetteOnPlay ? (
-            <a href={href} className="mt-4 block">
-              <Button className="w-full text-xs font-semibold" size="sm" variant="outline">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> View Result & Score ({userAttempt.finalScore ?? 0} pts)
+        {!availability.open ? (
+          <div className="mt-4 flex flex-col gap-2">
+            <Link to={`/rounds/${round.id}`} className="block">
+              <Button
+                className="w-full text-xs font-bold bg-gradient-to-r from-violet-600 via-indigo-600 to-fuchsia-600 hover:brightness-110 text-white shadow-lg shadow-violet-950/50"
+                size="sm"
+                variant="primary"
+              >
+                <Trophy className="h-3.5 w-3.5 text-yellow-300" /> Round Leaderboard En Rawh 🏆
               </Button>
-            </a>
-          ) : (
-            <div className="mt-4 block">
-              <Button onClick={handleSafeNavigate} className="w-full text-xs font-semibold" size="sm" variant="outline">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> View Result & Score ({userAttempt.finalScore ?? 0} pts)
-              </Button>
-            </div>
-          )
-        ) : allowVignetteOnPlay ? (
-          <a href={href} className="mt-4 block">
-            <Button
-              className="w-full text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md shadow-violet-950/50"
-              size="sm"
-              variant="primary"
+            </Link>
+            {isPlayed && (
+              <Link
+                to={`/rounds/${round.id}/result?attemptId=${userAttempt.id}`}
+                className="block text-center text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+              >
+                I Result & Score En Nawn Rawh ({userAttempt.finalScore ?? 0} pts) →
+              </Link>
+            )}
+          </div>
+        ) : isPlayed ? (
+          <div className="mt-4 flex flex-col gap-2">
+            {allowVignetteOnPlay ? (
+              <a href={href} className="block">
+                <Button className="w-full text-xs font-semibold" size="sm" variant="outline">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> View Result & Score ({userAttempt.finalScore ?? 0} pts)
+                </Button>
+              </a>
+            ) : (
+              <div className="block">
+                <Button onClick={handleSafeNavigate} className="w-full text-xs font-semibold" size="sm" variant="outline">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> View Result & Score ({userAttempt.finalScore ?? 0} pts)
+                </Button>
+              </div>
+            )}
+            <Link
+              to={`/rounds/${round.id}`}
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-violet-400 hover:text-violet-300 transition-colors"
             >
-              <Play className="h-3.5 w-3.5 fill-current" /> Play Round Now
-            </Button>
-          </a>
+              <Trophy className="h-3.5 w-3.5 text-yellow-400" /> Full Round Leaderboard En Rawh →
+            </Link>
+          </div>
         ) : (
-          <div className="mt-4 block">
-            <Button
-              onClick={handleSafeNavigate}
-              className="w-full text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md shadow-violet-950/50"
-              size="sm"
-              variant="primary"
+          <div className="mt-4 flex flex-col gap-2">
+            {allowVignetteOnPlay ? (
+              <a href={href} className="block">
+                <Button
+                  className="w-full text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md shadow-violet-950/50"
+                  size="sm"
+                  variant="primary"
+                >
+                  <Play className="h-3.5 w-3.5 fill-current" /> Play Round Now
+                </Button>
+              </a>
+            ) : (
+              <div className="block">
+                <Button
+                  onClick={handleSafeNavigate}
+                  className="w-full text-xs font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-md shadow-violet-950/50"
+                  size="sm"
+                  variant="primary"
+                >
+                  <Play className="h-3.5 w-3.5 fill-current" /> Play Round Now
+                </Button>
+              </div>
+            )}
+            <Link
+              to={`/rounds/${round.id}`}
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-ink-300 hover:text-violet-300 transition-colors"
             >
-              <Play className="h-3.5 w-3.5 fill-current" /> Play Round Now
-            </Button>
+              <Trophy className="h-3.5 w-3.5 text-violet-400" /> Leaderboard En Rawh →
+            </Link>
           </div>
         )}
       </div>
