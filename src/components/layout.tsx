@@ -344,7 +344,7 @@ export function AdminLayout() {
 
   const items = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: '/admin/leaderboard', label: 'Round Leaderboards', icon: Trophy },
+    { to: '/admin/leaderboard', label: 'Monthly Leaderboard', icon: Trophy },
     { to: '/admin/polls', label: 'Opinion Polls', icon: Vote },
     { to: '/admin/users', label: 'Users', icon: Users },
     { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },

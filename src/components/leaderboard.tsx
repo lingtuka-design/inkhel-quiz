@@ -235,10 +235,10 @@ export function RankingTable({ rows, showPhone = false }: { rows: RankingRow[]; 
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-ink-300">
               <th className="px-4 py-3 font-semibold">Rank</th>
               <th className="px-4 py-3 font-semibold">Player</th>
-              {showPhone && <th className="px-4 py-3 font-semibold">Phone / WhatsApp</th>}
-              <th className="px-4 py-3 text-center font-semibold">Rounds</th>
-              <th className="px-4 py-3 text-center font-semibold">Correct</th>
-              <th className="px-4 py-3 text-center font-semibold">Avg Time</th>
+              {showPhone && <th className="px-4 py-3 font-semibold">Phone / Email</th>}
+              <th className="px-4 py-3 text-center font-semibold">Round Khelh</th>
+              <th className="px-4 py-3 text-center font-semibold">Dik Zat</th>
+              <th className="px-4 py-3 text-center font-semibold">Avg Hun Hman</th>
               <th className="px-4 py-3 text-right font-semibold">Points</th>
             </tr>
           </thead>
@@ -319,11 +319,17 @@ export function RankingTable({ rows, showPhone = false }: { rows: RankingRow[]; 
                       </div>
                     </td>
                   )}
-                  <td className="px-4 py-3 text-center text-ink-200">{row.rounds}</td>
-                  <td className="px-4 py-3 text-center text-ink-200">{row.totalCorrect}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="rounded-full bg-violet-500/15 border border-violet-500/20 px-2.5 py-0.5 text-xs font-semibold text-violet-300">
+                      {row.rounds} {row.rounds === 1 ? 'round' : 'rounds'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="font-semibold text-emerald-400">{row.totalCorrect}</span>
+                  </td>
                   <td className="px-4 py-3 text-center text-ink-200">{formatTime(row.avgTimeSeconds)}</td>
                   <td className="px-4 py-3 text-right">
-                    <span className="font-display text-base font-bold text-white">{row.points}</span>
+                    <span className="font-display text-base font-bold text-gradient">{row.points}</span>
                   </td>
                 </tr>
               )

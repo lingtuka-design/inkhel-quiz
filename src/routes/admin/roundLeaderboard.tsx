@@ -9,6 +9,7 @@ import {
   Copy,
   Download,
   Mail,
+  Medal,
   MessageCircle,
   Phone,
   Sparkles,
@@ -18,31 +19,27 @@ import {
   Zap,
 } from 'lucide-react'
 import { BackLink } from '../../components/layout'
-import { LeaderboardTable } from '../../components/leaderboard'
+import { LeaderboardTable, RankingTable, RankBadge } from '../../components/leaderboard'
 import { Avatar, Badge, Button, Card, toast } from '../../components/ui'
 import { countQuestions } from '../../services/roundService'
-import { getRoundLeaderboard } from '../../services/leaderboardService'
+import { getMonthRanking, getRoundLeaderboard } from '../../services/leaderboardService'
 import { setPageTitle } from '../../services/shareService'
 import { formatTime, formatDate } from '../../lib/utils'
-import type { Round } from '../../types'
+import type { Round, RankingRow } from '../../types'
+
+type LeaderboardTab = 'monthly' | 'round'
+type RankFilter = 'top10' | 'top3' | 'all'
 
 export function AdminRoundLeaderboardPage() {
   const { roundId: routeRoundId } = useParams({ strict: false })
+
+  // Active Tab: default to 'monthly' unless routeRoundId is explicitly given
+  const [activeTab, setActiveTab] = useState<LeaderboardTab>(routeRoundId ? 'round' : 'monthly')
   const [selectedRoundId, setSelectedRoundId] = useState<string>(routeRoundId || '')
-  const [selectedMonthId, setSelectedMonthId] = useState<string>('all')
-  const [top10Only, setTop10Only] = useState<boolean>(true)
+  const [selectedMonthId, setSelectedMonthId] = useState<string>('')
+  const [rankFilter, setRankFilter] = useState<RankFilter>('top10')
 
-  // 1. Fetch all rounds
-  const { data: rounds = [], isLoading: roundsLoading } = useQuery<Round[]>({
-    queryKey: ['adminRounds'],
-    queryFn: async () => {
-      const res = await fetch('/api/rounds')
-      if (!res.ok) throw new Error('Failed to fetch rounds')
-      return res.json()
-    },
-  })
-
-  // 2. Fetch all seasons/months for month grouping
+  // 1. Fetch all seasons/months
   const { data: seasons = [] } = useQuery({
     queryKey: ['adminSeasons'],
     queryFn: async () => {
@@ -54,7 +51,7 @@ export function AdminRoundLeaderboardPage() {
 
   // Build months list
   const months = useMemo(() => {
-    const list: { id: string; name: string; seasonName: string }[] = []
+    const list: { id: string; name: string; seasonName: string; startDate: string; endDate: string }[] = []
     for (const s of seasons as any[]) {
       if (Array.isArray(s.months)) {
         for (const m of s.months) {
@@ -62,6 +59,8 @@ export function AdminRoundLeaderboardPage() {
             id: m.id,
             name: m.name || m.slug,
             seasonName: s.name,
+            startDate: m.startDate,
+            endDate: m.endDate,
           })
         }
       }
@@ -69,117 +68,140 @@ export function AdminRoundLeaderboardPage() {
     return list
   }, [seasons])
 
-  // Sync routeRoundId or default to the first round
+  // Default month selection to the active or latest month
+  useEffect(() => {
+    if (!selectedMonthId && months.length > 0) {
+      // Pick current or latest month
+      const now = new Date().toISOString()
+      const currentMonth =
+        months.find((m) => m.startDate <= now && m.endDate >= now) || months[months.length - 1] || months[0]
+      if (currentMonth) {
+        setSelectedMonthId(currentMonth.id)
+      }
+    }
+  }, [months, selectedMonthId])
+
+  // 2. Fetch all rounds
+  const { data: rounds = [] } = useQuery<Round[]>({
+    queryKey: ['adminRounds'],
+    queryFn: async () => {
+      const res = await fetch('/api/rounds')
+      if (!res.ok) throw new Error('Failed to fetch rounds')
+      return res.json()
+    },
+  })
+
+  // Sync routeRoundId or pick default
   useEffect(() => {
     if (routeRoundId) {
       setSelectedRoundId(routeRoundId)
+      setActiveTab('round')
     } else if (!selectedRoundId && rounds.length > 0) {
-      // Pick first published round or first round
-      const firstPublished = rounds.find((r) => r.status === 'published') || rounds[0]
-      if (firstPublished) {
-        setSelectedRoundId(firstPublished.id)
-      }
+      const first = rounds.find((r) => r.status === 'published') || rounds[0]
+      if (first) setSelectedRoundId(first.id)
     }
   }, [routeRoundId, rounds, selectedRoundId])
 
-  // Find active round
   const currentRound = useMemo(() => {
     return rounds.find((r) => r.id === selectedRoundId) || null
   }, [rounds, selectedRoundId])
 
-  // Update month filter if round changes and month filter is specific
-  useEffect(() => {
-    if (currentRound && selectedMonthId === 'all') {
-      setSelectedMonthId(currentRound.monthId)
-    }
-  }, [currentRound])
+  const currentMonth = useMemo(() => {
+    return months.find((m) => m.id === selectedMonthId) || null
+  }, [months, selectedMonthId])
 
-  // Filtered rounds based on month selection
+  // Filtered rounds for round tab
   const filteredRounds = useMemo(() => {
-    if (selectedMonthId === 'all') return rounds
+    if (!selectedMonthId) return rounds
     return rounds.filter((r) => r.monthId === selectedMonthId)
   }, [rounds, selectedMonthId])
 
-  // Month info for current round
-  const currentMonth = useMemo(() => {
-    return months.find((m) => m.id === currentRound?.monthId)
-  }, [months, currentRound])
+  // Monthly rankings data
+  const { data: monthlyRows = [], isLoading: monthlyLoading } = useQuery<RankingRow[]>({
+    queryKey: ['monthRankings', selectedMonthId],
+    queryFn: () => getMonthRanking(selectedMonthId),
+    enabled: !!selectedMonthId,
+  })
 
-  // Leaderboard rows for selected round
-  const { data: rows = [], isLoading: rowsLoading } = useQuery({
+  // Round leaderboard data
+  const { data: roundRows = [], isLoading: roundLoading } = useQuery({
     queryKey: ['leaderboard', selectedRoundId],
     queryFn: () => getRoundLeaderboard(selectedRoundId),
-    enabled: !!selectedRoundId,
+    enabled: !!selectedRoundId && activeTab === 'round',
   })
 
   const { data: totalQuestions } = useQuery({
     queryKey: ['questions', selectedRoundId, 'count'],
     queryFn: () => countQuestions(selectedRoundId),
-    enabled: !!selectedRoundId,
+    enabled: !!selectedRoundId && activeTab === 'round',
   })
 
   useEffect(() => {
-    if (currentRound) {
-      setPageTitle(`Admin Leaderboard — ${currentRound.title}`)
-    } else {
-      setPageTitle('Admin Round Leaderboards')
+    if (activeTab === 'monthly') {
+      setPageTitle(`Monthly Top 10 — ${currentMonth?.name || 'Tournament'}`)
+    } else if (currentRound) {
+      setPageTitle(`Leaderboard — ${currentRound.title}`)
     }
-  }, [currentRound])
+  }, [activeTab, currentMonth, currentRound])
 
-  // Display rows (Top 10 vs All)
-  const displayRows = useMemo(() => {
-    if (top10Only) {
-      return rows.slice(0, 10)
-    }
-    return rows
-  }, [rows, top10Only])
+  // Display rows for Monthly Leaderboard
+  const displayMonthlyRows = useMemo(() => {
+    if (rankFilter === 'top3') return monthlyRows.slice(0, 3)
+    if (rankFilter === 'top10') return monthlyRows.slice(0, 10)
+    return monthlyRows
+  }, [monthlyRows, rankFilter])
 
-  // Top 1 participant (Champion)
-  const topWinner = rows[0] || null
+  // Display rows for Round Leaderboard
+  const displayRoundRows = useMemo(() => {
+    if (rankFilter === 'top3') return roundRows.slice(0, 3)
+    if (rankFilter === 'top10') return roundRows.slice(0, 10)
+    return roundRows
+  }, [roundRows, rankFilter])
 
-  // Copy helper
-  const handleCopyContacts = (type: 'email' | 'phone') => {
-    const targetRows = rows.slice(0, 10)
+  // Top 3 Winners in Monthly Tournament
+  const monthlyWinner1 = monthlyRows[0] || null
+  const monthlyWinner2 = monthlyRows[1] || null
+  const monthlyWinner3 = monthlyRows[2] || null
+
+  // Copy contacts for Monthly Leaderboard
+  const handleCopyMonthlyContacts = (type: 'email' | 'phone') => {
+    const targetRows = monthlyRows.slice(0, 10)
     const list = targetRows
       .map((r) => (type === 'email' ? r.participant.email : r.participant.phoneNumber))
       .filter(Boolean) as string[]
 
     if (list.length === 0) {
-      toast(`No ${type}s recorded in Top 10.`, 'error')
+      toast(`Top 10 zingah ${type} record a awm lo.`, 'error')
       return
     }
 
     navigator.clipboard.writeText(list.join(', '))
-    toast(`Copied Top 10 ${type === 'email' ? 'Emails' : 'Phone Numbers'}!`, 'success')
+    toast(`Top 10 ${type === 'email' ? 'Emails' : 'Phone Numbers'} copy a ni ta!`, 'success')
   }
 
-  // Export CSV
-  const handleExportCSV = () => {
-    if (rows.length === 0) return
+  // Export Monthly CSV
+  const handleExportMonthlyCSV = () => {
+    if (monthlyRows.length === 0) return
     const headers = [
       'Rank',
       'Name',
       'Email',
       'Phone',
-      'Correct Answers',
-      'Total Questions',
-      'Time (seconds)',
-      'Score (Points)',
-      'Total Rounds Played',
-      'Completed At',
+      'Rounds Played',
+      'Total Correct Answers',
+      'Average Time (seconds)',
+      'Total Points',
     ]
 
-    const csvData = rows.map((r) => [
+    const csvData = monthlyRows.map((r) => [
       r.rank,
       `"${r.participant.displayName.replace(/"/g, '""')}"`,
       `"${r.participant.email || ''}"`,
       `"${r.participant.phoneNumber || ''}"`,
-      r.correctAnswers,
-      r.totalQuestions,
-      r.timeTakenSeconds,
-      r.score,
-      r.roundsPlayed ?? 1,
-      `"${r.completedAt || ''}"`,
+      r.rounds,
+      r.totalCorrect,
+      r.avgTimeSeconds,
+      r.points,
     ])
 
     const csvContent =
@@ -188,62 +210,60 @@ export function AdminRoundLeaderboardPage() {
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement('a')
     link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `leaderboard-${currentRound?.slug || 'round'}-top.csv`)
+    link.setAttribute('download', `monthly-leaderboard-${currentMonth?.name?.toLowerCase().replace(/\s+/g, '-') || 'standings'}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
 
-    toast('Leaderboard CSV has been downloaded.', 'success')
+    toast('Monthly Leaderboard CSV download fel a ni e.', 'success')
   }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       {/* Header */}
       <div>
-        <BackLink to="/admin/rounds" label="Manage Rounds" />
+        <BackLink to="/admin" label="Dashboard" />
         <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <Trophy className="h-5 w-5" />
-              </span>
-              <div>
-                <h1 className="font-display text-2xl font-bold text-white sm:text-3xl">
-                  Round Leaderboards
-                </h1>
-                <p className="text-sm text-ink-300">
-                  Top 10 leaderboard, player emails, phone numbers, points hlawh zat leh round khelh zat.
-                </p>
-              </div>
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-yellow-500/10 text-amber-400 border border-amber-500/30 shadow-lg shadow-amber-950/20">
+              <Trophy className="h-6 w-6" />
+            </span>
+            <div>
+              <h1 className="font-display text-2xl font-bold text-white sm:text-3xl">
+                Tournament Leaderboards
+              </h1>
+              <p className="text-sm text-ink-300">
+                Thla tin Top 10 (Lawmman semna), player phone/email, points, round khelh zat, leh dik zat.
+              </p>
             </div>
           </div>
 
-          {/* Quick Action Buttons */}
-          {rows.length > 0 && (
+          {/* Quick Action Buttons for Active Tab */}
+          {activeTab === 'monthly' && monthlyRows.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                icon={Mail}
-                onClick={() => handleCopyContacts('email')}
-                title="Copy all Top 10 Emails"
-              >
-                Copy Top 10 Emails
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
                 icon={Phone}
-                onClick={() => handleCopyContacts('phone')}
-                title="Copy all Top 10 Phone numbers"
+                onClick={() => handleCopyMonthlyContacts('phone')}
+                title="Copy Top 10 Phone Numbers"
               >
                 Copy Top 10 Phones
               </Button>
               <Button
                 variant="outline"
                 size="sm"
+                icon={Mail}
+                onClick={() => handleCopyMonthlyContacts('email')}
+                title="Copy Top 10 Emails"
+              >
+                Copy Top 10 Emails
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 icon={Download}
-                onClick={handleExportCSV}
+                onClick={handleExportMonthlyCSV}
                 title="Download CSV"
               >
                 Export CSV
@@ -253,288 +273,505 @@ export function AdminRoundLeaderboardPage() {
         </div>
       </div>
 
-      {/* Month & Round Selector Controls */}
-      <Card className="p-5 space-y-4">
-        {/* Month Filter Tabs */}
-        {months.length > 0 && (
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-              Tournament Month
-            </label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedMonthId('all')}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                  selectedMonthId === 'all'
-                    ? 'bg-violet-600 text-white shadow-md'
-                    : 'bg-white/5 text-ink-300 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                All Months
-              </button>
-              {months.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedMonthId(m.id)
-                    const roundInMonth = rounds.find((r) => r.monthId === m.id)
-                    if (roundInMonth) setSelectedRoundId(roundInMonth.id)
-                  }}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                    selectedMonthId === m.id
-                      ? 'bg-violet-600 text-white shadow-md'
-                      : 'bg-white/5 text-ink-300 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  {m.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Main Mode Tabs: Monthly Tournament vs Round Leaderboard */}
+      <div className="flex border-b border-white/10">
+        <button
+          type="button"
+          onClick={() => setActiveTab('monthly')}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold transition-all ${
+            activeTab === 'monthly'
+              ? 'border-amber-400 text-amber-300 bg-amber-500/10'
+              : 'border-transparent text-ink-300 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <Trophy className="h-4 w-4" />
+          <span>Monthly Leaderboard (Thla tin Top 10 — Lawmman Semna)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('round')}
+          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-semibold transition-all ${
+            activeTab === 'round'
+              ? 'border-violet-500 text-violet-300 bg-violet-500/10'
+              : 'border-transparent text-ink-300 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <Zap className="h-4 w-4" />
+          <span>Round Leaderboard (Round tin)</span>
+        </button>
+      </div>
 
-        {/* Round Switcher Dropdown & Pills */}
-        <div className="pt-2 border-t border-white/5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <label className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-              Select Round ({filteredRounds.length})
-            </label>
-            <div className="relative min-w-[260px] sm:w-80">
-              <select
-                aria-label="Select Round"
-                value={selectedRoundId}
-                onChange={(e) => setSelectedRoundId(e.target.value)}
-                className="w-full appearance-none rounded-xl border border-white/10 bg-white/5 py-2.5 pl-3.5 pr-10 text-sm font-semibold text-white transition-colors focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-              >
-                {filteredRounds.map((r) => (
-                  <option key={r.id} value={r.id} className="bg-ink-900 text-white">
-                    {r.title} ({r.status})
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-ink-400" />
-            </div>
-          </div>
-
-          {/* Quick Round Pills */}
-          <div className="mt-3 flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
-            {filteredRounds.map((r) => {
-              const active = r.id === selectedRoundId
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setSelectedRoundId(r.id)}
-                  className={`rounded-lg px-3 py-1 text-xs font-medium transition-all ${
-                    active
-                      ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm font-semibold'
-                      : 'bg-white/5 text-ink-300 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  {r.title}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </Card>
-
-      {/* Selected Round Overview & Champion Card */}
-      {currentRound && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* Round Meta info */}
-          <Card className="p-5 flex flex-col justify-between lg:col-span-1 border-white/10">
-            <div>
-              <div className="flex items-center gap-2">
-                <Badge tone={currentRound.status === 'published' ? 'green' : 'slate'}>
-                  {currentRound.status}
-                </Badge>
-                {currentMonth && (
-                  <span className="text-xs text-ink-300 font-medium">
-                    {currentMonth.name}
-                  </span>
-                )}
+      {/* ============================================================== */}
+      {/* TAB 1: MONTHLY LEADERBOARD (PRIMARY) */}
+      {/* ============================================================== */}
+      {activeTab === 'monthly' && (
+        <div className="space-y-6">
+          {/* Month Switcher Tabs */}
+          <Card className="p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+                  Thlan Tur Thla (Tournament Month)
+                </label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {months.map((m) => {
+                    const active = m.id === selectedMonthId
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setSelectedMonthId(m.id)}
+                        className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all flex items-center gap-2 ${
+                          active
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-950/30'
+                            : 'bg-white/5 text-ink-300 hover:bg-white/10 hover:text-white border border-white/5'
+                        }`}
+                      >
+                        <Calendar className="h-4 w-4" />
+                        <span>{m.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-              <h2 className="mt-2 font-display text-xl font-bold text-white">
-                {currentRound.title}
-              </h2>
-              {currentRound.description && (
-                <p className="mt-1 line-clamp-2 text-xs text-ink-300">
-                  {currentRound.description}
-                </p>
+
+              {currentMonth && (
+                <div className="text-xs text-ink-400 sm:text-right">
+                  <span className="font-semibold text-white">{currentMonth.seasonName}</span>
+                  <div className="mt-0.5">
+                    {formatDate(currentMonth.startDate)} — {formatDate(currentMonth.endDate)}
+                  </div>
+                </div>
               )}
             </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/5 pt-3 text-xs text-ink-300">
-              <div>
-                <span className="text-ink-400">Total Questions:</span>{' '}
-                <strong className="text-white font-semibold">{totalQuestions ?? 0}</strong>
-              </div>
-              <div>
-                <span className="text-ink-400">Time Limit:</span>{' '}
-                <strong className="text-white font-semibold">{Math.round(currentRound.timeLimitSeconds / 60)} mins</strong>
-              </div>
-              <div>
-                <span className="text-ink-400">Participants:</span>{' '}
-                <strong className="text-emerald-400 font-semibold">{rows.length} players</strong>
-              </div>
-              <div>
-                <span className="text-ink-400">High Score:</span>{' '}
-                <strong className="text-amber-400 font-semibold">{topWinner?.score ?? 0} pts</strong>
-              </div>
-            </div>
           </Card>
 
-          {/* Top Winner Card (Rank #1) */}
-          <Card className="p-5 lg:col-span-2 border-amber-500/20 bg-gradient-to-br from-amber-500/5 via-transparent to-purple-500/5 relative overflow-hidden">
-            <div className="absolute -right-6 -bottom-6 opacity-10">
-              <Trophy className="h-40 w-40 text-amber-400" />
+          {/* Top 3 Prize Winners Spotlight Cards (Lawmman dawng tu turte) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-amber-400" />
+                <h2 className="font-display text-base font-bold text-white">
+                  {currentMonth?.name} Lawmman Dawng Tu Turte (Top 3 Prize Winners)
+                </h2>
+              </div>
+              <Badge tone="amber">
+                {monthlyRows.length} Participants
+              </Badge>
             </div>
 
-            {topWinner ? (
-              <div className="relative z-10 flex flex-col justify-between h-full">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 border border-amber-400/30 px-3 py-1 text-xs font-bold text-amber-300">
-                      <Sparkles className="h-3.5 w-3.5" /> 🥇 #1 Champion
-                    </span>
-                    <span className="font-display text-2xl font-black text-amber-400">
-                      {topWinner.score} <span className="text-xs font-normal text-amber-300">points</span>
-                    </span>
-                  </div>
+            {monthlyRows.length === 0 ? (
+              <Card className="p-8 text-center text-sm text-ink-400">
+                He thla ({currentMonth?.name}) ah hian participant an la awm lo.
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {/* 1st Prize */}
+                {monthlyWinner1 && (
+                  <Card className="relative overflow-hidden border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 via-amber-500/5 to-transparent p-5">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-400/20 border border-yellow-400/40 px-3 py-1 text-xs font-bold text-yellow-300">
+                        🥇 1st Prize Winner
+                      </span>
+                      <span className="font-display text-xl font-black text-yellow-400">
+                        {monthlyWinner1.points} <span className="text-xs font-normal text-yellow-300">pts</span>
+                      </span>
+                    </div>
 
-                  <div className="mt-4 flex items-center gap-4">
-                    <Avatar
-                      name={topWinner.participant.displayName}
-                      gradient={topWinner.participant.avatarGradient}
-                      photoUrl={topWinner.participant.photoUrl}
-                      size="lg"
-                    />
-                    <div>
-                      <h3 className="text-lg font-bold text-white">
-                        {topWinner.participant.displayName}
-                      </h3>
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-ink-300 mt-1">
-                        <span>
-                          Dik zat:{' '}
-                          <strong className="text-emerald-400 font-semibold">
-                            {topWinner.correctAnswers}/{topWinner.totalQuestions}
-                          </strong>
-                        </span>
-                        <span>·</span>
-                        <span>
-                          Hun hman:{' '}
-                          <strong className="text-white font-semibold">
-                            {formatTime(topWinner.timeTakenSeconds)}
-                          </strong>
-                        </span>
-                        <span>·</span>
-                        <span>
-                          Round khelh zat:{' '}
-                          <strong className="text-violet-300 font-semibold">
-                            {topWinner.roundsPlayed ?? 1} rounds
-                          </strong>
-                        </span>
+                    <div className="mt-3 flex items-center gap-3">
+                      <Avatar
+                        name={monthlyWinner1.participant.displayName}
+                        gradient={monthlyWinner1.participant.avatarGradient}
+                        photoUrl={monthlyWinner1.participant.photoUrl}
+                        size="lg"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-white text-base">
+                          {monthlyWinner1.participant.displayName}
+                        </p>
+                        <p className="text-xs text-ink-300 mt-0.5">
+                          {monthlyWinner1.rounds} rounds · {monthlyWinner1.totalCorrect} dik
+                        </p>
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Champion Contacts */}
-                <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-3">
-                  {topWinner.participant.email && (
-                    <a
-                      href={`mailto:${topWinner.participant.email}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 text-xs font-semibold text-blue-300 hover:bg-blue-500/20"
-                    >
-                      <Mail className="h-3.5 w-3.5" /> {topWinner.participant.email}
-                    </a>
-                  )}
+                    {/* Contact Buttons */}
+                    <div className="mt-4 flex flex-col gap-1.5 border-t border-white/10 pt-3">
+                      {monthlyWinner1.participant.phoneNumber ? (
+                        <a
+                          href={`https://wa.me/${
+                            monthlyWinner1.participant.phoneNumber.replace(/\D/g, '').length === 10
+                              ? '91' + monthlyWinner1.participant.phoneNumber.replace(/\D/g, '')
+                              : monthlyWinner1.participant.phoneNumber.replace(/\D/g, '')
+                          }?text=Chibai%20${encodeURIComponent(
+                            monthlyWinner1.participant.displayName
+                          )},%20Inkhel%20Quiz%20${encodeURIComponent(
+                            currentMonth?.name || 'Tournament'
+                          )}-ah%201st%20Prize%20i%20dawng%20e!%20Lawmman%20dawn%20dan%20tur%20kan%20lo%20hrilh%20dawn%20che%20nia.`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp: {monthlyWinner1.participant.phoneNumber}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-ink-400 italic">Phone number a dah lo</span>
+                      )}
 
-                  {topWinner.participant.phoneNumber && (
-                    <a
-                      href={`https://wa.me/${
-                        topWinner.participant.phoneNumber.replace(/\D/g, '').length === 10
-                          ? '91' + topWinner.participant.phoneNumber.replace(/\D/g, '')
-                          : topWinner.participant.phoneNumber.replace(/\D/g, '')
-                      }?text=Hi%20${encodeURIComponent(
-                        topWinner.participant.displayName
-                      )},%20Inkhel%20Quiz%20Round%20champion%20i%20ni%20e!`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20"
-                    >
-                      <MessageCircle className="h-3.5 w-3.5" /> WhatsApp: {topWinner.participant.phoneNumber}
-                    </a>
-                  )}
+                      {monthlyWinner1.participant.email && (
+                        <a
+                          href={`mailto:${monthlyWinner1.participant.email}?subject=Inkhel%20Quiz%20${encodeURIComponent(
+                            currentMonth?.name || ''
+                          )}%201st%20Prize&body=Chibai%20${encodeURIComponent(
+                            monthlyWinner1.participant.displayName
+                          )},%20Inkhel%20Quiz%20lawmman%20dawng%20tu%20i%20ni%20e!`}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 truncate"
+                        >
+                          <Mail className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{monthlyWinner1.participant.email}</span>
+                        </a>
+                      )}
+                    </div>
+                  </Card>
+                )}
 
-                  {!topWinner.participant.email && !topWinner.participant.phoneNumber && (
-                    <span className="text-xs italic text-ink-400">
-                      No direct contact recorded (Guest account)
-                    </span>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex h-full items-center justify-center py-6 text-center text-sm text-ink-400">
-                He round khel tu an la awm rih lo.
+                {/* 2nd Prize */}
+                {monthlyWinner2 && (
+                  <Card className="relative overflow-hidden border-slate-300/30 bg-gradient-to-br from-slate-400/10 via-slate-500/5 to-transparent p-5">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-300/20 border border-slate-300/40 px-3 py-1 text-xs font-bold text-slate-200">
+                        🥈 2nd Prize Winner
+                      </span>
+                      <span className="font-display text-xl font-black text-slate-200">
+                        {monthlyWinner2.points} <span className="text-xs font-normal text-slate-300">pts</span>
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex items-center gap-3">
+                      <Avatar
+                        name={monthlyWinner2.participant.displayName}
+                        gradient={monthlyWinner2.participant.avatarGradient}
+                        photoUrl={monthlyWinner2.participant.photoUrl}
+                        size="lg"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-white text-base">
+                          {monthlyWinner2.participant.displayName}
+                        </p>
+                        <p className="text-xs text-ink-300 mt-0.5">
+                          {monthlyWinner2.rounds} rounds · {monthlyWinner2.totalCorrect} dik
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Contact Buttons */}
+                    <div className="mt-4 flex flex-col gap-1.5 border-t border-white/10 pt-3">
+                      {monthlyWinner2.participant.phoneNumber ? (
+                        <a
+                          href={`https://wa.me/${
+                            monthlyWinner2.participant.phoneNumber.replace(/\D/g, '').length === 10
+                              ? '91' + monthlyWinner2.participant.phoneNumber.replace(/\D/g, '')
+                              : monthlyWinner2.participant.phoneNumber.replace(/\D/g, '')
+                          }?text=Chibai%20${encodeURIComponent(
+                            monthlyWinner2.participant.displayName
+                          )},%20Inkhel%20Quiz%20${encodeURIComponent(
+                            currentMonth?.name || 'Tournament'
+                          )}-ah%202nd%20Prize%20i%20dawng%20e!%20Lawmman%20dawn%20dan%20tur%20kan%20lo%20hrilh%20dawn%20che%20nia.`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp: {monthlyWinner2.participant.phoneNumber}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-ink-400 italic">Phone number a dah lo</span>
+                      )}
+
+                      {monthlyWinner2.participant.email && (
+                        <a
+                          href={`mailto:${monthlyWinner2.participant.email}?subject=Inkhel%20Quiz%20${encodeURIComponent(
+                            currentMonth?.name || ''
+                          )}%202nd%20Prize`}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 truncate"
+                        >
+                          <Mail className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{monthlyWinner2.participant.email}</span>
+                        </a>
+                      )}
+                    </div>
+                  </Card>
+                )}
+
+                {/* 3rd Prize */}
+                {monthlyWinner3 && (
+                  <Card className="relative overflow-hidden border-amber-600/30 bg-gradient-to-br from-amber-600/10 via-orange-600/5 to-transparent p-5">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/20 border border-amber-600/40 px-3 py-1 text-xs font-bold text-amber-300">
+                        🥉 3rd Prize Winner
+                      </span>
+                      <span className="font-display text-xl font-black text-amber-300">
+                        {monthlyWinner3.points} <span className="text-xs font-normal text-amber-400">pts</span>
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex items-center gap-3">
+                      <Avatar
+                        name={monthlyWinner3.participant.displayName}
+                        gradient={monthlyWinner3.participant.avatarGradient}
+                        photoUrl={monthlyWinner3.participant.photoUrl}
+                        size="lg"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-white text-base">
+                          {monthlyWinner3.participant.displayName}
+                        </p>
+                        <p className="text-xs text-ink-300 mt-0.5">
+                          {monthlyWinner3.rounds} rounds · {monthlyWinner3.totalCorrect} dik
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Contact Buttons */}
+                    <div className="mt-4 flex flex-col gap-1.5 border-t border-white/10 pt-3">
+                      {monthlyWinner3.participant.phoneNumber ? (
+                        <a
+                          href={`https://wa.me/${
+                            monthlyWinner3.participant.phoneNumber.replace(/\D/g, '').length === 10
+                              ? '91' + monthlyWinner3.participant.phoneNumber.replace(/\D/g, '')
+                              : monthlyWinner3.participant.phoneNumber.replace(/\D/g, '')
+                          }?text=Chibai%20${encodeURIComponent(
+                            monthlyWinner3.participant.displayName
+                          )},%20Inkhel%20Quiz%20${encodeURIComponent(
+                            currentMonth?.name || 'Tournament'
+                          )}-ah%203rd%20Prize%20i%20dawng%20e!%20Lawmman%20dawn%20dan%20tur%20kan%20lo%20hrilh%20dawn%20che%20nia.`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" /> WhatsApp: {monthlyWinner3.participant.phoneNumber}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-ink-400 italic">Phone number a dah lo</span>
+                      )}
+
+                      {monthlyWinner3.participant.email && (
+                        <a
+                          href={`mailto:${monthlyWinner3.participant.email}?subject=Inkhel%20Quiz%20${encodeURIComponent(
+                            currentMonth?.name || ''
+                          )}%203rd%20Prize`}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 truncate"
+                        >
+                          <Mail className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{monthlyWinner3.participant.email}</span>
+                        </a>
+                      )}
+                    </div>
+                  </Card>
+                )}
               </div>
             )}
-          </Card>
+          </div>
+
+          {/* Monthly Leaderboard Table Section */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <h2 className="font-display text-lg font-bold text-white">
+                  {currentMonth?.name} Standings Table
+                </h2>
+                <Badge tone="violet">
+                  {displayMonthlyRows.length} of {monthlyRows.length} shown
+                </Badge>
+              </div>
+
+              {/* Filter Tabs: Top 10, Top 3, All */}
+              <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1">
+                <button
+                  type="button"
+                  onClick={() => setRankFilter('top10')}
+                  className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    rankFilter === 'top10'
+                      ? 'bg-amber-500 text-white shadow-sm'
+                      : 'text-ink-300 hover:text-white'
+                  }`}
+                >
+                  🏆 Top 10 Only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRankFilter('top3')}
+                  className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    rankFilter === 'top3'
+                      ? 'bg-amber-500 text-white shadow-sm'
+                      : 'text-ink-300 hover:text-white'
+                  }`}
+                >
+                  🥇 Top 3 (Prize)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRankFilter('all')}
+                  className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                    rankFilter === 'all'
+                      ? 'bg-amber-500 text-white shadow-sm'
+                      : 'text-ink-300 hover:text-white'
+                  }`}
+                >
+                  Show All ({monthlyRows.length})
+                </button>
+              </div>
+            </div>
+
+            {/* Ranking Table */}
+            <RankingTable rows={displayMonthlyRows} showPhone={true} />
+          </div>
         </div>
       )}
 
-      {/* Leaderboard Table Section */}
-      <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <h2 className="font-display text-lg font-bold text-white">
-              {top10Only ? '🏆 Top 10 Participants' : `👥 All Participants (${rows.length})`}
-            </h2>
-            <Badge tone="violet">
-              {displayRows.length} of {rows.length} shown
-            </Badge>
-          </div>
+      {/* ============================================================== */}
+      {/* TAB 2: ROUND LEADERBOARD */}
+      {/* ============================================================== */}
+      {activeTab === 'round' && (
+        <div className="space-y-6">
+          {/* Round Switcher Card */}
+          <Card className="p-5 space-y-4">
+            {/* Month Filter Tabs */}
+            {months.length > 0 && (
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+                  Tournament Month
+                </label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMonthId('')}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                      !selectedMonthId
+                        ? 'bg-violet-600 text-white shadow-md'
+                        : 'bg-white/5 text-ink-300 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    All Months
+                  </button>
+                  {months.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedMonthId(m.id)
+                        const roundInMonth = rounds.find((r) => r.monthId === m.id)
+                        if (roundInMonth) setSelectedRoundId(roundInMonth.id)
+                      }}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                        selectedMonthId === m.id
+                          ? 'bg-violet-600 text-white shadow-md'
+                          : 'bg-white/5 text-ink-300 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      {m.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-          {/* Toggle Top 10 vs All */}
-          <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1">
-            <button
-              type="button"
-              onClick={() => setTop10Only(true)}
-              className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                top10Only
-                  ? 'bg-violet-600 text-white shadow-sm'
-                  : 'text-ink-300 hover:text-white'
-              }`}
-            >
-              Top 10 Only
-            </button>
-            <button
-              type="button"
-              onClick={() => setTop10Only(false)}
-              className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                !top10Only
-                  ? 'bg-violet-600 text-white shadow-sm'
-                  : 'text-ink-300 hover:text-white'
-              }`}
-            >
-              Show All ({rows.length})
-            </button>
-          </div>
+            {/* Round Switcher Dropdown & Pills */}
+            <div className="pt-2 border-t border-white/5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <label className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+                  Select Round ({filteredRounds.length})
+                </label>
+                <div className="relative min-w-[260px] sm:w-80">
+                  <select
+                    aria-label="Select Round"
+                    value={selectedRoundId}
+                    onChange={(e) => setSelectedRoundId(e.target.value)}
+                    className="w-full appearance-none rounded-xl border border-white/10 bg-white/5 py-2.5 pl-3.5 pr-10 text-sm font-semibold text-white transition-colors focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                  >
+                    {filteredRounds.map((r) => (
+                      <option key={r.id} value={r.id} className="bg-ink-900 text-white">
+                        {r.title} ({r.status})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-ink-400" />
+                </div>
+              </div>
+
+              {/* Quick Round Pills */}
+              <div className="mt-3 flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                {filteredRounds.map((r) => {
+                  const active = r.id === selectedRoundId
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setSelectedRoundId(r.id)}
+                      className={`rounded-lg px-3 py-1 text-xs font-medium transition-all ${
+                        active
+                          ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm font-semibold'
+                          : 'bg-white/5 text-ink-300 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      {r.title}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </Card>
+
+          {/* Round Header & Table */}
+          {currentRound && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-xl font-bold text-white flex items-center gap-2">
+                    {currentRound.title}
+                    <Badge tone={currentRound.status === 'published' ? 'green' : 'slate'}>
+                      {currentRound.status}
+                    </Badge>
+                  </h2>
+                  <p className="text-xs text-ink-300 mt-1">
+                    {totalQuestions ?? 0} questions · {roundRows.length} participants completed
+                  </p>
+                </div>
+
+                <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setRankFilter('top10')}
+                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                      rankFilter === 'top10'
+                        ? 'bg-violet-600 text-white shadow-sm'
+                        : 'text-ink-300 hover:text-white'
+                    }`}
+                  >
+                    Top 10 Only
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRankFilter('all')}
+                    className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                      rankFilter === 'all'
+                        ? 'bg-violet-600 text-white shadow-sm'
+                        : 'text-ink-300 hover:text-white'
+                    }`}
+                  >
+                    Show All ({roundRows.length})
+                  </button>
+                </div>
+              </div>
+
+              <LeaderboardTable rows={displayRoundRows} showAdminDetails={true} />
+            </div>
+          )}
         </div>
-
-        {/* Table */}
-        <LeaderboardTable rows={displayRows} showAdminDetails={true} />
-      </div>
+      )}
 
       {/* Tie-breaking rule note */}
       <Card className="p-4 text-xs text-ink-300">
-        <p className="font-semibold text-white">Ranking & Tie-breaking Rules:</p>
+        <p className="font-semibold text-white">Monthly Ranking & Prize Rules:</p>
         <p className="mt-1">
-          Equal points/scores are ordered by: 1) Dik zat tam (more correct answers) → 2) Hun hman tlem (faster completion time) → 3) Submission hmasa sa.
-          Admin mode-ah hian participant email, phone number, round khelh zat, leh dik zat a lang nghal vek a ni.
+          1) Thla khat chhunga total points hlawhchhuah tam dan indawta rank a ni. 2) Points inangah chuan: chhan dik zat tam (total correct) → hun hman chawhrual tlem (avg completion time) hmanga tie-break a ni.
+          Lawmman sem nan Top 3 leh Top 10 te phone number leh email a lang vek a, WhatsApp chat direct link a awm nghal e.
         </p>
       </Card>
     </div>
